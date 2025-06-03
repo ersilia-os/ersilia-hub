@@ -1,0 +1,219 @@
+<div class="backsplash">
+    <img src="/assets/ersilia-login-splash-0.jpeg">
+</div>
+
+<div class="logo-container">
+    <div class="text">
+        <img src="/assets/ersilia-logo-text.png" />
+    </div>
+
+    <div class="image">
+        <ersilia-loader scale="large" [animate]="true" [splash]="true"></ersilia-loader>
+    </div>
+</div>
+
+<div class="login-container">
+    <div class="login-form mat-elevation-z8">
+        @if (loginFormState === 'ANON_LOGIN') {
+        <div class="welcome-section">
+            Welcome
+        </div>
+
+        <div class="login-section">
+            <div class="login">
+                <div class="text">Anonymous Login</div>
+                <div class="form">
+                    <div class="session-id">
+                        <mat-form-field>
+                            <mat-label>Session Id</mat-label>
+                            <input matInput required [formControl]="anonSessionIdControl"
+                                [errorStateMatcher]="formControlErrorStateMatcher" (keyup.enter)="anonLogin()">
+                            @if (anonSessionIdControl.hasError('required')) {
+                            <mat-error>Session Id is <strong>required</strong></mat-error>
+                            } @else if (anonSessionIdControl.hasError('validation')) {
+                            <mat-error>{{ anonSessionIdControl.getError('validation') }}</mat-error>
+                            }
+                        </mat-form-field>
+                    </div>
+
+                    <div class="session-id-hint">
+                        Remember to <strong>copy</strong> this id for future logins
+                    </div>
+
+                    <div class="actions">
+                        <div class="ersilia-button icon-only" #generateTooltip="matTooltip" matTooltip="Generate ID"
+                            [ngClass]="{'disabled': busy()}" (click)="generateAnonSessionId()">
+                            <mat-icon>build_circle</mat-icon>
+                        </div>
+                        <div class="ersilia-button icon-only" #copyTooltip="matTooltip" matTooltip="Copy ID"
+                            [ngClass]="{'disabled': !anonSessionIdControl.valid}" (click)="copyAnonSessionId()">
+                            <mat-icon>content_copy</mat-icon>
+                        </div>
+                        <div class="ersilia-button" [ngClass]="{'disabled': !canAnonLogin()}" (click)="anonLogin()">
+                            @if (busy()) {
+                            <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+                            } @else {
+                            <mat-icon>login</mat-icon>
+                            }
+                            Login
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="signup-option">
+                <div class="text">Or Login with an Account</div>
+                <div class="ersilia-button" (click)="openLoginForm()">
+                    <mat-icon>account_box</mat-icon>
+                    Account Login
+                </div>
+            </div>
+        </div>
+        } @else if (loginFormState === 'LOGIN') {
+        <div class="welcome-section">
+            Welcome
+        </div>
+
+        <div class="login-section">
+            <div class="login">
+                <div class="text">Account Login</div>
+                <div class="form">
+                    <div class="username">
+                        <mat-form-field>
+                            <mat-label>Username</mat-label>
+                            <input matInput [(ngModel)]="loginUsername" (keyup.enter)="userLogin()">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="password">
+                        <mat-form-field>
+                            <mat-label>Password</mat-label>
+                            <input matInput type="password" [(ngModel)]="loginPassword" (keyup.enter)="userLogin()">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="ersilia-button" [ngClass]="{'disabled': !canLogin()}" (click)="userLogin()">
+                        @if (busy()) {
+                        <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+                        } @else {
+                        <mat-icon>login</mat-icon>
+                        }
+                        Login
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-options">
+                <div class="anon-login option">
+                    <div class="ersilia-button" (click)="cancelLogin()">
+                        <!-- <mat-icon>domino_mask</mat-icon> -->
+                        Anonymous Login
+                    </div>
+                </div>
+
+                <div class="signup option">
+                    <div class="ersilia-button" (click)="openSignUpForm()">
+                        <mat-icon>account_box</mat-icon>
+                        Sign Up
+                    </div>
+                </div>
+            </div>
+        </div>
+        } @else if (loginFormState === 'SIGN_UP') {
+        <div class="sign-up-form">
+            <div class="field username">
+                <mat-form-field>
+                    <mat-label>Username</mat-label>
+                    <input matInput required [formControl]="signupUsernameControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (signupUsernameControl.hasError('required')) {
+                    <mat-error>Username is <strong>required</strong></mat-error>
+                    } @else if (signupUsernameControl.hasError('validation')) {
+                    <mat-error>{{ signupUsernameControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field first-name">
+                <mat-form-field>
+                    <mat-label>First Name</mat-label>
+                    <input matInput required [formControl]="signupFirstNameControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (signupFirstNameControl.hasError('required')) {
+                    <mat-error>First Name is <strong>required</strong></mat-error>
+                    } @else if (signupFirstNameControl.hasError('validation')) {
+                    <mat-error>{{ signupFirstNameControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field last-name">
+                <mat-form-field>
+                    <mat-label>Last Name</mat-label>
+                    <input matInput required [formControl]="signupLastNameControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (signupLastNameControl.hasError('required')) {
+                    <mat-error>Last Name is <strong>required</strong></mat-error>
+                    } @else if (signupLastNameControl.hasError('validation')) {
+                    <mat-error>{{ signupLastNameControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field email">
+                <mat-form-field>
+                    <mat-label>Email</mat-label>
+                    <input matInput [formControl]="signupEmailControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (signupEmailControl.hasError('validation')) {
+                    <mat-error>{{ signupEmailControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field password">
+                <mat-form-field>
+                    <mat-label>Password</mat-label>
+                    <input matInput required type="password" [formControl]="signupPasswordControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (signupPasswordControl.hasError('required')) {
+                    <mat-error>Password is <strong>required</strong></mat-error>
+                    } @else if (signupPasswordControl.hasError('validation')) {
+                    <mat-error>{{ signupPasswordControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field confirm-password">
+                <mat-form-field>
+                    <mat-label>Confirm Password</mat-label>
+                    <input matInput required type="password" [formControl]="signupConfirmationPasswordControl">
+                    @if (signupConfirmationPasswordControl.hasError('required')) {
+                    <mat-error>Confirmation Password is <strong>required</strong></mat-error>
+                    } @else if (signupConfirmationPasswordControl.hasError('validation')) {
+                    <mat-error>{{ signupConfirmationPasswordControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="actions">
+                <div class="ersilia-button cancel" (click)="cancelSignUp()">
+                    <mat-icon>close</mat-icon>
+                    Cancel
+                </div>
+
+                <div class="ersilia-button" (click)="signUp()" [ngClass]="{'disabled': !canSignUp()}">
+                    @if (busy()) {
+                    <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+                    } @else {
+                    <mat-icon>account_box</mat-icon>
+                    }
+                    Sign Up
+                </div>
+            </div>
+
+        </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,45 @@
+<div class="toolbar">
+    <div class="spacer"></div>
+    <div class="ersilia-button" (click)="openCreateRequestDialog()">
+        <mat-icon>science</mat-icon>
+        New Evaluation
+    </div>
+</div>
+
+<div class="table">
+    <table mat-table [dataSource]="requests()" class="mat-elevation-z8" [trackBy]="tableTrackBy">
+        @for (column of displayedColumns; track column) {
+        <ng-container [matColumnDef]="column">
+            <th mat-header-cell *matHeaderCellDef>
+                @if (column == 'actions') {
+                <!-- @if (loading() && !hasRequests()) {
+                <ersilia-loader></ersilia-loader>
+                } -->
+                } @else {
+                {{columnHeaders[column]}}
+                }
+            </th>
+            <td mat-cell *matCellDef="let element">
+                @if (column == 'request_status') {
+                <div class="status" [ngClass]="element[column]?.toLowerCase()">
+                    {{element[column]}}
+                </div>
+
+                } @else if (column == 'request_date') {
+                {{element[column] | date:'yyyy-MM-dd HH:mm:ss'}}
+                } @else if (column == 'actions') {
+                <!-- TODO actions -->
+                <div class="action-button" (click)="viewRequest(element)">
+                    <mat-icon>visibility</mat-icon>
+                </div>
+                } @else {
+                {{element[column]}}
+                }
+            </td>
+        </ng-container>
+        }
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+</div>

@@ -1,0 +1,59 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+
+    width: 200px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.notification {
+    width: 200px;
+    min-height: 60px;
+    border-radius: 6px;
+    color: black;
+
+    margin-bottom: 15px;
+    cursor: pointer;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    .notification-icon {
+        height: 40px;
+
+        .mat-icon {
+            height: 40px;
+            width: 40px;
+            font-size: 40px;
+        }
+    }
+
+    .notification-message {
+        padding: 8px;
+    }
+
+    &.ERROR {
+        background-color: $pastel-red;
+    }
+
+    &.WARN {
+        background-color: $pastel-orange;
+    }
+
+    &.INFO {
+        background-color: $pastel-blue;
+    }
+
+    &.SUCCESS {
+        background-color: $pastel-green;
+    }
+}

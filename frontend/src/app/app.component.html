@@ -1,0 +1,43 @@
+@if (sessionDetails().authed) {
+<div class="app">
+  <div class="app-header">
+    <div class="app-header-image">
+      <img src="/assets/ersilia-logo-full.png" />
+    </div>
+
+    <div class="account">
+      @if (sessionDetails().authType==='ErsiliaAnonymous' ) {
+      <div class="text">{{ sessionDetails().sessionId }}</div>
+      } @else {
+      <div class="text">{{ user()?.username }}</div>
+      }
+      <div class="icon" [matMenuTriggerFor]="accountMenu">
+
+        <mat-icon>account_circle</mat-icon>
+      </div>
+    </div>
+  </div>
+
+  <mat-menu [hasBackdrop]="false" [backdropClass]="'account-menu-backdrop'" #accountMenu="matMenu">
+    @if (sessionDetails().authType==='ErsiliaAnonymous' ) {
+    <button mat-menu-item (click)="copyAnonSessionId()">
+      <mat-icon>content_copy</mat-icon>
+      <span>Copy Session Id</span>
+    </button>
+    }
+    <button mat-menu-item (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      <span>Logout</span>
+    </button>
+  </mat-menu>
+
+  <div class="app-body">
+    <app-requests-list></app-requests-list>
+  </div>
+</div>
+} @else {
+<login></login>
+}
+
+
+<notifications></notifications>

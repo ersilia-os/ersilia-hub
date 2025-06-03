@@ -1,0 +1,74 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        Model Evaluation Details
+
+        <div class="ersilia-button icon-only refresh" (click)="load()" [ngClass]="{'disabled': loading()}">
+            <div class="icon">
+                @if(loading()) {
+                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                } @else {
+                <mat-icon>refresh</mat-icon>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- TODO: labels -->
+
+    @if(request() != undefined) {
+    <div class="details">
+        <div class="detail">
+            <div class="label">ID</div>
+            <div class="contents">{{ request()!.id }}</div>
+        </div>
+
+        <div class="detail">
+            <div class="label">Request Date</div>
+            <div class="contents">{{ request()!.request_date | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+        </div>
+
+        <div class="detail">
+            <div class="label">Status</div>
+            <div class="contents">
+                <div class="status" [ngClass]="request()!.request_status?.toLowerCase()">
+                    {{ request()!.request_status }}
+                </div>
+            </div>
+        </div>
+
+        @if (request()!.request_status == 'FAILED' ) {
+        <div class="detail">
+            <div class="label">Status Reason</div>
+            <div class="contents">
+                {{ request()!.request_status_reason }}
+            </div>
+        </div>
+        } @else if (request()!.has_result) {
+        <div class="detail">
+            <div class="label">Result</div>
+            <div class="contents">
+                <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                    (click)="downloadResult()">
+                    <div class="icon">
+                        @if(downloadingResult()) {
+                        <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                        } @else {
+                        <mat-icon>download</mat-icon>
+                        }
+                    </div>
+
+                    Download Result
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+    }
+
+    <div class="dialog-actions">
+        <div class="ersilia-button cancel" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Close
+        </div>
+    </div>
+</div>

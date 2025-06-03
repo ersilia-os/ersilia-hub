@@ -1,0 +1,4 @@
+./dependencies/python_framework-0.0.2-py3-none-any.whl
+kubernetes==32.0.1
+fastapi[standard]==0.115.1
+boto3==1.37.33

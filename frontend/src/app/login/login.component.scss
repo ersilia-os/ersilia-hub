@@ -1,0 +1,194 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+    // backsplash
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    background-color: rgba($ersilia-purple, 0.3);
+}
+
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+
+    width: 34%;
+    min-width: 400px;
+    height: 100%;
+    z-index: 100;
+    padding: 35px;
+    border: 1px solid rgba($ersilia-purple, 0.7);
+    border-radius: 7px;
+    background-color: #fffc;
+
+    .text {
+        margin-top: 35px;
+
+        img {
+            width: 300px;
+            height: 95px
+        }
+    }
+
+    .image {
+        margin-top: 50px;
+        width: 250px;
+        height: 250px;
+    }
+}
+
+.backsplash {
+    position: absolute;
+    top: 0;
+    right: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+
+    img {
+        max-height: 100%;
+        height: 100%;
+        max-width: 100%;
+        width: 100%;
+        object-fit: cover;
+    }
+}
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+
+        width: 330px;
+        min-width: 330px;
+        // height: 360px;
+        min-height: 360px;
+
+        padding: 35px;
+        border: 1px solid rgba($ersilia-purple, 0.7);
+        border-radius: 7px;
+        background-color: #fffc;
+
+        .welcome-section {
+            font-size: 28px;
+            color: $ersilia-purple;
+        }
+
+        .login-section {
+            margin-top: 40px;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+
+            .login {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: center;
+
+                .text {
+                    font-size: 16px;
+                    width: fit-content;
+                }
+
+                .form {
+                    margin-top: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: flex-start;
+
+                    .session-id {
+                        display: flex;
+                        flex-direction: row;
+                        justify-content: flex-start;
+                        align-items: center;
+
+                        min-width: 355px;
+
+                        .mat-mdc-form-field {
+                            min-width: 355px;
+                        }
+                    }
+
+                    .actions {
+                        margin-top: 15px;
+
+                        display: flex;
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: space-evenly;
+
+                        width: 100%;
+                    }
+                }
+            }
+
+            .signup-option {
+                margin-top: 35px;
+
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: center;
+            }
+
+            .login-options {
+                margin-top: 35px;
+                width: 320px;
+
+                display: flex;
+                flex-direction: row;
+                justify-content: space-evenly;
+                align-items: center;
+            }
+        }
+
+        .sign-up-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+
+            .field {
+                .mat-mdc-form-field {
+                    min-width: 240px;
+                }
+            }
+
+            .actions {
+                margin-top: 15px;
+
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-evenly;
+
+                width: 100%;
+            }
+        }
+    }
+
+}

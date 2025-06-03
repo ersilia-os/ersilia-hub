@@ -1,0 +1,43 @@
+@use '@angular/material' as mat;
+
+@import './colour-palette.scss';
+
+@include mat.core();
+
+$my-primary: mat.define-palette(mat.$purple-palette, 500);
+$my-accent: mat.define-palette(mat.$green-palette, A200, A100, A400);
+
+$my-theme: mat.define-light-theme((color: (primary: $my-primary,
+                accent: $my-accent,
+            ),
+            typography: mat.define-typography-config(),
+            density: 0,
+        ));
+
+@include mat.all-component-themes($my-theme);
+
+
+/**
+* mat-dialog styling overrides 
+*/
+// 
+// .cdk-overlay-container {
+//     background-color: #bee6b440;
+// }
+
+.mat-mdc-dialog-container .mdc-dialog__surface {
+    background-color: #e9e9e9 !important;
+}
+
+.dialog-panel {
+    min-width: 290px !important;
+    max-width: 700px !important;
+    width: 80%;
+}
+
+/**
+* mat-table styling overrides
+*/
+.mat-mdc-table {
+    background-color: #ffffffad !important;
+}

@@ -1,0 +1,13 @@
+@import './styles/theme.scss';
+@import './styles/colour-palette.scss';
+@import './styles/buttons.scss';
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+}

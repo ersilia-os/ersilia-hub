@@ -1,0 +1,55 @@
+.ersilia-button {
+    cursor: pointer;
+    // width: 32px;
+    height: 32px;
+    border-radius: 5px;
+    padding: 4px;
+    padding-right: 8px;
+    background-color: $ersilia-purple;
+    color: #ffffffcc;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    &.icon-only {
+        padding-right: 4px;
+
+        .mat-icon {
+            margin-right: 0px;
+        }
+    }
+
+    .icon {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+
+        width: 32px;
+        height: 32px;
+    }
+
+    .mat-icon {
+        margin-right: 4px;
+        width: 32px;
+        height: 32px;
+        font-size: 32px;
+        color: #ffffffcc;
+    }
+
+    &.disabled {
+        background-color: #403044d1;
+        cursor: not-allowed;
+    }
+
+    &.cancel {
+        background-color: $pastel-red;
+        color: #000000cc;
+
+        .mat-icon {
+            color: #000000cc;
+        }
+    }
+}

@@ -1,0 +1,1 @@
+docker build . -t $IMAGE:$VERSION -f operations/Dockerfile --no-cache

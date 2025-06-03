@@ -1,0 +1,45 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        Create new Model Evaluation
+    </div>
+
+    <div class="request-form">
+        <div class="model">
+            @if (modelsLoading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
+            <mat-form-field>
+                <mat-label>Select a Model</mat-label>
+                <mat-select [(value)]="selectedModel">
+                    @for (model of models(); track model) {
+                    <mat-option [value]="model.id">{{ model.id }}</mat-option>
+                    }
+                </mat-select>
+            </mat-form-field>
+        </div>
+
+        <div class="entries">
+            <mat-form-field class="smiles">
+                <mat-label>SMILES</mat-label>
+                <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
+                    [(ngModel)]="entriesString"></textarea>
+            </mat-form-field>
+        </div>
+    </div>
+
+    <div class="dialog-actions">
+        <div class="ersilia-button cancel" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Cancel
+        </div>
+
+        <div class="ersilia-button submit" (click)="submit()" [ngClass]="{'disabled': !canSubmit()}">
+            @if (!submitting()) {
+            <mat-icon>science</mat-icon>
+            } @else {
+            <ersilia-loader [colour]="'#ffffff'"></ersilia-loader>
+            }
+            Submit
+        </div>
+    </div>
+</div>

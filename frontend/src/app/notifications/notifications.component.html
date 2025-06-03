@@ -1,0 +1,19 @@
+@for (notification of notifications(); track notification.id) {
+<div class="notification mat-elevation-z8" (click)="removeNotification(notification.id)" [ngClass]="notification.type">
+    <div class="notification-icon">
+        @if (notification.type === 'ERROR') {
+        <mat-icon>error</mat-icon>
+        } @else if (notification.type === 'WARN') {
+        <mat-icon>warning</mat-icon>
+        } @else if (notification.type === 'INFO') {
+        <mat-icon>info</mat-icon>
+        } @else if (notification.type === 'SUCCESS') {
+        <mat-icon>check_circle</mat-icon>
+        }
+    </div>
+
+    <div class="notification-message">
+        {{ notification.message }}
+    </div>
+</div>
+}
