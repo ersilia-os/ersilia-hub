@@ -34,7 +34,6 @@ jobs:
 
       - name: Setup Node
         if: ${{ inputs.build_frontend == 'true' }}
-        working-directory: ${{ inputs.working_directory }}
         uses: actions/setup-node@v4
         with:
           node-version: '22.15.0'
