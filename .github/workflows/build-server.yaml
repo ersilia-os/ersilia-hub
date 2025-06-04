@@ -17,7 +17,7 @@ env:
 jobs:
   publish:
     name: 'Build and Publish Server'
-    uses: '.github/workflows/docker-publish.yaml'
+    uses: './.github/workflows/docker-publish.yaml'
     with:
       image: ${{ env.IMAGE }}
       version: ${{ env.VERSION }}
