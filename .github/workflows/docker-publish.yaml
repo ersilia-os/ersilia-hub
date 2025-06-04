@@ -17,6 +17,9 @@ on:
         type: boolean
         default: false
 
+env:
+  DOCKERHUB_REPO: ersiliaos
+
 jobs:
   build:
     name: 'Build and Publish Server'
@@ -61,13 +64,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ inputs.image }}
+            ${{ env.DOCKERHUB_REPO }}/${{ inputs.image }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=ref,event=tag
             type=sha
-            type=raw,value=${{ inputs.image }}
+            type=raw,value=${{ inputs.version }}
 
       - name: Build and push docker image
         id: docker_publish
@@ -77,8 +77,8 @@ jobs:
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ inputs.image }}:buildcache
-          cache-to: type=registry,ref=${{ inputs.image }}:buildcache,mode=ma
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_REPO }}/${{ inputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKERHUB_REPO }}/${{ inputs.image }}:buildcache,mode=ma
 
       - name: Output image info
         id: output_image_info
