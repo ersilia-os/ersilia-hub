@@ -1,6 +1,8 @@
 name: Build Server
 
 on:
+  workflow_dispatch:
+
   push:
     branches:
       - main
@@ -8,7 +10,7 @@ on:
 
     paths:
       - 'server/**'
-      - './.github/workflows/build-server.yaml'
+      - '.github/workflows/build-server.yaml'
 
 env:
   IMAGE: ersilia-hub-server
