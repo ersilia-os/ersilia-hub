@@ -20,4 +20,3 @@ jobs:
       image: 'ersilia-hub-server'
       version: '0.0.1' # TODO: move this to release-please later
       working_directory: 'server'
-      
