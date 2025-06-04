@@ -33,18 +33,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Node
-        if: ${{ inputs.build_frontend == 'true' }}
+        if: inputs.build_frontend
         uses: actions/setup-node@v4
         with:
           node-version: '22.15.0'
 
       - name: Install Packages
-        if: ${{ inputs.build_frontend == 'true' }}
+        if: inputs.build_frontend
         working-directory: ${{ inputs.working_directory }}
         run: npm ci
 
       - name: Build Frontend
-        if: ${{ inputs.build_frontend == 'true' }}
+        if: inputs.build_frontend
         working-directory: ${{ inputs.working_directory }}
         run: npm run build
 

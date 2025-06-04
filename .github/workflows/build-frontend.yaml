@@ -20,4 +20,3 @@ jobs:
       version: '0.0.1' # TODO: move this to release-please later
       working_directory: 'frontend'
       build_frontend: true
-  
