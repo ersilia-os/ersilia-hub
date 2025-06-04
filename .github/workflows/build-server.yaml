@@ -8,7 +8,7 @@ on:
 
     paths:
       - 'server/**'
-      - '.github/workflows/build-server.yaml'
+      - './.github/workflows/build-server.yaml'
 
 env:
   IMAGE: ersilia-hub-server

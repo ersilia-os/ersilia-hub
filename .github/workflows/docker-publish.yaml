@@ -14,7 +14,7 @@ on:
         type: string
 
 env:
-  DOCKER_REGISTRY:
+  DOCKER_REGISTRY: 'ersiliaos'
   DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
 
