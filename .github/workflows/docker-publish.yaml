@@ -66,9 +66,6 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=ref,event=tag
-            type=ref,semver,pattern={{version}}
-            type=ref,semver,pattern={{major}}.{{minor}}
-            type=ref,semver,pattern={{major}}
             type=sha
             type=raw,value=${{ inputs.image }}
 
