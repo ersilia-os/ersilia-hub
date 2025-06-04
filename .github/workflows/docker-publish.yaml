@@ -12,6 +12,10 @@ on:
       working_directory:
         required: true
         type: string
+      build_frontend:
+        required: false
+        type: boolean
+        default: false
 
 env:
   DOCKER_REGISTRY: 'ersiliaos'
@@ -27,6 +31,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: ${{ inputs.build_frontend == 'true' }}
+        working-directory: ${{ inputs.working_directory }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.15.0'
+
+      - name: Install Packages
+        if: ${{ inputs.build_frontend == 'true' }}
+        working-directory: ${{ inputs.working_directory }}
+        run: npm ci
+
+      - name: Build Frontend
+        if: ${{ inputs.build_frontend == 'true' }}
+        working-directory: ${{ inputs.working_directory }}
+        run: npm run build
 
       - name: Set up Docker Buildx
         id: buildx

@@ -1,0 +1,22 @@
+name: Build Frontend
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/build-frontend.yaml'
+
+jobs:
+  publish:
+    name: 'Build and Publish Frontend'
+    uses: './.github/workflows/docker-publish.yaml'
+    with:
+      image: 'ersilia-hub-ui'
+      version: '0.0.1' # TODO: move this to release-please later
+      working_directory: 'frontend'
+      build_frontend: true
