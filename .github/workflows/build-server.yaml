@@ -12,16 +12,12 @@ on:
       - 'server/**'
       - '.github/workflows/build-server.yaml'
 
-env:
-  IMAGE: ersilia-hub-server
-  VERSION: 0.0.1 # TODO: move this to release-please later
-
 jobs:
   publish:
     name: 'Build and Publish Server'
     uses: './.github/workflows/docker-publish.yaml'
     with:
-      image: ${{ env.IMAGE }}
-      version: ${{ env.VERSION }}
+      image: 'ersilia-hub-server'
+      version: '0.0.1' # TODO: move this to release-please later
       working_directory: 'server'
       
