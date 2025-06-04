@@ -24,6 +24,7 @@ jobs:
   build:
     name: 'Build and Publish Server'
     runs-on: ubuntu-latest
+    environment: build
 
     defaults:
       run:
