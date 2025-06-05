@@ -1,0 +1,36 @@
+# TODO: revisit later, dynamic PVC works for now
+# apiVersion: v1
+# kind: PersistentVolume
+# metadata:
+#   name: {{ .Values.application.name }}-postgresql
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   capacity:
+#     storage: {{ .Values.postgresql.storageSize }}
+#   storageClassName: 
+#   volumeMode: Filesystem
+#   awsElasticBlockStore:
+#     fsType: ext4
+#   persistentVolumeReclaimPolicy: Retain
+#   nodeAffinity:
+#     required:
+#       nodeSelectorTerms:
+#         - matchExpressions:
+#             - key: ersilia.workload
+#               operator: In
+#               values: 
+#                 - core        
+# ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.application.name }}-postgresql
+spec:
+  storageClassName: gp2
+  # volumeName: {{ .Values.application.name }}-postgresql
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.storageSize }}

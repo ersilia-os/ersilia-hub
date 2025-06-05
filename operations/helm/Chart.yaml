@@ -1,0 +1,11 @@
+apiVersion: v2
+name: ersilia-hub
+description: Full deployment of ErsiliaHub resources
+type: application
+
+version: 0.0.1
+
+dependencies:
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: 16.7.3

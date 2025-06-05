@@ -1,0 +1,66 @@
+
+
+application:
+  name: ersilia-hub
+
+aws:
+  serverRoleARN: ""
+
+postgresql:
+  storageSize: 20Gi
+
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: 16.2.0-debian-12-r18
+    pullPolicy: IfNotPresent
+
+  fullNameOverride: ersilia-hub-postgresql
+
+  commonLabels:
+    app.kubernetes.io/instance: ersilia-hub
+    app.kubernetes.io/name: ersilia-hub-postgresql
+
+  auth:
+    enablePostgresUser: true
+    existingSecret: ersilia-hub
+    username: ""
+    database: ""
+    secretKeys:
+      adminPasswordKey: pgAdminPassword
+      userPasswordKey: pgUserPassword
+    usePasswordFiles: true
+
+  architecture: standalone
+
+  primary:
+    labels:
+      app.kubernetes.io/instance: ersilia-hub
+      app.kubernetes.io/name: ersilia-hub-postgresql
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 1Gi
+      requests:
+        cpu: 20m
+        memory: 256Mi
+
+    networkPolicy:
+      enabled: false
+
+    persistence:
+      enabled: true
+      existingClaim: ersilia-hub-postgresql
+
+    nodeAffinityPreset:
+      type: hard
+      key: ersilia.workload
+      values:
+        - core
+
+    tolerations:
+      - effect: NoSchedule
+        key: ersilia.workload
+        operator: Equal
+        value: core
