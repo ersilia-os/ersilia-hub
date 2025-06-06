@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ersiliaos/ersilia-hub-frontend:{{ .Values.frontend.version }}
+          image: ersiliaos/ersilia-hub-ui:{{ .Values.frontend.version }}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
