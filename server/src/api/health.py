@@ -7,7 +7,7 @@ from library.fastapi_root import FastAPIRoot
 ## API REGISTRATION                                                          ##
 ###############################################################################
 
-router = APIRouter(prefix="/", tags=["health"])
+router = APIRouter(tags=["health"])
 
 
 def register(fastapi_root: FastAPIRoot = None):
