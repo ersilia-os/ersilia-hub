@@ -3,6 +3,34 @@
 application:
   name: ersilia-hub
 
+
+secret:
+  pgDatabase: ""
+  pgAdminPassword: ""
+  pgUserUsername: ""
+  pgUserPassword: ""
+  serverPasswordSalt: ""
+
+server:
+  version: 0.0.2
+  replicas: 1
+
+  env:
+    logLevelModelController: INFO
+    logLevelModelIntegrationController: INFO
+    logLevelK8sController: INFO
+    logLevelK8sProxyController: INFO
+    logLevelScalingManager: INFO
+    logLevelScalingWorker: INFO
+    logLevelWorkRequestController: INFO
+    logLevelWorkRequestWorker: INFO
+    logLevelS3IntegrationController: INFO
+    logLevelAuthController: INFO
+
+frontend:
+  version: 0.0.1
+  replicas: 1
+
 aws:
   serverRoleARN: ""
 

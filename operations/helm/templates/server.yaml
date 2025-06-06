@@ -1,0 +1,183 @@
+
+{{ $existingInstance := (lookup "apps/v1" "Deployment" .Release.Namespace (cat .Values.application.name "-server")) }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.application.name }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Values.application.name }}
+    app.kubernetes.io/name: {{ .Values.application.name }}-server
+spec:
+  {{- if and $existingInstance $existingInstance.spec }}
+  replicas: {{ $existingInstance.spec.replicas }}
+  {{- else }}
+  replicas: {{ .Values.server.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Values.application.name }}
+      app.kubernetes.io/name: {{ .Values.application.name }}-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 50%
+      maxSurge: 1
+  minReadySeconds: 60
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Values.application.name }}
+        app.kubernetes.io/name: {{ .Values.application.name }}-server
+    spec:
+      containers:
+        - name: server
+          image: ersiliaos/ersilia-hub-server:{{ .Values.server.version }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_HOST
+              value: {{ .Values.application.name }}-postgresql
+            - name: DATABASE_PORT
+              value: '5432'
+            - name: DATABASE_SCHEMA
+              value: public
+            - name: DATABASE_MIGRATIONS_PATH
+              value: /app/src/db/migrations
+
+            - name: LOG_LEVEL_ModelController
+              value: {{ .Values.server.env.logLevelModelController }}
+            - name: LOG_LEVEL_ModelIntegrationController
+              value: {{ .Values.server.env.logLevelModelIntegrationController }}
+            - name: LOG_LEVEL_K8sController
+              value: {{ .Values.server.env.logLevelK8sController }}
+            - name: LOG_LEVEL_K8sProxyController
+              value: {{ .Values.server.env.logLevelK8sProxyController }}
+            - name: LOG_LEVEL_ScalingManager
+              value: {{ .Values.server.env.logLevelScalingManager }}
+            - name: LOG_LEVEL_ScalingWorker
+              value: {{ .Values.server.env.logLevelScalingWorker }}
+            - name: LOG_LEVEL_WorkRequestController
+              value: {{ .Values.server.env.logLevelWorkRequestController }}
+            - name: LOG_LEVEL_WorkRequestWorker
+              value: {{ .Values.server.env.logLevelWorkRequestWorker }}
+            - name: LOG_LEVEL_S3IntegrationController
+              value: {{ .Values.server.env.logLevelS3IntegrationController }}
+            - name: LOG_LEVEL_AuthController
+              value: {{ .Values.server.env.logLevelAuthController }}
+            
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: serverPasswordSalt
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: pgUserUsername
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: pgUserPassword
+
+            - name: MODELS_NAMESPACE
+              value: eos-models
+            - name: MODEL_COLLECTION_NAME
+              value: eos
+            - name: LOAD_K8S_IN_CLUSTER
+              value: 'true'
+
+            - name: MODEL_S3_BUCKET_NAME
+              value: ersilia-hub
+            - name: MODEL_S3_DATA_PATH
+              value: model-data
+
+            - name: MODEL_INTEGRATION_MOCK_SUCCESS_ID
+              value: ""
+            - name: MODEL_INTEGRATION_MOCK_FAIL_ID
+              value: ""
+            - name: MODEL_INTEGRATION_PROXY_IDS
+              value: ""
+
+            - name: PASSWORD_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: serverPasswordSalt
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources: 
+            requests:
+              cpu: 10m
+              memory: 100Mi
+            limits:
+              cpu: 1000m
+              memory: 600Mi
+          livenessProbe:
+            initialDelaySeconds: 15
+            timeoutSeconds: 20
+            periodSeconds: 15
+            failureThreshold: 10
+            httpGet:
+              path: /livez
+              port: 8080
+          readinessProbe:
+            initialDelaySeconds: 15
+            timeoutSeconds: 20
+            periodSeconds: 15
+            failureThreshold: 10
+            httpGet:
+              path: /readyz
+              port: 8080
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          # TODO: volume mounts
+          # TODO: security context
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: ersilia.workload
+                operator: In
+                values: 
+                  - core
+      tolerations:
+        - effect: NoSchedule
+          key: ersilia.workload
+          operator: Equal
+          value: core
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.application.name }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Values.application.name }}
+    app.kubernetes.io/name: {{ .Values.application.name }}-server
+spec:
+  ports:
+    - protocol: TCP
+      name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/instance: {{ .Values.application.name }}
+    app.kubernetes.io/name: {{ .Values.application.name }}-server
+  type: ClusterIP
+  sessionAffinity: None
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  internalTrafficPolicy: Cluster
