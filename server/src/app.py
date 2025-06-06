@@ -84,11 +84,8 @@ def init():
 
     FastAPIRoot.initialize(
         ApplicationConfig.instance().application_name,
-        "localhost",
-        8080,
-        # TODO: configs
-        # ApplicationConfig.instance().api_host,
-        # ApplicationConfig.instance().api_port,
+        ApplicationConfig.instance().api_host,
+        ApplicationConfig.instance().api_port,
         API_RESOURCES,
     )
 

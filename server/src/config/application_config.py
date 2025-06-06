@@ -10,16 +10,22 @@ class ApplicationConfig:
     application_name: str
     database_config: DBConfig
     migrations_path: str
+    api_host: str
+    api_port: int
 
     def __init__(
         self,
         application_name: str,
         database_config: DBConfig,
         migrations_path: str,
+        api_host: str,
+        api_port: int,
     ) -> None:
         self.application_name = application_name
         self.database_config = database_config
         self.migrations_path = migrations_path
+        self.api_host = api_host
+        self.api_port = api_port
 
     @staticmethod
     def instance() -> "ApplicationConfig":
@@ -48,6 +54,8 @@ class ApplicationConfig:
                 load_environment_variable("DATABASE_SCHEMA", error_on_none=True),
             ),
             load_environment_variable("DATABASE_MIGRATIONS_PATH", error_on_none=True),
+            load_environment_variable("API_HOST", "localhost"),
+            int(load_environment_variable("API_PORT", 8080)),
         )
 
         ContextLogger.sys_log(LogLevel.INFO, "[ApplicationConfig] initialized.")

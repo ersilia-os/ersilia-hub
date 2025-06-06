@@ -24,6 +24,7 @@ COPY --chown=eos:eos --from=build /operations/.venv .venv
 ENV PYTHONUNBUFFERED="1"
 
 ENV APPLICATION_NAME="ersilia-hub"
+ENV API_HOST="0.0.0.0"
 
 ENV DATABASE_HOST="localhost"
 ENV DATABASE_PORT="5432"
