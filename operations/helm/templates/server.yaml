@@ -73,7 +73,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.application.name }}
-                  key: serverPasswordSalt
+                  key: pgDatabase
             - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
