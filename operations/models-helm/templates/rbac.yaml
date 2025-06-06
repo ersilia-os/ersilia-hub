@@ -32,7 +32,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.application.name }}-server
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ .Values.application.coreNamespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

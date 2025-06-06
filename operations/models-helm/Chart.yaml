@@ -1,0 +1,9 @@
+apiVersion: v2
+name: ersilia-hub-models-rbac
+description: RBAC deployment of ErsiliaHub
+type: application
+
+version: 0.0.1
+
+dependencies:
+

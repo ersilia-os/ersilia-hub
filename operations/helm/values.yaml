@@ -1,8 +1,6 @@
-
-
 application:
   name: ersilia-hub
-
+  modelsNamespace: eos-models
 
 secret:
   pgDatabase: ""
