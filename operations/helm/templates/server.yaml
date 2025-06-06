@@ -33,6 +33,7 @@ spec:
         app.kubernetes.io/instance: {{ .Values.application.name }}
         app.kubernetes.io/name: {{ .Values.application.name }}-server
     spec:
+      serviceAccountName: {{ .Values.application.name }}-server
       containers:
         - name: server
           image: ersiliaos/ersilia-hub-server:{{ .Values.server.version }}
