@@ -200,6 +200,8 @@ class WorkRequestCreateModel(BaseModel):
             "requestPayload": self.request_payload.to_object(),
         }
 
+# Result is either a Json list or a CSV file of lines
+WorkRequestResult = List[Union[str, Dict[str, Any]]]
 
 class WorkRequestModel(BaseModel):
 
@@ -212,7 +214,7 @@ class WorkRequestModel(BaseModel):
     request_status_reason: str | None = None
     model_job_id: str | None = None
     last_updated: str | None = None
-    result: List[Dict[str, Any]] | None = None
+    result: WorkRequestResult | None = None
 
     def to_object(self) -> Dict[str, Any]:
         return {
@@ -248,6 +250,42 @@ class WorkRequestModel(BaseModel):
             last_updated=workrequest.last_updated,
             result=None,
         )
+    
+    def map_result_to_csv(self):
+        if self.result is None:
+            return
+
+        # check if result is a list of something, we don't support string / object yet
+        if not isinstance(self.result, list):
+            return
+        
+        if len(self.result) == 0:
+            return
+        
+        # already a string (probably CSV)
+        if isinstance(self.result[0], str):
+            return
+        
+        if not isinstance(self.result[0], dict):
+            return
+        
+        # we assume a single result line with multiple columns
+        # we will map the json to a header line and values line
+        csv_column_names = []
+        csv_column_values = []
+
+        for key, value in self.result[0].items():
+            csv_column_names.append(key)
+
+            if isinstance(value, str):
+                csv_column_values.append(f"'{value}'")        
+            else:
+                csv_column_values.append(str(value))
+
+        self.result = [
+            ",".join(csv_column_names),
+            ",".join(csv_column_values),
+        ] 
 
 
 class WorkRequestListModel(BaseModel):
@@ -313,3 +351,4 @@ class WorkRequestLoadAllFilters(BaseModel):
 
 class WorkRequestLoadFilters(BaseModel):
     include_result: bool = False
+    csv_result: bool = False

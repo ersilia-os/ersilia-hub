@@ -49,7 +49,7 @@ def signup(
         )
         raise HTTPException(500, detail="Failed to validate username")
 
-    if has_existing_user is not None:
+    if has_existing_user:
         raise HTTPException(400, detail="Username already in use")
 
     new_user: User = None

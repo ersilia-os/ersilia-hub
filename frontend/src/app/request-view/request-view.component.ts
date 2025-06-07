@@ -78,7 +78,7 @@ export class RequestViewComponent implements OnInit {
         }
     }
 
-    load(download_result?: boolean) {
+    load(download_result?: boolean, csv_result?: boolean) {
         if (!download_result && this.loading()) {
             return;
         } else if (download_result && this.downloadingResult()) {
@@ -91,7 +91,7 @@ export class RequestViewComponent implements OnInit {
             this.downloadingResult.set(true);
         }
 
-        this.requestService.loadRequest(this.requestData.id!, download_result)
+        this.requestService.loadRequest(this.requestData.id!, download_result, csv_result)
             .subscribe({
                 next: result => {
                     this.request.set(mapRequest(result));
@@ -99,13 +99,22 @@ export class RequestViewComponent implements OnInit {
                     if (download_result) {
                         if (this.request()?.has_result && result.result != null) {
                             const a = document.createElement('a');
-                            const objectUrl = URL.createObjectURL(new Blob([JSON.stringify(result.result, null, 2)], {
-                                type: "application/json",
-                            }));
-                            a.href = objectUrl;
-                            a.download = `ersiliahub_${this.request()?.model_id}_${this.request()?.id}.json`;
+                            let objectUrl: string | undefined = undefined;
+
+                            if (csv_result) {
+                                objectUrl = URL.createObjectURL(new Blob([`${result.result[0]}\n${result.result[1]}`], {
+                                    type: "text/csv",
+                                }));
+                            } else {
+                                objectUrl = URL.createObjectURL(new Blob([JSON.stringify(result.result, null, 2)], {
+                                    type: "application/json",
+                                }));
+                            }
+
+                            a.href = objectUrl!;
+                            a.download = `ersiliahub_${this.request()?.model_id}_${this.request()?.id}.${csv_result ? "csv" : "json"}`;
                             a.click();
-                            URL.revokeObjectURL(objectUrl);
+                            URL.revokeObjectURL(objectUrl!);
                         } else {
                             this.notificationService.pushNotification(Notification('WARN', 'Failed to download result. Please try again'));
                         }
@@ -142,12 +151,12 @@ export class RequestViewComponent implements OnInit {
             && !this.downloadingResult();
     }
 
-    downloadResult() {
+    downloadResult(type?: 'json' | 'csv') {
         if (!this.canDownloadResult()) {
             console.log("cannot download result")
             return;
         }
 
-        this.load(true);
+        this.load(true, type === 'csv');
     }
 }

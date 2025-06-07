@@ -2,41 +2,74 @@
 
 FIXES:
 
-- signup page, always duplicate user
-
 NOTES:
-
-- ersilia "anonymous" interaction is needed
-- MUST be able to access old "anon" requests (need to look at session stuff, maybe have separate flow for anon - leave User login as is)
-- maybe make sessions persistent
-- also, currently anon might break with multiple sessions on ONE user (session revoke)
 
 - document anon request process + share "curl" commands (and a simple python app ?)
 
 - email required on signup
-- csv output option
-- add input to result window
-- csv file upload for INPUT
-
-- Work requests "admin" page
-- Active instances "admin" page
-
 
 ---
 
-[ ] user permissions (no GROUPS for now)
-  [ ] add user_permissions table
-  [ ] user_id to json array of permissions
+[x] fix signup with multiple users (get duplicate on second signup)
 
-[ ] load and CACHE permissions by user
-  [ ] refresh every minute
+[x] csv result output
+  [x] csv result toggle on load
+  [x] change result json to csv (key -> column)
+  [x] add csv download button on frontend
 
-[ ] current permissions:
-  - manage models
-  - view models
-  - k8s_admin (k8s access + scaling manager)
-  - submit work requests
-  - manage work requests (update, delete, etc.)
+[x] add input to request view component
+
+[x] csv file upload for INPUT
+  [x] add file upload button
+  [x] set input "text" to file content
+
+[x] release
+
+---
+
+[ ] add Permissions to api
+  [ ] add permissions table + DAO + Objects
+    * userid -> permissions csv
+  [ ] add permissions cache to Auth + reload on timer
+  [ ] add user_has_permission(one_of: List[]) to auth controller
+  [ ] add permissions to API handler (pass list of allowed permissions)
+  [ ] add static permissions Enum (for now only ADMIN permission, for full access to everything)
+  [ ] add ADMIN permission to existing apis
+
+[ ] work requests admin page
+  [ ] add sidebar / menu button
+  [ ] duplicate requests page
+  [ ] show ALL user's requests
+  [ ] limit to status + request date + result status (cannot view sensitive data)
+    [ ] filter input + result data out on backend api
+  [ ] add filters
+    [ ] user id
+    [ ] anon session id
+    [ ] model
+    [ ] date from (no time)
+    [ ] date to (no time)
+
+  [ ] actions for:
+    [ ] set status -> REQUESTED / FAILED
+    [ ] view sensitive data (LOG ON BACKEND + reload full request)
+
+[ ] active instances page
+  [ ] load active instances (might need a new api?)
+  [ ] display:
+    - model
+    - instance start time
+    - instance status (pod status)
+    - instance events (raw k8s events, jsonified)
+    - assigned request id (annotation)
+  [ ] filters
+    [ ] model
+    [ ] instance start from
+    [ ] instance start to
+    [ ] instance (pod) status
+  [ ] actions
+    [ ] stop instance
+    
+[ ] release
 
 ---
 
