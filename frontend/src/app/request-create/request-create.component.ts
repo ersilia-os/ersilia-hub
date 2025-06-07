@@ -42,6 +42,7 @@ export class RequestsCreateComponent implements OnInit {
     models: Signal<Model[]>
     modelsLoading: Signal<boolean>;
     selectedModel: string | undefined;
+    fileName: string | undefined;
 
     private _entriesString: string = ""
     private entries: string[] = [];
@@ -51,13 +52,7 @@ export class RequestsCreateComponent implements OnInit {
     }
 
     set entriesString(entriesString: string) {
-        if (entriesString == null || entriesString.length == 0) {
-            this.entries = [];
-        } else {
-            this.entries = entriesString.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0);
-        }
+        this.entries = mapEntriesString(entriesString);
     }
 
     submitting: Signal<boolean>;
@@ -111,5 +106,35 @@ CC(C)CC1=CC=C(C=C1)C(C)C(=O)O
 CC1(OC2C(OC(C2O1)(C#N)C3=CC=C4N3N=CN=C4N)CO)C
 COC1=CC23CCCN2CCC4=CC5=C(C=C4C3C1O)OCO5
         */
+    }
+
+    onFileSelected(event: any) {
+        const file: File = event.target.files[0];
+
+        if (file) {
+            this.fileName = file.name;
+
+            try {
+                const fileReader = new FileReader();
+                fileReader.onload = (e: any) => {
+                    this._entriesString = e.target.result;
+                    this.entries = mapEntriesString(this._entriesString)
+                };
+                fileReader.readAsText(file);
+            } catch (e) {
+                this.notificationsService.pushNotification(Notification('WARN', 'Failed to read input file'));
+                console.error("failed to read input file: ", e);
+            }
+        }
+    }
+}
+
+function mapEntriesString(entriesString: string | undefined): string[] {
+    if (entriesString == null || entriesString.length == 0) {
+        return [];
+    } else {
+        return entriesString.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
     }
 }

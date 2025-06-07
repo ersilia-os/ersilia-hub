@@ -47,9 +47,6 @@ def api_validate_auth(auth_details: AuthDetails, requires_auth: bool = True):
 
 
 def validate_session_id(session_id: str):
-    print("sessino_id = ", session_id)
-    print("session_id regex match = ", SESSION_ID_REGEX.fullmatch(session_id))
-
     if (
         session_id is None
         or len(session_id) < 36

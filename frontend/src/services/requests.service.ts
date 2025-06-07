@@ -97,10 +97,11 @@ export class RequestsService {
     return computed(() => computation(this.requestSubmitting()));
   }
 
-  loadRequest(request_id: string, include_result?: boolean): Observable<Request> {
+  loadRequest(request_id: string, include_result?: boolean, csv_result?: boolean): Observable<Request> {
     return this.http.get<Request>(`${environment.apiHost}/api/work-requests/${request_id}`, {
       params: {
-        'include_result': include_result ? include_result : false
+        'include_result': include_result ? true : false,
+        'csv_result': csv_result ? true : false,
       }
     })
       .pipe(

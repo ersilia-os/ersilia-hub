@@ -32,8 +32,6 @@ export class AuthService {
 
     constructor(private http: HttpClient) {
         timer(0, this.SESSION_REFRESH_DELAY).subscribe(_ => {
-            console.log("refresh timer firing!");
-
             if (!this.hasSession()) {
                 console.log("no session, no refresh");
                 return;
@@ -278,15 +276,9 @@ export function authInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn) 
     const authType = authService.getAuthType();
     const authToken = authService.getAuthToken();
 
-    console.log('authType: ', authType);
-    console.log('authToken: ', authToken);
-
     if (authType != null && authToken != null) {
-        console.log('setting auth header...');
         newHeaders = newHeaders.append('Authorization', `${authType} ${authToken}`)
     }
-
-    console.log('newHeaders: ', newHeaders);
 
     const newReq = req.clone({
         headers: newHeaders,

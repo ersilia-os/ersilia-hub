@@ -18,6 +18,18 @@
             </mat-form-field>
         </div>
 
+        <div class="file-upload">
+            <input type="file" (change)="onFileSelected($event)" #fileUpload>
+
+            <div class="file-upload">
+                {{fileName || "Select input file"}}
+
+                <div class="ersilia-button icon-only" (click)="fileUpload.click()">
+                    <mat-icon>attach_file</mat-icon>
+                </div>
+            </div>
+        </div>
+
         <div class="entries">
             <mat-form-field class="smiles">
                 <mat-label>SMILES</mat-label>

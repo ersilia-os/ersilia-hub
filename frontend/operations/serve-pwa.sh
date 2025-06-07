@@ -1,4 +1,4 @@
-ng serve -c production
+ng serve -c development
 
 # NOTE: if above does not work, i.e. pwa is not installable use below:
 # ng build -c production

@@ -21,6 +21,7 @@ from controllers.s3_integration import S3IntegrationController
 
 from library.api_utils import api_handler
 from objects.api import AuthType
+from python_framework.logger import ContextLogger, LogLevel
 
 
 ###############################################################################
@@ -163,11 +164,17 @@ def load_workrequest(
                 request.model_id, request.id
             )
             request.result = result.extract_result()
+
+            if filters.csv_result:
+                request.map_result_to_csv()
         except:
+            ContextLogger.sys_log(
+                LogLevel.ERROR, "Failed to download work request result from S3, error = [%s]"
+                % repr(exc_info())
+            )
             raise HTTPException(
                 status_code=500,
-                detail="Failed to download work request result from S3, error = [%s]"
-                % repr(exc_info()),
+                detail="Failed to download work request result from S3",
             )
 
     return request

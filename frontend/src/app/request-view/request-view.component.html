@@ -36,6 +36,17 @@
             </div>
         </div>
 
+        <div class="detail input">
+            <div class="label">Input</div>
+            <div class="contents entries">
+                <mat-form-field class="smiles">
+                    <mat-label>SMILES</mat-label>
+                    <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
+                        [value]="request()!.request_payload"></textarea>
+                </mat-form-field>
+            </div>
+        </div>
+
         @if (request()!.request_status == 'FAILED' ) {
         <div class="detail">
             <div class="label">Status Reason</div>
@@ -48,7 +59,7 @@
             <div class="label">Result</div>
             <div class="contents">
                 <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
-                    (click)="downloadResult()">
+                    (click)="downloadResult('csv')">
                     <div class="icon">
                         @if(downloadingResult()) {
                         <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
@@ -56,8 +67,19 @@
                         <mat-icon>download</mat-icon>
                         }
                     </div>
+                    CSV
+                </div>
 
-                    Download Result
+                <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                    (click)="downloadResult('json')">
+                    <div class="icon">
+                        @if(downloadingResult()) {
+                        <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                        } @else {
+                        <mat-icon>download</mat-icon>
+                        }
+                    </div>
+                    JSON
                 </div>
             </div>
         </div>

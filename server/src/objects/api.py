@@ -52,19 +52,13 @@ class AuthDetails:
     def from_request(request: Request) -> Union[None, "AuthDetails"]:
         auth_header = request.headers.get("Authorization")
 
-        print("Auth header: ", auth_header)
-
         if auth_header is None:
             return None
 
         auth_type, encoded_header = auth_header.split(" ")
-        print("auth_type:", auth_type)
-        print("encoded_header:", encoded_header)
 
         if auth_type == AuthType.ErsiliaAnonymous or auth_type == AuthType.ErsiliaUser:
             decoded_header = b64decode(encoded_header).decode("ascii")
-
-            print("decoded_header:", decoded_header)
 
             return AuthDetails(
                 auth_type, UserSession.from_object(loads(decoded_header))

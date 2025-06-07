@@ -65,6 +65,27 @@
         }
     }
 
+    .file-upload {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+
+        min-width: 250px;
+        width: calc(100% - 20px);
+        margin-bottom: 8px;
+
+        input {
+            display: none;
+        }
+
+        .file-upload {
+            .ersilia-button {
+                margin-left: 6px;
+            }
+        }
+    }
+
     .entries {
         min-width: 250px;
         min-height: 180px;

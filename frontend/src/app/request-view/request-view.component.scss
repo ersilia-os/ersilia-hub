@@ -42,6 +42,11 @@
             justify-content: flex-start;
             height: 50px;
 
+            &.input {
+                width: 100%;
+                flex: 1;
+            }
+
             .label {
                 font-size: 20px;
                 color: $ersilia-purple;
@@ -80,6 +85,22 @@
                     &.failed {
                         background-color: $pastel-red;
                     }
+                }
+
+                &.entries {
+                    min-width: 350px;
+                    min-height: 180px;
+                    width: calc(100% - 10px);
+                    height: 180px;
+
+                    .smiles {
+                        width: 100%;
+                        height: 100%;
+                    }
+                }
+
+                .ersilia-button {
+                    margin-right: 15px;
                 }
             }
         }
