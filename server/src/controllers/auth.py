@@ -1,15 +1,15 @@
-from random import choices, randint, random
+from random import choices, randint
 from string import ascii_lowercase, ascii_uppercase, digits
 from sys import exc_info, stdout
 import traceback
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 from uuid import uuid4
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 from library.process_lock import ProcessLock
 from threading import Thread, Event
 from python_framework.graceful_killer import GracefulKiller, KillInstance
-from python_framework.time import date_from_string, is_date_in_range_from_now
+from python_framework.time import date_from_string
 
 from python_framework.thread_safe_cache import ThreadSafeCache
 
@@ -31,6 +31,9 @@ from db.daos.user_session import (
 from objects.user import AuthType, User, UserSession
 from hashlib import md5
 
+from db.daos.user_permission import UserPermissionDAO, UserPermissionRecord
+from objects.rbac import Permission, UserPermission, UserPermissionModel
+
 
 class AuthControllerKillInstance(KillInstance):
     def kill(self):
@@ -47,6 +50,7 @@ class AuthController(Thread):
     _kill_event: Event
 
     _process_lock: ProcessLock
+    _user_permissions: ThreadSafeCache[str, UserPermission]
 
     def __init__(self):
         Thread.__init__(self)
@@ -55,6 +59,7 @@ class AuthController(Thread):
         self._kill_event = Event()
 
         self._process_lock = ProcessLock()
+        self._user_permissions = ThreadSafeCache()
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -513,9 +518,57 @@ class AuthController(Thread):
         finally:
             self._release_lock(session.userid)
 
+    def user_has_permission(self, userid: str, any_of: List[Permission]) -> bool:
+        if (
+            userid not in self._user_permissions
+            or self._user_permissions[userid] is None
+        ):
+            return False
+
+        return any(
+            map(lambda p: p in self._user_permissions[userid].permissions, any_of)
+        )
+
+    def get_user_permissions(self, userid: str) -> UserPermission:
+        if (
+            userid not in self._user_permissions
+            or self._user_permissions[userid] is None
+        ):
+            return None
+
+        return self._user_permissions[userid]
+
+    def _update_permissions_cache(self):
+        ContextLogger.debug(self._logger_key, "Updating permissions cache...")
+
+        try:
+            results: List[UserPermissionRecord] = UserPermissionDAO.execute_select(
+                ApplicationConfig.instance().database_config,
+            )
+
+            if results is None or len(results) == 0:
+                return
+
+            new_cache = {}
+
+            for record in results:
+                new_cache[record.userid] = UserPermission.init_from_record(record)
+
+            self._user_permissions = ThreadSafeCache(new_cache)
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                f"Failed to load UserPermissions, error = [{repr(exc_info())}]",
+            )
+
+            return
+
+        ContextLogger.debug(self._logger_key, "Permissions cache updated.")
+
     def _update_caches(self):
+        self._update_permissions_cache()
+
         # TODO: eventually add session cache
-        pass
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")

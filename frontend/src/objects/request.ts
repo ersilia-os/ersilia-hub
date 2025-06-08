@@ -46,6 +46,7 @@ export function RequestSubmission(model_id: string, entries: string[]): Request 
 }
 
 export interface RequestFilters {
+    user_id?: string;
     id?: string;
     model_ids?: string[];
     request_date_from?: Date;

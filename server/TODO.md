@@ -1,42 +1,19 @@
 
-
-FIXES:
-
-NOTES:
-
-- document anon request process + share "curl" commands (and a simple python app ?)
-
-- email required on signup
-
----
-
-[x] fix signup with multiple users (get duplicate on second signup)
-
-[x] csv result output
-  [x] csv result toggle on load
-  [x] change result json to csv (key -> column)
-  [x] add csv download button on frontend
-
-[x] add input to request view component
-
-[x] csv file upload for INPUT
-  [x] add file upload button
-  [x] set input "text" to file content
-
-[x] release
-
----
-
 [ ] add Permissions to api
-  [ ] add permissions table + DAO + Objects
+  [x] add permissions table + DAO + Objects
     * userid -> permissions csv
-  [ ] add permissions cache to Auth + reload on timer
-  [ ] add user_has_permission(one_of: List[]) to auth controller
-  [ ] add permissions to API handler (pass list of allowed permissions)
-  [ ] add static permissions Enum (for now only ADMIN permission, for full access to everything)
-  [ ] add ADMIN permission to existing apis
+  [x] add permissions cache to Auth + reload on timer
+  [x] add user_has_permission(one_of: List[]) to auth controller
+  [x] add permissions to API handler (pass list of allowed permissions)
+  [x] add static permissions Enum (for now only ADMIN permission, for full access to everything)
+  [x] add ADMIN permission to existing apis
+  [ ] add permissions to user login response
+  [ ] add permissions cached on frontend
+
+[ ] user session refresh bug, showing "Session expired" and clearing user name
 
 [ ] work requests admin page
+  [ ] permissions check ('ADMIN')
   [ ] add sidebar / menu button
   [ ] duplicate requests page
   [ ] show ALL user's requests
@@ -54,6 +31,7 @@ NOTES:
     [ ] view sensitive data (LOG ON BACKEND + reload full request)
 
 [ ] active instances page
+  [ ] permissions check ('ADMIN')
   [ ] load active instances (might need a new api?)
   [ ] display:
     - model
@@ -69,9 +47,15 @@ NOTES:
   [ ] actions
     [ ] stop instance
     
+[ ] make email required during signup
+
 [ ] release
 
 ---
+
+[ ] document anon request process + share "curl" commands
+
+--
 
 [ ] perf improvements
   [ ] session cache + refresh, only do a DB check on session failure
