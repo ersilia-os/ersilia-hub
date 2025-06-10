@@ -1,3 +1,6 @@
+[x] debug model issues (maybe increase timeout ?)
+
+[ ] fix csv output
 
 [ ] add Permissions to api
   [x] add permissions table + DAO + Objects
@@ -7,8 +10,13 @@
   [x] add permissions to API handler (pass list of allowed permissions)
   [x] add static permissions Enum (for now only ADMIN permission, for full access to everything)
   [x] add ADMIN permission to existing apis
-  [ ] add permissions to user login response
-  [ ] add permissions cached on frontend
+
+[ ] release
+
+---
+
+[ ] add permissions to user login response
+[ ] add permissions cached on frontend
 
 [ ] user session refresh bug, showing "Session expired" and clearing user name
 
@@ -48,6 +56,11 @@
     [ ] stop instance
     
 [ ] make email required during signup
+
+[ ] add model instances log to DB
+  [ ] timestamp, event, pod dump, correlationid (e.g. workrequestid)
+  [ ] add dump at pod creation + termination
+  [ ] ensure k8s EVENTS are in the pod details
 
 [ ] release
 

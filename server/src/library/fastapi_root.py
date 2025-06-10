@@ -4,10 +4,44 @@ from fastapi import FastAPI
 from python_framework.dynamic_loader import load_submodules
 from python_framework.logger import ContextLogger, LogLevel
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from uuid import uuid4
 
 import uvicorn
+
+import logging
+
+
+class EndpointFilter(logging.Filter):
+    """Filter class to exclude specific endpoints from log entries."""
+
+    excluded_endpoints: list[str]
+
+    def __init__(self, excluded_endpoints: list[str]) -> None:
+        """
+        Initialize the EndpointFilter class.
+
+        Args:
+            excluded_endpoints: A list of endpoints to be excluded from log entries.
+        """
+        self.excluded_endpoints = excluded_endpoints
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Filter out log entries for excluded endpoints.
+
+        Args:
+            record: The log record to be filtered.
+
+        Returns:
+            bool: True if the log entry should be included, False otherwise.
+        """
+        return (
+            record.args
+            and len(record.args) >= 3
+            and record.args[2] not in self.excluded_endpoints
+        )
+
+
+DEFAULT_LOG_FILTERED_ENDPOINTS = ["/healthz", "/readyz", "/livez"]
 
 
 class FastAPIRoot(object):
@@ -18,14 +52,22 @@ class FastAPIRoot(object):
     host: str
     port: int
     app: FastAPI = None
+    log_filtered_endpoints: list[str]
 
     # Initialization #
 
-    def __init__(self, application_name: str, host: str, port: int):
+    def __init__(
+        self,
+        application_name: str,
+        host: str,
+        port: int,
+        log_filtered_endpoints: list[str] = DEFAULT_LOG_FILTERED_ENDPOINTS,
+    ):
         self.app = None
         self.application_name = application_name
         self.host = host
         self.port = port
+        self.log_filtered_endpoints = log_filtered_endpoints
 
     @staticmethod
     def instance() -> "FastAPIRoot":
@@ -48,6 +90,10 @@ class FastAPIRoot(object):
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+        )
+
+        logging.getLogger("uvicorn.access").addFilter(
+            EndpointFilter(FastAPIRoot._instance.log_filtered_endpoints)
         )
 
         FastAPIRoot._instance.register_routes(resources_module)

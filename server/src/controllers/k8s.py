@@ -19,6 +19,11 @@ from python_framework.graceful_killer import GracefulKiller, KillInstance
 
 from python_framework.thread_safe_cache import ThreadSafeCache
 
+from controllers.model_instance_log import (
+    ModelInstanceLogController,
+    ModelInstanceLogEvent,
+)
+
 
 class K8sControllerKillInstance(KillInstance):
     def kill(self):
@@ -162,6 +167,10 @@ class K8sController(Thread):
 
         k8s_pod = K8sPod.from_k8s(_created_pod)
 
+        ModelInstanceLogController.instance().log_instance(
+            log_event=ModelInstanceLogEvent.INSTANCE_CREATED, k8s_pod=k8s_pod
+        )
+
         ContextLogger.info(
             self._logger_key,
             "Pod created for model id [%s], podname [%s]" % (model_id, k8s_pod.name),
@@ -253,7 +262,14 @@ class K8sController(Thread):
                 pod_name, self._namespace, patch
             )
 
-            return None if patched_pod is None else K8sPod.from_k8s(patched_pod)
+            k8s_pod = None if patched_pod is None else K8sPod.from_k8s(patched_pod)
+
+            if k8s_pod is not None:
+                ModelInstanceLogController.instance().log_instance(
+                    log_event=ModelInstanceLogEvent.INSTANCE_UPDATED, k8s_pod=k8s_pod
+                )
+
+            return k8s_pod
         finally:
             if _lock_acquired:
                 self._release_lock(model_id, pod_name)
@@ -292,7 +308,14 @@ class K8sController(Thread):
                 pod_name, self._namespace, patch
             )
 
-            return None if patched_pod is None else K8sPod.from_k8s(patched_pod)
+            k8s_pod = None if patched_pod is None else K8sPod.from_k8s(patched_pod)
+
+            if k8s_pod is not None:
+                ModelInstanceLogController.instance().log_instance(
+                    log_event=ModelInstanceLogEvent.INSTANCE_UPDATED, k8s_pod=k8s_pod
+                )
+
+            return k8s_pod
         finally:
             if _lock_acquired:
                 self._release_lock(model_id, pod_name)
@@ -342,6 +365,12 @@ class K8sController(Thread):
 
             if deleted_pod is None:
                 raise Exception("Failed to delete pod")
+
+            k8s_pod = K8sPod.from_k8s(deleted_pod)
+
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_TERMINATED, k8s_pod=k8s_pod
+            )
 
             return True
         except:

@@ -31,6 +31,7 @@ from controllers.s3_integration import S3IntegrationController
 from controllers.k8s_proxy import K8sProxyController
 from config.auth_config import AuthConfig
 from controllers.auth import AuthController
+from controllers.model_instance_log import ModelInstanceLogController
 
 
 def init_configs():
@@ -76,6 +77,7 @@ def init():
     K8sController.initialize()
     ModelController.initialize()
     ScalingManager.initialize()
+    ModelInstanceLogController.initialize()
     ModelIntegrationController.initialize()
     WorkRequestController.initialize()
     S3IntegrationController.initialize()
