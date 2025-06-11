@@ -8,7 +8,6 @@ from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 
 from objects.k8s import ErsiliaAnnotations, ErsiliaLabels, K8sPod
-from controllers.k8s import K8sController
 from config.application_config import ApplicationConfig
 from db.daos.model_instance_log import (
     ModelInstanceLogDAO,
@@ -23,6 +22,20 @@ class ModelInstanceLogEvent(Enum):
     INSTANCE_QUERIED = "INSTANCE_QUERIED"
     INSTANCE_READINESS_CHECKED = "INSTANCE_READINESS_CHECKED"
     INSTANCE_UPDATED = "INSTANCE_UPDATED"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
 
 
 class ModelInstanceLogController:
@@ -59,27 +72,10 @@ class ModelInstanceLogController:
     def log_instance(
         self,
         log_event: ModelInstanceLogEvent,
-        modelid: str = None,
-        instanceid: str = None,
-        correlationid: str = None,
-        k8s_pod: K8sPod = None,
+        k8s_pod: K8sPod,
     ):
-        _k8s_pod: K8sPod = k8s_pod
-
-        if _k8s_pod is None:
-            if modelid is not None and correlationid is not None:
-                _k8s_pod = K8sController.instance().get_pod_by_request(
-                    modelid, str(correlationid)
-                )
-            elif instanceid is not None:
-                _k8s_pod = K8sController.instance().get_pod(instanceid)
-
-        if _k8s_pod is None:
-            ContextLogger.warn(
-                self._logger_key,
-                "Failed to load relevant Model Instance to log - modelid = [%s], instanceid = [%s], correlationid = [%s]"
-                % (modelid, instanceid, correlationid),
-            )
+        if k8s_pod is None:
+            ContextLogger.error(self._logger_key, "No K8sPod provided")
             return
 
         _modelid = k8s_pod.labels.get(ErsiliaLabels.MODEL_ID.value)

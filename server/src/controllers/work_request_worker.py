@@ -24,7 +24,7 @@ from objects.k8s import K8sPod
 from objects.model_integration import JobResult, JobStatus
 from controllers.s3_integration import S3IntegrationController
 from objects.s3_integration import S3ResultObject
-from server.src.controllers.model_instance_log import (
+from controllers.model_instance_log import (
     ModelInstanceLogController,
     ModelInstanceLogEvent,
 )

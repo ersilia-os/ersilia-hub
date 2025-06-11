@@ -73,7 +73,7 @@ class ModelInstanceLogInsertQuery(DAOQuery):
         }
 
         sql = """
-            INSERT INTO UserSession (
+            INSERT INTO ModelInstanceLog (
                 ModelId,
                 InstanceId,
                 CorrelationId,

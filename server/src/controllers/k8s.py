@@ -235,6 +235,10 @@ class K8sController(Thread):
             if current_pod is None:
                 return None
 
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_QUERIED, k8s_pod=current_pod
+            )
+
             if not self._acquire_lock(model_id, pod_name):
                 raise Exception(
                     "Failed to acquire lock on model = [%s], pod = [%s], error = [%s]"
@@ -282,6 +286,10 @@ class K8sController(Thread):
 
             if current_pod is None:
                 return None
+
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_QUERIED, k8s_pod=current_pod
+            )
 
             if len(current_pod.annotations) == 0:
                 # already removed

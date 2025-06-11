@@ -1,8 +1,8 @@
 [x] debug model issues (maybe increase timeout ?)
 
-[ ] fix csv output
+[x] fix csv output
 
-[ ] add Permissions to api
+[x] add Permissions to api
   [x] add permissions table + DAO + Objects
     * userid -> permissions csv
   [x] add permissions cache to Auth + reload on timer
@@ -10,6 +10,8 @@
   [x] add permissions to API handler (pass list of allowed permissions)
   [x] add static permissions Enum (for now only ADMIN permission, for full access to everything)
   [x] add ADMIN permission to existing apis
+
+[ ] DEBUG LOCAL
 
 [ ] release
 

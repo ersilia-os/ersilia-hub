@@ -271,23 +271,28 @@ class WorkRequestModel(BaseModel):
         if not isinstance(self.result[0], dict):
             return
 
-        # we assume a single result line with multiple columns
-        # we will map the json to a header line and values line
+        # we will map the json to a header line and multiple value lines
         csv_column_names = []
-        csv_column_values = []
+        csv_value_lines: List[List[str]] = []
 
-        for key, value in self.result[0].items():
-            csv_column_names.append(key)
+        for result in self.result:
+            is_first_result = len(csv_column_names) == 0
+            csv_value_line = []
 
-            if isinstance(value, str):
-                csv_column_values.append(f"'{value}'")
-            else:
-                csv_column_values.append(str(value))
+            for key, value in result.items():
+                if is_first_result:
+                    csv_column_names.append(key)
+
+                if isinstance(value, str):
+                    csv_value_line.append(f"'{value}'")
+                else:
+                    csv_value_line.append(str(value))
+
+            csv_value_lines.append(csv_value_line)
 
         self.result = [
             ",".join(csv_column_names),
-            ",".join(csv_column_values),
-        ]
+        ] + list(map(lambda csv_line: ",".join(csv_line), csv_value_lines))
 
 
 class WorkRequestListModel(BaseModel):
