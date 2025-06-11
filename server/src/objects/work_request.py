@@ -200,8 +200,10 @@ class WorkRequestCreateModel(BaseModel):
             "requestPayload": self.request_payload.to_object(),
         }
 
+
 # Result is either a Json list or a CSV file of lines
 WorkRequestResult = List[Union[str, Dict[str, Any]]]
+
 
 class WorkRequestModel(BaseModel):
 
@@ -250,7 +252,7 @@ class WorkRequestModel(BaseModel):
             last_updated=workrequest.last_updated,
             result=None,
         )
-    
+
     def map_result_to_csv(self):
         if self.result is None:
             return
@@ -258,34 +260,39 @@ class WorkRequestModel(BaseModel):
         # check if result is a list of something, we don't support string / object yet
         if not isinstance(self.result, list):
             return
-        
+
         if len(self.result) == 0:
             return
-        
+
         # already a string (probably CSV)
         if isinstance(self.result[0], str):
             return
-        
+
         if not isinstance(self.result[0], dict):
             return
-        
-        # we assume a single result line with multiple columns
-        # we will map the json to a header line and values line
+
+        # we will map the json to a header line and multiple value lines
         csv_column_names = []
-        csv_column_values = []
+        csv_value_lines: List[List[str]] = []
 
-        for key, value in self.result[0].items():
-            csv_column_names.append(key)
+        for result in self.result:
+            is_first_result = len(csv_column_names) == 0
+            csv_value_line = []
 
-            if isinstance(value, str):
-                csv_column_values.append(f"'{value}'")        
-            else:
-                csv_column_values.append(str(value))
+            for key, value in result.items():
+                if is_first_result:
+                    csv_column_names.append(key)
+
+                if isinstance(value, str):
+                    csv_value_line.append(f"'{value}'")
+                else:
+                    csv_value_line.append(str(value))
+
+            csv_value_lines.append(csv_value_line)
 
         self.result = [
             ",".join(csv_column_names),
-            ",".join(csv_column_values),
-        ] 
+        ] + list(map(lambda csv_line: ",".join(csv_line), csv_value_lines))
 
 
 class WorkRequestListModel(BaseModel):
@@ -327,6 +334,7 @@ class WorkRequestUpdateModel(BaseModel):
 
 class WorkRequestLoadAllFilters(BaseModel):
     id: str = None
+    user_id: str = None
     model_ids: List[str] = []
     request_date_from: str = None
     request_date_to: str = None
@@ -336,6 +344,7 @@ class WorkRequestLoadAllFilters(BaseModel):
     def to_object(self) -> Dict[str, Any]:
         filters = {
             "id": self.id,
+            "user_id": self.user_id,
             "model_ids": self.model_ids,
             "request_date_from": self.request_date_from,
             "request_date_to": self.request_date_to,
@@ -352,3 +361,4 @@ class WorkRequestLoadAllFilters(BaseModel):
 class WorkRequestLoadFilters(BaseModel):
     include_result: bool = False
     csv_result: bool = False
+    user_id: str = None

@@ -102,7 +102,7 @@ export class RequestViewComponent implements OnInit {
                             let objectUrl: string | undefined = undefined;
 
                             if (csv_result) {
-                                objectUrl = URL.createObjectURL(new Blob([`${result.result[0]}\n${result.result[1]}`], {
+                                objectUrl = URL.createObjectURL(new Blob([result.result.join("\n")], {
                                     type: "text/csv",
                                 }));
                             } else {

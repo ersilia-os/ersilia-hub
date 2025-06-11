@@ -5,6 +5,7 @@ from library.fastapi_root import FastAPIRoot
 from objects.model import ModelInstance
 from controllers.model import ModelController
 from library.api_utils import api_handler
+from objects.rbac import Permission
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -28,7 +29,9 @@ def acquire_instance(
     request: ModelInstance,
     api_request: Request,
 ):
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     models = ModelController.instance().get_models()
 
@@ -57,7 +60,9 @@ def release_instance(
     request: ModelInstance,
     api_request: Request,
 ):
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     ScalingManager.instance().release_instance(request.model_id, request.request_id)
 

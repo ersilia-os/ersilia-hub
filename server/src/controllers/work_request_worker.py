@@ -3,7 +3,7 @@ from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep, time
 import traceback
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Set, Union
 from python_framework.thread_safe_list import ThreadSafeList
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
@@ -24,6 +24,10 @@ from objects.k8s import K8sPod
 from objects.model_integration import JobResult, JobStatus
 from controllers.s3_integration import S3IntegrationController
 from objects.s3_integration import S3ResultObject
+from controllers.model_instance_log import (
+    ModelInstanceLogController,
+    ModelInstanceLogEvent,
+)
 
 
 class WorkRequestControllerStub:
@@ -57,8 +61,8 @@ class WorkRequestControllerStub:
 
 class WorkRequestWorker(Thread):
 
-    PROCESSING_WAIT_TIME = 10
-    POD_READY_TIMEOUT = 30
+    DEFAULT_PROCESSING_WAIT_TIME = 10
+    DEFAULT_POD_READY_TIMEOUT = 60
 
     _logger_key: str = None
     _kill_event: Event
@@ -67,6 +71,8 @@ class WorkRequestWorker(Thread):
 
     id: str
     model_ids: ThreadSafeList[str]
+    _pod_ready_timeout: int
+    _processing_wait_time: int
 
     def __init__(self, controller: WorkRequestControllerStub):
         Thread.__init__(self)
@@ -78,12 +84,24 @@ class WorkRequestWorker(Thread):
 
         self._logger_key = "WorkRequestWorker[%s]" % self.id
         self._kill_event = Event()
+        self._pod_ready_timeout = int(
+            load_environment_variable(
+                "WORK_REQUEST_WORKER_POD_READY_TIMEOUT",
+                default=WorkRequestWorker.DEFAULT_POD_READY_TIMEOUT,
+            )
+        )
+        self._processing_wait_time = int(
+            load_environment_variable(
+                "WORK_REQUEST_WORKER_PROCESSING_WAIT_TIME",
+                default=WorkRequestWorker.DEFAULT_PROCESSING_WAIT_TIME,
+            )
+        )
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
             LogLevel.from_string(
                 load_environment_variable(
-                    f"LOG_LEVEL_WorkRequestWorker", default=LogLevel.INFO.name
+                    "LOG_LEVEL_WorkRequestWorker", default=LogLevel.INFO.name
                 )
             ),
         )
@@ -341,10 +359,15 @@ class WorkRequestWorker(Thread):
         while not _pod.state.ready:
             current_time = time()
 
-            if current_time - start_time > WorkRequestWorker.POD_READY_TIMEOUT:
+            if current_time - start_time > self._pod_ready_timeout:
+                ModelInstanceLogController.instance().log_instance(
+                    log_event=ModelInstanceLogEvent.INSTANCE_READINESS_CHECKED,
+                    k8s_pod=_pod,
+                )
+
                 raise Exception(
                     "Instance [%s] took longer than [%d]s to start - workrequest [%d]"
-                    % (_pod.name, WorkRequestWorker.POD_READY_TIMEOUT, work_request.id)
+                    % (_pod.name, self._pod_ready_timeout, work_request.id)
                 )
 
             sleep(5)
@@ -559,7 +582,7 @@ class WorkRequestWorker(Thread):
         ContextLogger.info(self._logger_key, "Controller started")
 
         while True:
-            if self._wait_or_kill(WorkRequestWorker.PROCESSING_WAIT_TIME):
+            if self._wait_or_kill(self._processing_wait_time):
                 break
 
             try:

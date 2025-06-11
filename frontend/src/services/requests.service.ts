@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { catchError, map, Observable, Subscription, throwError } from 'rxjs';
 import { Request, RequestFilters, RequestFiltersMap, RequestFromApi, RequestList } from '../objects/request';
 import { mapHttpError } from '../app/utils/api';
 import { environment } from '../environments/environment';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,7 +17,12 @@ export class RequestsService {
   private requestSubmitting: WritableSignal<boolean> = signal(false);
   private requestSubmissionResult: WritableSignal<RequestSubmissionResult | undefined> = signal(undefined);
 
-  constructor(private http: HttpClient) { }
+  private authService = inject(AuthService);
+  private userId: Signal<string | undefined>;
+
+  constructor(private http: HttpClient) {
+    this.userId = this.authService.computeUserSessionSignal(userSession => userSession == null ? undefined : userSession.userid);
+  }
 
   loadRequests(filters: RequestFilters): Subscription {
     this.requestsLoading.set(true);
@@ -97,12 +103,18 @@ export class RequestsService {
     return computed(() => computation(this.requestSubmitting()));
   }
 
-  loadRequest(request_id: string, include_result?: boolean, csv_result?: boolean): Observable<Request> {
+  loadRequest(request_id: string, include_result?: boolean, csv_result?: boolean, all_users?: boolean): Observable<Request> {
+    const params: { [key: string]: string | boolean } = {
+      'include_result': include_result ? true : false,
+      'csv_result': csv_result ? true : false,
+    };
+
+    if (!all_users) {
+      params['user_id'] = this.userId()!;
+    }
+
     return this.http.get<Request>(`${environment.apiHost}/api/work-requests/${request_id}`, {
-      params: {
-        'include_result': include_result ? true : false,
-        'csv_result': csv_result ? true : false,
-      }
+      params: params
     })
       .pipe(
         map(RequestFromApi),

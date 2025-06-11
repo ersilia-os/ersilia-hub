@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from controllers.k8s import K8sController
 from library.fastapi_root import FastAPIRoot
 from library.api_utils import api_handler
+from objects.rbac import Permission
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -25,7 +26,9 @@ def register(fastapi_root: FastAPIRoot = None):
 def load_instances(
     api_request: Request,
 ):
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     return {
         "items": list(
@@ -35,11 +38,10 @@ def load_instances(
 
 
 @router.get("/{model_id}/instances")
-def load_instances_by_model(
-    model_id: str,
-    api_request: Request,
-):
-    auth_details, tracking_details = api_handler(api_request)
+def load_instances_by_model(model_id: str, api_request: Request):
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     return {
         "items": list(
