@@ -62,7 +62,7 @@ class WorkRequestControllerStub:
 class WorkRequestWorker(Thread):
 
     DEFAULT_PROCESSING_WAIT_TIME = 10
-    DEFAULT_POD_READY_TIMEOUT = 60
+    DEFAULT_POD_READY_TIMEOUT = 300
 
     _logger_key: str = None
     _kill_event: Event

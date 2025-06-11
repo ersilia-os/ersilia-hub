@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 from kubernetes.client import (
     V1Pod,
+    V1PodCondition,
     V1ContainerStatus,
     V1PodStatus,
     V1PodTemplate,
@@ -135,6 +136,102 @@ class K8sPodContainerState:
         }
 
 
+class K8sPodCondition:
+
+    last_probe_time: str
+    last_transition_time: str
+    message: str
+    reason: str
+    status: str
+    type: str
+
+    def __init__(
+        self,
+        last_probe_time: str,
+        last_transition_time: str,
+        message: str,
+        reason: str,
+        status: str,
+        type: str,
+    ):
+        self.last_probe_time = last_probe_time
+        self.last_transition_time = last_transition_time
+        self.message = message
+        self.reason = reason
+        self.status = status
+        self.type = type
+
+    @staticmethod
+    def from_k8s_condition(k8s_condition: V1PodCondition) -> "K8sPodCondition":
+        return K8sPodCondition(
+            (
+                None
+                if k8s_condition.last_probe_time is None
+                else string_from_date(k8s_condition.last_probe_time)
+            ),
+            (
+                None
+                if k8s_condition.last_transition_time is None
+                else string_from_date(k8s_condition.last_transition_time)
+            ),
+            k8s_condition.message,
+            k8s_condition.reason,
+            k8s_condition.status,
+            k8s_condition.type,
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "lastProbeTime": self.last_probe_time,
+            "lastTransitionTime": self.last_transition_time,
+            "message": self.message,
+            "reason": self.reason,
+            "status": self.status,
+            "type": self.type,
+        }
+
+
+class K8sPodState:
+
+    conditions: List[K8sPodCondition]
+    message: str
+    reason: str
+    start_time: str
+
+    def __init__(
+        self,
+        conditions: List[K8sPodCondition],
+        message: str,
+        reason: str,
+        start_time: str,
+    ):
+        self.conditions = conditions
+        self.message = message
+        self.reason = reason
+        self.start_time = start_time
+
+    @staticmethod
+    def from_k8s_status(status: V1PodStatus) -> "K8sPodState":
+        return K8sPodState(
+            (
+                []
+                if status.conditions is None
+                else list(map(K8sPodCondition.from_k8s_condition, status.conditions))
+            ),
+            status.message,
+            status.reason,
+            None if status.start_time is None else string_from_date(status.start_time),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "conditions": list(map(lambda x: x.to_object(), self.conditions)),
+            "message": self.message,
+            "reason": self.reason,
+            "startTime": self.start_time,
+        }
+
+
 class K8sPod:
 
     name: str
@@ -142,6 +239,7 @@ class K8sPod:
     ip: str
     labels: Dict[str, str]
     annotations: Dict[str, str]
+    pod_state: K8sPodState
 
     def __init__(
         self,
@@ -150,12 +248,14 @@ class K8sPod:
         ip: str,
         labels: Dict[str, str],
         annotations: Dict[str, str],
+        pod_state: K8sPodState,
     ):
         self.name = name
         self.state = state
         self.ip = ip
         self.labels = labels
         self.annotations = annotations
+        self.pod_state = pod_state
 
     @staticmethod
     def from_k8s(k8s_pod: V1Pod) -> "K8sPod":
@@ -173,6 +273,7 @@ class K8sPod:
             k8s_pod.status.pod_ip,
             dict(k8s_pod.metadata.labels),
             annotations,
+            K8sPodState.from_k8s_status(k8s_pod.status),
         )
 
     def get_annotation(self, annotation: str) -> Union[str, None]:
@@ -203,6 +304,7 @@ class K8sPod:
             "ip": self.ip,
             "labels": self.labels,
             "annotations": self.annotations,
+            "podState": self.pod_state.to_object(),
         }
 
 
