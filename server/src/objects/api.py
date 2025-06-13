@@ -1,7 +1,7 @@
 from base64 import b64decode
 from enum import Enum
 from json import loads
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from fastapi import Request
 
 from re import compile
@@ -109,3 +109,4 @@ class LoginResponseModel(BaseModel):
 
     session: UserSessionModel
     user: UserModel
+    permissions: List[str]

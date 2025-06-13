@@ -1,32 +1,70 @@
 
-[ ] add permissions to user login response
+[x] add permissions to user login response
+
+[ ] add request_timestamp, pod_ready_timestamp (get from ModelInstanceLog) + processed_timestamp to WorkRequest
+
+[ ] split Input + Result into separate WorkRequestData table
+  * id
+  * input
+  * result
+  * request_date (to simplify cleanup)
+
+[ ] add indexes to WorkRequest to facilitate stats
+[ ] add queries for stats
+  * what we want, PER MODEL:
+    - success count
+    - fail count
+    - total, max, min, avg model execution time (job submit till job result)
+    - total, max, min, avg processing time (request submit till request complete/fail)
+    - total, max, min, avg model execution time FOR SUCCESSES (job submit till job result)
+    - total, max, min, avg processing time FOR SUCCESSES (request submit till request complete/fail)
+  * what we want to filter on:
+    - userid (or sessionid)
+    - modelid
+    - request_timestamp
+
+[ ] add stats functions to controller
+[ ] add stats to api
+[ ] add filters load to controller + api
+  * FOR NOW, we don't filter the filters
+  * return:
+  - all models
+  - all account (auth) types
+  - all userid / sessionid (split by auth type)
+  
+* NO ROLLUP, for now
+
+
 [ ] add permissions cached on frontend
-
-[ ] user session refresh bug, showing "Session expired" and clearing user name
-    
+[ ] need to add loader on requests load, maybe a global loader ?
 [ ] make email required during signup
+[ ] user session refresh bug, showing "Session expired" and clearing user name 
 
-[ ] stats table based on model requests 
-  * model_id, request_id, result_success (bool), request_timestamp, pod_ready_timestamp (get from ModelInstanceLog), processed_timestamp
-  * index on model_id + proces
-  [ ] migration + DAO + object
-    * DAO select query should allow filter on modelid + request_timestamp + rollup_by_model + rollup_by_status (can be combined)
-  [ ] controller
-  [ ] add insertions to workrequestworker (ON COMPLETE / FAIL)
-  [ ] api
+[ ] sidebar
+  [ ] permissions check ('ADMIN')
+  [ ] add sidebar / menu button
+  [ ] global sidebar service
+  [ ] add html directly to app component
 
 [ ] stats frontend
   [ ] simple table
   [ ] filters
-  [ ] rollup "toggles"
+    * toggle between anon vs user account
+    * date from + to filter (no time, only date)
+    * model ids filter
+    * userid filter (but for anon, it's actually SESSION)
+  [ ] group_by
   [ ] download to CSV
-
-[ ] model instance history page ??
 
 [ ] release
 
 ---
 
+[ ] add k8s events to modelinstance
+
+[ ] model instance history page ??
+
+---
 
 [ ] work requests admin page
   [ ] permissions check ('ADMIN')
