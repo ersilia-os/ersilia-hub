@@ -1,23 +1,28 @@
 
 [x] add permissions to user login response
 
-[ ] add request_timestamp, pod_ready_timestamp (get from ModelInstanceLog) + processed_timestamp to WorkRequest
+[x] add request_timestamp, pod_ready_timestamp (get from ModelInstanceLog) + job_submission_timestamp + processed_timestamp to WorkRequest
 
-[ ] split Input + Result into separate WorkRequestData table
+[x] split Input + Result into separate WorkRequestData table
   * id
   * input
-  * result
   * request_date (to simplify cleanup)
 
-[ ] add indexes to WorkRequest to facilitate stats
+[ ] update DAO to add new timestamp fields
+[ ] update DAO to make Input optional (in the record, NOT the insert + updated)
+[ ] update DAO to insert + update the RequestData table as needed
+[ ] update DAO to join on request data to return existing object as is
+
+[ ] update workers / controllers to add new timestamps to workrequest
+
 [ ] add queries for stats
   * what we want, PER MODEL:
+    - total count
     - success count
     - fail count
-    - total, max, min, avg model execution time (job submit till job result)
-    - total, max, min, avg processing time (request submit till request complete/fail)
-    - total, max, min, avg model execution time FOR SUCCESSES (job submit till job result)
-    - total, max, min, avg processing time FOR SUCCESSES (request submit till request complete/fail)
+    - active count
+    - total, max, min, avg job execution time FOR SUCCESSES (job submit till job result)
+    - total, max, min, avg total execution time FOR SUCCESSES (request submit till request complete/fail)
   * what we want to filter on:
     - userid (or sessionid)
     - modelid
@@ -60,12 +65,6 @@
 
 ---
 
-[ ] add k8s events to modelinstance
-
-[ ] model instance history page ??
-
----
-
 [ ] work requests admin page
   [ ] permissions check ('ADMIN')
   [ ] add sidebar / menu button
@@ -80,9 +79,15 @@
     [ ] date from (no time)
     [ ] date to (no time)
 
-  [ ] actions for:
-    [ ] set status -> REQUESTED / FAILED
-    [ ] view sensitive data (LOG ON BACKEND + reload full request)
+[ ] release
+
+---
+
+[ ] add k8s events to modelinstance
+
+[ ] model instance history page ??
+
+---
 
 [ ] active instances page
   [ ] permissions check ('ADMIN')
