@@ -24,11 +24,7 @@
   
 * NO ROLLUP, for now
 
-
 [ ] add permissions cached on frontend
-[ ] need to add loader on requests load, maybe a global loader ?
-[ ] make email required during signup
-[ ] user session refresh bug, showing "Session expired" and clearing user name 
 
 [ ] sidebar
   [ ] permissions check ('ADMIN')
@@ -45,6 +41,10 @@
     * userid filter (but for anon, it's actually SESSION)
   [ ] group_by
   [ ] download to CSV
+
+[ ] need to add loader on requests load, maybe a global loader ?
+[ ] make email required during signup
+[ ] user session refresh bug, showing "Session expired" and clearing user name 
 
 [ ] release
 

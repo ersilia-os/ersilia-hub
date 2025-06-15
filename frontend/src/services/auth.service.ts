@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHandlerFn, HttpRequest } from "@angular/common/http";
 import { computed, inject, Injectable, Signal, signal, WritableSignal } from "@angular/core";
 import { NotificationsService, Notification } from "../app/notifications/notifications.service";
-import { AuthType, LoginResponse, mapUserFromApi, mapUserSessionFromApi, User, userLoginAuth, UserSession } from "../objects/auth";
+import { AuthType, LoginResponse, mapUserFromApi, mapUserSessionFromApi, Permission, User, userLoginAuth, UserSession } from "../objects/auth";
 import { catchError, map, Observable, throwError, timer } from "rxjs";
 import { mapHttpError } from "../app/utils/api";
 import { environment } from "../environments/environment";
@@ -26,6 +26,7 @@ export class AuthService {
 
     private user: WritableSignal<User | undefined> = signal(undefined);
     private userSession: WritableSignal<UserSession | undefined> = signal(undefined);
+    private permissions: WritableSignal<Permission[]> = signal([]);
     private authType: WritableSignal<AuthType | undefined> = signal(undefined);
     private hasSession: WritableSignal<boolean> = signal(false);
     private lastAnonSessionId: WritableSignal<string | undefined> = signal(undefined);
@@ -40,7 +41,7 @@ export class AuthService {
             this.refreshSession().subscribe();
         });
 
-        timer(0, this.SESSION_REFRESH_DELAY).subscribe(_ => {
+        timer(20, this.SESSION_REFRESH_DELAY + 20).subscribe(_ => {
             this.validateLocalSession();
         });
     }
@@ -73,6 +74,14 @@ export class AuthService {
         return computed(() => computation(this.authType()));
     }
 
+    getPermissionsSignal(): Signal<Permission[]> {
+        return computed(() => this.permissions());
+    }
+
+    computePermissionsSignal<T>(computation: (user: Permission[]) => T): Signal<T> {
+        return computed(() => computation(this.permissions()));
+    }
+
     getAuthToken(): string | undefined {
         if (this.userSession == null || this.userSession() == null) {
             return undefined;
@@ -89,6 +98,10 @@ export class AuthService {
         return this.authType();
     }
 
+    checkPermissions(one_of: (Permission | string)[]): boolean {
+        return hasPermission(this.permissions(), one_of);
+    }
+
     init() {
         this.loadFromCache();
         this.validateLocalSession();
@@ -100,6 +113,9 @@ export class AuthService {
 
         localStorage.removeItem("user");
         this.user.set(undefined);
+
+        localStorage.removeItem("permissions");
+        this.permissions.set([]);
 
         this.hasSession.set(false);
     }
@@ -114,6 +130,10 @@ export class AuthService {
 
         if (this.user != null && this.user() != null) {
             localStorage.setItem("user", btoa(JSON.stringify(this.user())));
+        }
+
+        if (this.permissions != null) {
+            localStorage.setItem("permissions", btoa(this.permissions().join(",")))
         }
 
         if (this.authType != null && this.authType() != null) {
@@ -147,6 +167,18 @@ export class AuthService {
         const authType = localStorage.getItem("authType");
         this.authType.set(authType as AuthType | undefined);
 
+        const permissions = localStorage.getItem("permissions");
+
+        if (permissions == null || permissions.length < 3) {
+            this.permissions.set([]);
+        } else {
+            try {
+                this.permissions.set(atob(permissions).split(",") as Permission[]);
+            } catch (e) {
+                console.error("Failed to load Permissions from cache");
+            }
+        }
+
         const user = localStorage.getItem("user");
 
         if (user == null || user.length < 10) {
@@ -154,12 +186,12 @@ export class AuthService {
             this.user.set(undefined);
 
             return
-        }
-
-        try {
-            this.user.set(JSON.parse(atob(user)));
-        } catch (e) {
-            console.error("Failed to load user from cache");
+        } else {
+            try {
+                this.user.set(JSON.parse(atob(user)));
+            } catch (e) {
+                console.error("Failed to load user from cache");
+            }
         }
     }
 
@@ -184,6 +216,7 @@ export class AuthService {
                 map(response => {
                     this.user.set(mapUserFromApi(response.user));
                     this.userSession.set(mapUserSessionFromApi(response.session));
+                    this.permissions.set(response.permissions);
                     this.updateCache();
                     this.hasSession.set(true);
                     this.authType.set(response.session.auth_type);
@@ -259,6 +292,10 @@ export class AuthService {
             return;
         }
 
+        console.log("session_start_time =", this.userSession()!.session_start_time.valueOf());
+        console.log("session_max_age_seconds =", this.userSession()!.session_max_age_seconds);
+        console.log("check =", (this.userSession()!.session_start_time.valueOf() + this.userSession()!.session_max_age_seconds <= new Date().valueOf()));
+
         if (this.userSession()!.session_start_time.valueOf() + this.userSession()!.session_max_age_seconds <= new Date().valueOf()) {
             this.notificationService.pushNotification(Notification('INFO', 'User session has expired'));
             this.clearSession();
@@ -285,4 +322,8 @@ export function authInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn) 
     });
 
     return next(newReq);
+}
+
+export function hasPermission(permissions: Permission[], one_of: (Permission | string)[]): boolean {
+    return one_of.some(p => permissions.includes(p as Permission));
 }

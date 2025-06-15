@@ -1,9 +1,23 @@
 @if (sessionDetails().authed) {
 <div class="app">
   <div class="app-header">
+    @if (appPermissions().canViewMenu) {
+    <div class="app-menu" (click)="toggleMenu()">
+      @if (menuExpanded) {
+      <mat-icon>menu_open</mat-icon>
+      } @else {
+      <mat-icon>menu</mat-icon>
+      }
+    </div>
+    }
+
+    <!-- TODO: icon menu -->
+    <!-- TODO: check permissions (ADMIN) -->
     <div class="app-header-image">
       <img src="/assets/ersilia-logo-full.png" />
     </div>
+
+    <div class="spacer"></div>
 
     <div class="account">
       @if (sessionDetails().authType==='ErsiliaAnonymous' ) {
@@ -32,6 +46,10 @@
   </mat-menu>
 
   <div class="app-body">
+    @if (appPermissions().canViewMenu && menuExpanded) {
+    <app-menu [appPermissions]="appPermissions()" (exit)="toggleMenu()"></app-menu>
+    }
+
     <app-requests-list></app-requests-list>
   </div>
 </div>
