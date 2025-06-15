@@ -1,6 +1,6 @@
 
 
-[ ] add queries for stats
+[x] add queries for stats
   * what we want, PER MODEL:
     - total count
     - success count
@@ -13,9 +13,9 @@
     - modelid
     - request_timestamp
 
-[ ] add stats functions to controller
-[ ] add stats to api
-[ ] add filters load to controller + api
+[x] add stats functions to controller
+[x] add stats to api
+[x] add filters load to controller + api
   * FOR NOW, we don't filter the filters
   * return:
   - all models
