@@ -9,7 +9,12 @@ from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 from string import ascii_lowercase
 from random import choices
-from python_framework.time import utc_now_datetime, datetime_delta, string_from_date
+from python_framework.time import (
+    utc_now_datetime,
+    datetime_delta,
+    string_from_date,
+    utc_now,
+)
 
 from controllers.k8s import K8sController
 
@@ -124,6 +129,21 @@ class WorkRequestWorker(Thread):
 
         return S3IntegrationController.instance().upload_result(result_obj)
 
+    def _process_failed_job(
+        self, work_request: WorkRequest, reason: str = "Job Failed"
+    ):
+        work_request.request_status = WorkRequestStatus.FAILED
+        work_request.request_status_reason = reason
+        work_request.processed_timestamp = utc_now()
+        updated_work_request = self._controller.update_request(
+            work_request, retry_count=1
+        )
+
+        if updated_work_request is None:
+            raise Exception("Failed to update WorkRequest [%s]" % work_request.id)
+
+        return updated_work_request
+
     def _process_completed_job(self, work_request: WorkRequest, pod: K8sPod):
         result_content = ModelIntegrationController.instance().get_job_result(
             work_request.model_id,
@@ -139,7 +159,7 @@ class WorkRequestWorker(Thread):
                 "Job Result is None for workrequest [%d], jobid [%s]"
                 % (work_request.id, work_request.model_job_id),
             )
-            return self._controller.mark_workrequest_failed(work_request)
+            return self._process_failed_job(work_request, reason="Job Result is empty")
 
         if not self._upload_result_to_s3(work_request, result_content):
             sleep(30)
@@ -148,29 +168,13 @@ class WorkRequestWorker(Thread):
                 raise Exception("Failed to upload result to S3, twice")
 
         work_request.request_status = WorkRequestStatus.COMPLETED
+        work_request.processed_timestamp = utc_now()
         updated_work_request = self._controller.update_request(
             work_request, retry_count=1
         )
 
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%d]" % work_request.id)
-
-        if (
-            K8sController.instance().clear_work_request(work_request.model_id, pod.name)
-            is None
-        ):
-            sleep(10)
-
-            if (
-                K8sController.instance().clear_work_request(
-                    work_request.model_id, pod.name
-                )
-                is None
-            ):
-                raise Exception(
-                    "Failed to clear workrequest [%d] from pod [%s]"
-                    % (work_request.id, pod.name)
-                )
 
     def _handle_processing_work_request(self, work_request: WorkRequest, pod: K8sPod):
         try:
@@ -181,10 +185,41 @@ class WorkRequestWorker(Thread):
                 work_request.model_job_id,
             )
 
+            updated_work_request: WorkRequest = None
+
             if status_response.status == JobStatus.COMPLETED:
-                return self._process_completed_job(work_request, pod)
+                updated_work_request = self._process_completed_job(work_request, pod)
             elif status_response.status == JobStatus.FAILED:
-                return self._controller.mark_workrequest_failed(work_request)
+                updated_work_request = self._process_failed_job(work_request, pod)
+
+            try:
+                if (
+                    K8sController.instance().clear_work_request(
+                        work_request.model_id, pod.name
+                    )
+                    is None
+                ):
+                    sleep(10)
+
+                    if (
+                        K8sController.instance().clear_work_request(
+                            work_request.model_id, pod.name
+                        )
+                        is None
+                    ):
+                        ContextLogger.error(
+                            self._logger_key,
+                            "Failed to clear workrequest [%d] from pod [%s]"
+                            % (work_request.id, pod.name),
+                        )
+            except:
+                ContextLogger.error(
+                    self._logger_key,
+                    "Failed to clear workrequest [%d] from pod [%s], error = [%s]"
+                    % (work_request.id, pod.name, repr(exc_info())),
+                )
+
+            return updated_work_request
         except:
             ContextLogger.error(
                 self._logger_key,
@@ -374,6 +409,25 @@ class WorkRequestWorker(Thread):
 
             _pod = K8sController.instance().get_pod(_pod.name)
 
+        updated_work_request: WorkRequest = work_request.copy()
+
+        try:
+            updated_work_request.pod_ready_timestamp = utc_now()
+            _updated_work_request = self._controller.update_request(
+                updated_work_request, retry_count=1
+            )
+
+            if _updated_work_request is None:
+                raise Exception("Update returned null")
+
+            updated_work_request = _updated_work_request
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to persist podreadytimestamp for workrequest id = [%s], error = [%s]"
+                % (updated_work_request.id, repr(exc_info())),
+            )
+
         attempt_count = 0
         job_id = None
 
@@ -381,10 +435,10 @@ class WorkRequestWorker(Thread):
             try:
                 job_submission_response = (
                     ModelIntegrationController.instance().submit_job(
-                        work_request.model_id,
-                        str(work_request.id),
+                        updated_work_request.model_id,
+                        str(updated_work_request.id),
                         _pod.ip,
-                        work_request.request_payload.entries,
+                        updated_work_request.request_payload.entries,
                     )
                 )
                 job_id = job_submission_response.job_id
@@ -406,19 +460,21 @@ class WorkRequestWorker(Thread):
         if job_id is None:
             raise Exception(
                 "Failed to submit job for instance [%s], workrequest [%d] after [%d] attempts"
-                % (_pod.name, work_request.id, attempt_count)
+                % (_pod.name, updated_work_request.id, attempt_count)
             )
 
-        work_request.request_status = WorkRequestStatus.PROCESSING
-        work_request.model_job_id = job_id
-        work_request.request_status_reason = "JOB SUBMITTED"
+        updated_work_request.request_status = WorkRequestStatus.PROCESSING
+        updated_work_request.model_job_id = job_id
+        updated_work_request.request_status_reason = "JOB SUBMITTED"
+        updated_work_request.job_submission_timestamp = utc_now()
         updated_work_request = self._controller.update_request(
-            work_request, retry_count=1
+            updated_work_request, retry_count=1
         )
 
         if updated_work_request is None:
             raise Exception(
-                "Failed to update workrequest [%d] with new job_id" % work_request.id
+                "Failed to update workrequest [%d] with new job_id"
+                % updated_work_request.id
             )
 
         return updated_work_request

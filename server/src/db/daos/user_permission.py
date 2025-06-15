@@ -19,7 +19,7 @@ class UserPermissionRecord(DAORecord):
         self.last_updated = (
             None
             if "lastupdated" not in result or result["lastupdated"] is None
-            else timestamp_to_utc_timestamp(result["permissions"])
+            else timestamp_to_utc_timestamp(result["lastupdated"])
         )
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:

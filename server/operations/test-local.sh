@@ -5,7 +5,7 @@ fi
 
 if [ "$VIRTUAL_ENV" = "" ]; then
     echo "\nActivating virtual env..."
-    export VIRTUAL_ENV="$(pwd)/env"
+    export VIRTUAL_ENV="$(pwd)/.venv"
     export PATH="$VIRTUAL_ENV/bin:$PATH"
 fi
 

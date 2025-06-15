@@ -1,19 +1,4 @@
 
-[x] add permissions to user login response
-
-[x] add request_timestamp, pod_ready_timestamp (get from ModelInstanceLog) + job_submission_timestamp + processed_timestamp to WorkRequest
-
-[x] split Input + Result into separate WorkRequestData table
-  * id
-  * input
-  * request_date (to simplify cleanup)
-
-[ ] update DAO to add new timestamp fields
-[ ] update DAO to make Input optional (in the record, NOT the insert + updated)
-[ ] update DAO to insert + update the RequestData table as needed
-[ ] update DAO to join on request data to return existing object as is
-
-[ ] update workers / controllers to add new timestamps to workrequest
 
 [ ] add queries for stats
   * what we want, PER MODEL:

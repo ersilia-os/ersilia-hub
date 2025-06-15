@@ -14,13 +14,16 @@ class WorkRequestRecord(DAORecord):
     id: int
     model_id: str
     user_id: str
-    request_payload: str
+    request_payload: str | None
     request_date: str
     metadata: str
     request_status: str
     request_status_reason: str
     model_job_id: str
     last_updated: Union[str, None]
+    pod_ready_timestamp: Union[str, None]
+    job_submission_timestamp: Union[str, None]
+    processed_timestamp: Union[str, None]
 
     def __init__(self, result: dict):
         super().__init__(result)
@@ -28,7 +31,9 @@ class WorkRequestRecord(DAORecord):
         self.id = result["id"]
         self.model_id = result["modelid"]
         self.user_id = result["userid"]
-        self.request_payload = result["requestpayload"]
+        self.request_payload = (
+            None if "requestpayload" not in result else result["requestpayload"]
+        )
         self.request_date = result["requestdate"]
         self.metadata = result["metadata"]
         self.request_status = result["requeststatus"]
@@ -38,6 +43,21 @@ class WorkRequestRecord(DAORecord):
             None
             if result["lastupdated"] is None
             else timestamp_to_utc_timestamp(result["lastupdated"])
+        )
+        self.pod_ready_timestamp = (
+            None
+            if result["podreadytimestamp"] is None
+            else timestamp_to_utc_timestamp(result["podreadytimestamp"])
+        )
+        self.job_submission_timestamp = (
+            None
+            if result["jobsubmissiontimestamp"] is None
+            else timestamp_to_utc_timestamp(result["jobsubmissiontimestamp"])
+        )
+        self.processed_timestamp = (
+            None
+            if result["processedtimestamp"] is None
+            else timestamp_to_utc_timestamp(result["processedtimestamp"])
         )
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -49,6 +69,9 @@ class WorkRequestRecord(DAORecord):
             "metadata": self.metadata,
             "request_status": self.request_status,
             "request_status_reason": self.request_status_reason,
+            "pod_ready_timestamp": self.pod_ready_timestamp,
+            "job_submission_timestamp": self.job_submission_timestamp,
+            "processed_timestamp": self.processed_timestamp,
         }
 
     def generate_update_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -58,6 +81,9 @@ class WorkRequestRecord(DAORecord):
             "request_status_reason": self.request_status_reason,
             "model_job_id": self.model_job_id,
             "expected_last_updated": self.last_updated,
+            "pod_ready_timestamp": self.pod_ready_timestamp,
+            "job_submission_timestamp": self.job_submission_timestamp,
+            "processed_timestamp": self.processed_timestamp,
         }
 
     def generate_upsert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -76,18 +102,23 @@ class WorkRequestSelectAllQuery(DAOQuery):
 
         sql = """
             SELECT
-                Id,
-                ModelId,
-                UserId,
-                RequestPayload::text,
-                RequestDate::text,
-                Metadata::text,
-                RequestStatus,
-                RequestStatusReason,
-                ModelJobId,
-                LastUpdated::text
+                WorkRequest.Id,
+                WorkRequest.ModelId,
+                WorkRequest.UserId,
+                WorkRequestData.RequestPayload::text,
+                WorkRequest.RequestDate::text,
+                WorkRequest.Metadata::text,
+                WorkRequest.RequestStatus,
+                WorkRequest.RequestStatusReason,
+                WorkRequest.ModelJobId,
+                WorkRequest.LastUpdated::text,
+                WorkRequest.PodReadyTimestamp::text,
+                WorkRequest.JobSubmissionTimestamp::text,
+                WorkRequest.ProcessedTimestamp::text
             FROM WorkRequest
-            ORDER BY RequestDate DESC, ModelId ASC
+            LEFT JOIN WorkRequestData
+                ON WorkRequest.Id = WorkRequestData.RequestId
+            ORDER BY WorkRequest.RequestDate DESC, WorkRequest.ModelId ASC
             LIMIT 300
         """
 
@@ -127,52 +158,58 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
 
         if self.model_ids is not None and len(self.model_ids) > 0:
             custom_filters.append(
-                "ModelId IN (%s)" % ",".join(map(lambda x: "'%s'" % x, self.model_ids))
+                "WorkRequest.ModelId IN (%s)"
+                % ",".join(map(lambda x: "'%s'" % x, self.model_ids))
             )
 
         if self.user_id is not None:
-            custom_filters.append("UserId = :query_UserId")
+            custom_filters.append("WorkRequest.UserId = :query_UserId")
             field_map["query_UserId"] = self.user_id
 
         if self.request_date_from is not None and self.request_date_to is not None:
             custom_filters.append(
-                "RequestDate BETWEEN :query_RequestDateFrom AND :query_RequestDateTo"
+                "WorkRequest.RequestDate BETWEEN :query_RequestDateFrom AND :query_RequestDateTo"
             )
             field_map["query_RequestDateFrom"] = self.request_date_from
             field_map["query_RequestDateTo"] = self.request_date_to
         elif self.request_date_from is not None:
-            custom_filters.append("RequestDate >= :query_RequestDateFrom")
+            custom_filters.append("WorkRequest.RequestDate >= :query_RequestDateFrom")
             field_map["query_RequestDateFrom"] = self.request_date_from
         elif self.request_date_to is not None:
-            custom_filters.append("RequestDate <= :query_RequestDateTo")
+            custom_filters.append("WorkRequest.RequestDate <= :query_RequestDateTo")
             field_map["query_RequestDateTo"] = self.request_date_to
 
         if self.request_statuses is not None and len(self.request_statuses) > 0:
             custom_filters.append(
-                "RequestStatus IN (%s)"
+                "WorkRequest.RequestStatus IN (%s)"
                 % ",".join(map(lambda x: "'%s'" % x, self.request_statuses))
             )
 
         if self.session_id is not None:
             custom_filters.append(
-                'Metadata @> \'{"sessionId": "%s"}\'' % self.session_id
+                'WorkRequest.Metadata @> \'{"sessionId": "%s"}\'' % self.session_id
             )
 
         sql = """
             SELECT
-                Id,
-                ModelId,
-                UserId,
-                RequestPayload::text,
-                RequestDate::text,
-                Metadata::text,
-                RequestStatus,
-                RequestStatusReason,
-                ModelJobId,
-                LastUpdated::text
+                WorkRequest.Id,
+                WorkRequest.ModelId,
+                WorkRequest.UserId,
+                WorkRequestData.RequestPayload::text,
+                WorkRequest.RequestDate::text,
+                WorkRequest.Metadata::text,
+                WorkRequest.RequestStatus,
+                WorkRequest.RequestStatusReason,
+                WorkRequest.ModelJobId,
+                WorkRequest.LastUpdated::text,
+                WorkRequest.PodReadyTimestamp::text,
+                WorkRequest.JobSubmissionTimestamp::text,
+                WorkRequest.ProcessedTimestamp::text
             FROM WorkRequest
+            LEFT JOIN WorkRequestData
+                ON WorkRequest.Id = WorkRequestData.RequestId
             %s
-            ORDER BY RequestDate DESC, ModelId ASC
+            ORDER BY WorkRequest.RequestDate DESC, WorkRequest.ModelId ASC
             LIMIT %d
         """ % (
             "" if len(custom_filters) == 0 else "WHERE " + " AND ".join(custom_filters),
@@ -192,6 +229,9 @@ class WorkRequestInsertQuery(DAOQuery):
         metadata: str,
         request_status: str,
         request_status_reason: str,
+        pod_ready_timestamp: str,
+        job_submission_timestamp: str,
+        processed_timestamp: str,
     ):
         super().__init__(WorkRequestRecord)
 
@@ -202,6 +242,9 @@ class WorkRequestInsertQuery(DAOQuery):
         self.metadata = metadata
         self.request_status = request_status
         self.request_status_reason = request_status_reason
+        self.pod_ready_timestamp = pod_ready_timestamp
+        self.job_submission_timestamp = job_submission_timestamp
+        self.processed_timestamp = processed_timestamp
 
     def to_sql(self):
         field_map = {
@@ -212,40 +255,86 @@ class WorkRequestInsertQuery(DAOQuery):
             "query_Metadata": self.metadata,
             "query_RequestStatus": self.request_status,
             "query_RequestStatusReason": self.request_status_reason,
+            "query_PodReadyTimestamp": self.pod_ready_timestamp,
+            "query_JobSubmissionTimestamp": self.job_submission_timestamp,
+            "query_ProcessedTimestamp": self.processed_timestamp,
         }
 
         sql = """
-            INSERT INTO WorkRequest (
-                ModelId,
-                UserId,
-                RequestPayload,
-                RequestDate,
-                Metadata,
-                RequestStatus,
-                RequestStatusReason,
-                LastUpdated
+            WITH WorkRequestInsert AS (
+                INSERT INTO WorkRequest (
+                    ModelId,
+                    UserId,
+                    RequestDate,
+                    Metadata,
+                    RequestStatus,
+                    RequestStatusReason,
+                    LastUpdated,
+                    PodReadyTimestamp,
+                    JobSubmissionTimestamp,
+                    ProcessedTimestamp
+                )
+                VALUES (
+                    :query_ModelId,
+                    :query_UserId,
+                    :query_RequestDate,
+                    :query_Metadata,
+                    :query_RequestStatus,
+                    :query_RequestStatusReason,
+                    CURRENT_TIMESTAMP,
+                    :query_PodReadyTimestamp,
+                    :query_JobSubmissionTimestamp,
+                    :query_ProcessedTimestamp
+                )
+                RETURNING
+                    Id,
+                    ModelId,
+                    UserId,
+                    RequestDate,
+                    Metadata::text,
+                    RequestStatus,
+                    RequestStatusReason,
+                    ModelJobId,
+                    LastUpdated::text,
+                    PodReadyTimestamp::text,
+                    JobSubmissionTimestamp::text,
+                    ProcessedTimestamp::text
+            ),
+
+            WorkRequestDataInsert AS (
+                INSERT INTO WorkRequestData (
+                    RequestId,
+                    RequestPayload,
+                    RequestDate
+                )
+                SELECT
+                    Id,
+                    :query_RequestPayload,
+                    RequestDate
+                FROM WorkRequestInsert
+                RETURNING
+                    RequestId,
+                    RequestPayload::text,
+                    RequestDate::text
             )
-            VALUES (
-                :query_ModelId,
-                :query_UserId,
-                :query_RequestPayload,
-                :query_RequestDate,
-                :query_Metadata,
-                :query_RequestStatus,
-                :query_RequestStatusReason,
-                CURRENT_TIMESTAMP
-            )
-            RETURNING
-                Id,
-                ModelId,
-                UserId,
-                RequestPayload::text,
-                RequestDate::text,
-                Metadata::text,
-                RequestStatus,
-                RequestStatusReason,
-                ModelJobId,
-                LastUpdated::text
+
+            SELECT 
+                WorkRequestInsert.Id,
+                WorkRequestInsert.ModelId,
+                WorkRequestInsert.UserId,
+                WorkRequestDataInsert.RequestPayload::text,
+                WorkRequestInsert.RequestDate::text,
+                WorkRequestInsert.Metadata::text,
+                WorkRequestInsert.RequestStatus,
+                WorkRequestInsert.RequestStatusReason,
+                WorkRequestInsert.ModelJobId,
+                WorkRequestInsert.LastUpdated::text,
+                WorkRequestInsert.PodReadyTimestamp::text,
+                WorkRequestInsert.JobSubmissionTimestamp::text,
+                WorkRequestInsert.ProcessedTimestamp::text
+            FROM WorkRequestInsert
+            INNER JOIN WorkRequestDataInsert
+                ON WorkRequestInsert.Id = WorkRequestDataInsert.RequestId
         """
 
         return sql, field_map
@@ -259,6 +348,9 @@ class WorkRequestUpdateQuery(DAOQuery):
         request_status_reason: str,
         model_job_id: str,
         expected_last_updated: str,
+        pod_ready_timestamp: str,
+        job_submission_timestamp: str,
+        processed_timestamp: str,
     ):
         super().__init__(WorkRequestRecord)
 
@@ -267,6 +359,9 @@ class WorkRequestUpdateQuery(DAOQuery):
         self.request_status_reason = request_status_reason
         self.model_job_id = model_job_id
         self.expected_last_updated = expected_last_updated
+        self.pod_ready_timestamp = pod_ready_timestamp
+        self.job_submission_timestamp = job_submission_timestamp
+        self.processed_timestamp = processed_timestamp
 
     def to_sql(self):
         field_map = {
@@ -275,28 +370,56 @@ class WorkRequestUpdateQuery(DAOQuery):
             "query_RequestStatusReason": self.request_status_reason,
             "query_ModelJobId": self.model_job_id,
             "query_ExpectedLastUpdated": self.expected_last_updated,
+            "query_PodReadyTimestamp": self.pod_ready_timestamp,
+            "query_JobSubmissionTimestamp": self.job_submission_timestamp,
+            "query_ProcessedTimestamp": self.processed_timestamp,
         }
 
         sql = """
-            UPDATE WorkRequest 
-            SET
-                RequestStatus = :query_RequestStatus,
-                RequestStatusReason = :query_RequestStatusReason,
-                ModelJobId = :query_ModelJobId,
-                LastUpdated = CURRENT_TIMESTAMP
-            WHERE Id = :query_Id
-            AND LastUpdated = :query_ExpectedLastUpdated
-            RETURNING
-                Id,
-                ModelId,
-                UserId,
-                RequestPayload::text,
-                RequestDate::text,
-                Metadata::text,
-                RequestStatus,
-                RequestStatusReason,
-                ModelJobId,
-                LastUpdated::text
+            WITH WorkRequestUpdate AS (
+                UPDATE WorkRequest 
+                SET
+                    RequestStatus = :query_RequestStatus,
+                    RequestStatusReason = :query_RequestStatusReason,
+                    ModelJobId = :query_ModelJobId,
+                    LastUpdated = CURRENT_TIMESTAMP,
+                    PodReadyTimestamp = :query_PodReadyTimestamp,
+                    JobSubmissionTimestamp = :query_JobSubmissionTimestamp,
+                    ProcessedTimestamp = :query_ProcessedTimestamp
+                WHERE Id = :query_Id
+                AND LastUpdated = :query_ExpectedLastUpdated
+                RETURNING
+                    Id,
+                    ModelId,
+                    UserId,
+                    RequestDate::text,
+                    Metadata::text,
+                    RequestStatus,
+                    RequestStatusReason,
+                    ModelJobId,
+                    LastUpdated::text,
+                    PodReadyTimestamp::text,
+                    JobSubmissionTimestamp::text,
+                    ProcessedTimestamp::text
+            )
+
+            SELECT 
+                WorkRequestUpdate.Id,
+                WorkRequestUpdate.ModelId,
+                WorkRequestUpdate.UserId,
+                WorkRequestData.RequestPayload::text,
+                WorkRequestUpdate.RequestDate::text,
+                WorkRequestUpdate.Metadata::text,
+                WorkRequestUpdate.RequestStatus,
+                WorkRequestUpdate.RequestStatusReason,
+                WorkRequestUpdate.ModelJobId,
+                WorkRequestUpdate.LastUpdated::text,
+                WorkRequestUpdate.PodReadyTimestamp::text,
+                WorkRequestUpdate.JobSubmissionTimestamp::text,
+                WorkRequestUpdate.ProcessedTimestamp::text
+            FROM WorkRequestUpdate
+            LEFT JOIN WorkRequestData
+                ON WorkRequestUpdate.Id = WorkRequestData.RequestId
         """
 
         return sql, field_map

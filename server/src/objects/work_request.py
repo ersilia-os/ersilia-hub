@@ -94,26 +94,32 @@ class WorkRequest:
     id: int
     model_id: str
     user_id: str
-    request_payload: WorkRequestPayload
+    request_payload: WorkRequestPayload | None
     request_date: str
     metadata: WorkRequestMetadata
     request_status: WorkRequestStatus
     request_status_reason: Union[str, None]
     model_job_id: Union[str, None]
     last_updated: Union[str, None]
+    pod_ready_timestamp: Union[str, None]
+    job_submission_timestamp: Union[str, None]
+    processed_timestamp: Union[str, None]
 
     def __init__(
         self,
         id: int,
         model_id: str,
         user_id: str,
-        request_payload: WorkRequestPayload,
+        request_payload: WorkRequestPayload | None,
         request_date: str,
         metadata: WorkRequestMetadata,
         request_status: WorkRequestStatus,
         request_status_reason: Union[str, None] = None,
         model_job_id: Union[str, None] = None,
         last_updated: Union[str, None] = None,
+        pod_ready_timestamp: Union[str, None] = None,
+        job_submission_timestamp: Union[str, None] = None,
+        processed_timestamp: Union[str, None] = None,
     ):
         self.id = id
         self.model_id = model_id
@@ -125,6 +131,9 @@ class WorkRequest:
         self.request_status_reason = request_status_reason
         self.model_job_id = model_job_id
         self.last_updated = last_updated
+        self.pod_ready_timestamp = pod_ready_timestamp
+        self.job_submission_timestamp = job_submission_timestamp
+        self.processed_timestamp = processed_timestamp
 
     @staticmethod
     def init_from_record(record: WorkRequestRecord) -> "WorkRequest":
@@ -132,13 +141,37 @@ class WorkRequest:
             record.id,
             record.model_id,
             record.user_id,
-            WorkRequestPayload.from_object(loads(record.request_payload)),
+            (
+                None
+                if record.request_payload is None
+                else WorkRequestPayload.from_object(loads(record.request_payload))
+            ),
             record.request_date,
             WorkRequestMetadata.from_object(loads(record.metadata)),
             record.request_status,
             record.request_status_reason,
             record.model_job_id,
             record.last_updated,
+            record.pod_ready_timestamp,
+            record.job_submission_timestamp,
+            record.processed_timestamp,
+        )
+
+    def copy(self) -> "WorkRequest":
+        return WorkRequest(
+            self.id,
+            self.model_id,
+            self.user_id,
+            self.request_payload,
+            self.request_date,
+            self.metadata,
+            self.request_status,
+            self.request_status_reason,
+            self.model_job_id,
+            self.last_updated,
+            self.pod_ready_timestamp,
+            self.job_submission_timestamp,
+            self.processed_timestamp,
         )
 
     def to_record(self) -> WorkRequestRecord:
@@ -146,13 +179,20 @@ class WorkRequest:
             id=self.id,
             modelid=self.model_id,
             userid=self.user_id,
-            requestpayload=dumps(self.request_payload.to_object()),
+            requestpayload=(
+                None
+                if self.request_payload is None
+                else dumps(self.request_payload.to_object())
+            ),
             requestdate=self.request_date,
             metadata=dumps(self.metadata.to_object()),
             requeststatus=self.request_status,
             requeststatusreason=self.request_status_reason,
             modeljobid=self.model_job_id,
             lastupdated=self.last_updated,
+            podreadytimestamp=self.pod_ready_timestamp,
+            jobsubmissiontimestamp=self.job_submission_timestamp,
+            processedtimestamp=self.processed_timestamp,
         )
 
     @staticmethod
@@ -161,7 +201,11 @@ class WorkRequest:
             None if "id" not in obj else obj["id"],
             obj["modelId"],
             None if "userId" not in obj else obj["userId"],
-            WorkRequestPayload.from_object(obj["requestPayload"]),
+            (
+                None
+                if "requestPayload" not in obj or obj["requestPayload"] is None
+                else WorkRequestPayload.from_object(obj["requestPayload"])
+            ),
             None if "requestDate" not in obj else obj["requestDate"],
             (
                 WorkRequestMetadata(None, None)
@@ -172,6 +216,13 @@ class WorkRequest:
             None if "requestStatusReason" not in obj else obj["requestStatusReason"],
             None if "modelJobId" not in obj else obj["modelJobId"],
             None if "lastUpdated" not in obj else obj["lastUpdated"],
+            None if "podReadyTimestamp" not in obj else obj["podReadyTimestamp"],
+            (
+                None
+                if "jobSubmissionTimestamp" not in obj
+                else obj["jobSubmissionTimestamp"]
+            ),
+            None if "processedTimestamp" not in obj else obj["processedTimestamp"],
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -179,13 +230,20 @@ class WorkRequest:
             "id": self.id,
             "modelId": self.model_id,
             "userId": self.user_id,
-            "requestPayload": self.request_payload.to_object(),
+            "requestPayload": (
+                None
+                if self.request_payload is None
+                else self.request_payload.to_object()
+            ),
             "requestDate": self.request_date,
             "metadata": self.metadata.to_object(),
             "requestStatus": str(self.request_status),
             "requestStatusReason": self.request_status_reason,
             "modelJobId": self.model_job_id,
             "lastUpdated": self.last_updated,
+            "podReadyTimestamp": self.pod_ready_timestamp,
+            "jobSubmissionTimestamp": self.job_submission_timestamp,
+            "processedTimestamp": self.processed_timestamp,
         }
 
 
@@ -210,26 +268,36 @@ class WorkRequestModel(BaseModel):
     id: int | None = None
     model_id: str
     user_id: str
-    request_payload: WorkRequestPayloadModel
+    request_payload: WorkRequestPayloadModel | None = None
     request_date: str | None = None
     request_status: WorkRequestStatus | None = None
     request_status_reason: str | None = None
     model_job_id: str | None = None
     last_updated: str | None = None
     result: WorkRequestResult | None = None
+    pod_ready_timestamp: str | None = None
+    job_submission_timestamp: str | None = None
+    processed_timestamp: str | None = None
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "modelId": self.model_id,
             "userId": self.user_id,
-            "requestPayload": self.request_payload.to_object(),
+            "requestPayload": (
+                None
+                if self.request_payload is None
+                else self.request_payload.to_object()
+            ),
             "requestDate": self.request_date,
             "requestStatus": str(self.request_status),
             "requestStatusReason": self.request_status_reason,
             "modelJobId": self.model_job_id,
             "lastUpdated": self.last_updated,
             "result": self.result,
+            "podReadyTimestamp": self.pod_ready_timestamp,
+            "jobSubmissionTimestamp": self.job_submission_timestamp,
+            "processedTimestamp": self.processed_timestamp,
         }
 
     @staticmethod
@@ -251,6 +319,9 @@ class WorkRequestModel(BaseModel):
             model_job_id=workrequest.model_job_id,
             last_updated=workrequest.last_updated,
             result=None,
+            pod_ready_timestamp=workrequest.pod_ready_timestamp,
+            job_submission_timestamp=workrequest.job_submission_timestamp,
+            processed_timestamp=workrequest.processed_timestamp,
         )
 
     def map_result_to_csv(self):
