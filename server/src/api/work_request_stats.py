@@ -54,7 +54,7 @@ def load_stats(
     return WorkRequestStatsListModel(items=stats)
 
 
-@router.get("filter-data")
+@router.get("/filter-data")
 def load_filter_data(
     api_request: Request,
 ) -> WorkRequestStatsFilterData:

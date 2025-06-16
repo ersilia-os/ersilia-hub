@@ -1,4 +1,22 @@
-TODO: header "Model Statistics"
+<div class="component-header">
+    Model Statistics
+</div>
+
+<div class="component-toolbar">
+    <div class="filters">
+        <div class="filter">
+            <mat-form-field>
+                <mat-label>Filter Models</mat-label>
+                <mat-select [(value)]="filters.model_ids">
+                    @for (modelId of filterData().model_ids; track modelId) {
+                    <mat-option [value]="modelId">{{ modelId }}</mat-option>
+                    }
+                </mat-select>
+            </mat-form-field>
+        </div>
+    </div>
+    <div class="actions"></div>
+</div>
 
 TODO: filters (modelid dropdown) (date from - calendar) (date to - calendar)
 

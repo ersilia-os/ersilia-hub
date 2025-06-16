@@ -349,5 +349,5 @@ class WorkRequestController(Thread):
 
     def load_stats_filter_data(self) -> WorkRequestStatsFilterData:
         return WorkRequestStatsFilterData(
-            list(map(lambda x: x.id, ModelController.instance().get_models()))
+            model_ids=list(map(lambda x: x.id, ModelController.instance().get_models()))
         )
