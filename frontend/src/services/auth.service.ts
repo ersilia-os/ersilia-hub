@@ -159,7 +159,7 @@ export class AuthService {
         }
 
         try {
-            this.userSession.set(JSON.parse(atob(session)));
+            this.userSession.set(mapUserSessionFromApi(JSON.parse(atob(session))));
             this.hasSession.set(true);
         } catch (e) {
             console.error("Failed to load session from cache");
@@ -190,7 +190,7 @@ export class AuthService {
             return
         } else {
             try {
-                this.user.set(JSON.parse(atob(user)));
+                this.user.set(mapUserFromApi(JSON.parse(atob(user))));
             } catch (e) {
                 console.error("Failed to load user from cache");
             }
@@ -299,9 +299,9 @@ export class AuthService {
         console.log(`session_start_time [${this.userSession()!.session_start_time}] = [${this.userSession()!.session_start_time.valueOf()}]`);
         console.log(`dateNow [${dateNow}] = [${dateNow.valueOf()}]`);
         console.log("session_max_age_seconds =", this.userSession()!.session_max_age_seconds);
-        console.log("check =", (this.userSession()!.session_start_time.valueOf() + this.userSession()!.session_max_age_seconds <= dateNow.valueOf()));
+        console.log("check =", (this.userSession()!.session_start_time.valueOf() + (this.userSession()!.session_max_age_seconds * 1000) <= dateNow.valueOf()));
 
-        if (this.userSession()!.session_start_time.valueOf() + this.userSession()!.session_max_age_seconds <= dateNow.valueOf()) {
+        if (this.userSession()!.session_start_time.valueOf() + (this.userSession()!.session_max_age_seconds * 1000) <= dateNow.valueOf()) {
             this.notificationService.pushNotification(Notification('INFO', 'User session has expired'));
             this.clearSession();
             return;
