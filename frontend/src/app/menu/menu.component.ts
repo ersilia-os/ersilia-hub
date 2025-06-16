@@ -1,7 +1,8 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
+import { Component, EventEmitter, inject, Input, OnInit, Output } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { AppPermissions } from "../../objects/auth";
+import { Router } from "@angular/router";
 
 
 @Component({
@@ -12,6 +13,7 @@ import { AppPermissions } from "../../objects/auth";
     styleUrl: './menu.component.scss'
 })
 export class MenuComponent implements OnInit {
+    private router = inject(Router);
 
     @Input() appPermissions: AppPermissions | undefined;
 
@@ -24,7 +26,7 @@ export class MenuComponent implements OnInit {
     }
 
     activateMenuItem(item: MenuItem) {
-        // TODO: navigate?
+        this.router.navigate([item.link]);
     }
 
     hideMenu() {
@@ -48,14 +50,14 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
     menu.push({
         text: 'Evaluations',
         icon: 'science',
-        link: '/'
+        link: ''
     });
 
     if (permissions.canViewStats) {
         menu.push({
             text: 'Stats',
             icon: 'analytics',
-            link: '/stats'
+            link: 'stats'
         });
     }
 

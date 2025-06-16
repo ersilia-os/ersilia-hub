@@ -24,13 +24,14 @@
   
 * NO ROLLUP, for now
 
-[ ] add permissions cached on frontend
+[x] add permissions cached on frontend
 
-[ ] sidebar
-  [ ] permissions check ('ADMIN')
-  [ ] add sidebar / menu button
-  [ ] global sidebar service
-  [ ] add html directly to app component
+[x] sidebar
+  [x] permissions check ('ADMIN')
+  [x] add sidebar / menu button
+  [x] add html directly to app component
+
+[x] router for new components, e.g. stats (or is there a newer approach)
 
 [ ] stats frontend
   [ ] simple table
@@ -45,6 +46,11 @@
 [ ] need to add loader on requests load, maybe a global loader ?
 [ ] make email required during signup
 [ ] user session refresh bug, showing "Session expired" and clearing user name 
+  Angular is running in development mode.
+  auth.service.ts:37 no session, no refresh
+  auth.service.ts:295 session_start_time = 1750048724742
+  auth.service.ts:296 session_max_age_seconds = 300
+  auth.service.ts:297 check = true
 
 [ ] release
 

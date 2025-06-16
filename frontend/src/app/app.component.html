@@ -50,7 +50,7 @@
     <app-menu [appPermissions]="appPermissions()" (exit)="toggleMenu()"></app-menu>
     }
 
-    <app-requests-list></app-requests-list>
+    <router-outlet />
   </div>
 </div>
 } @else {
