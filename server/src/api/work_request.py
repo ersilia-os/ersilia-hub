@@ -1,5 +1,5 @@
 from sys import exc_info
-from typing import Annotated, List
+from typing import Annotated
 
 from controllers.work_request import WorkRequestController
 from objects.work_request import (
@@ -22,6 +22,9 @@ from controllers.s3_integration import S3IntegrationController
 from library.api_utils import api_handler
 from objects.api import AuthType
 from python_framework.logger import ContextLogger, LogLevel
+
+from objects.rbac import Permission
+from controllers.auth import AuthController
 
 
 ###############################################################################
@@ -84,14 +87,15 @@ def update_request(
     update: WorkRequestUpdateModel,
     api_request: Request,
 ) -> WorkRequestModel:
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     if update is None:
         raise HTTPException(status_code=400, detail="Missing request body")
 
     update.id = request_id
     update_work_request = update.to_work_request()
-    update_work_request.metadata.session_id = auth_details.user_session.session_id
 
     persisted_request = WorkRequestController.instance().update_request(
         update_work_request,
@@ -113,10 +117,14 @@ def load_requests(
     api_request: Request,
 ) -> WorkRequestListModel:
     auth_details, tracking_details = api_handler(api_request)
+    is_admin = AuthController.instance().user_has_permission(
+        auth_details.user_session.userid, [Permission.ADMIN]
+    )
 
     filters_dict = filters.to_object()
 
-    filters_dict["user_id"] = auth_details.user_session.userid
+    if not is_admin:
+        filters_dict["user_id"] = auth_details.user_session.userid
 
     if auth_details.auth_type == AuthType.ErsiliaAnonymous:
         filters_dict["session_id"] = auth_details.user_session.session_id
@@ -141,10 +149,14 @@ def load_workrequest(
     api_request: Request,
 ) -> WorkRequestModel:
     auth_details, tracking_details = api_handler(api_request)
+    is_admin = AuthController.instance().user_has_permission(
+        auth_details.user_session.userid, [Permission.ADMIN]
+    )
 
     filters_dict = {"id": id}
 
-    filters_dict["user_id"] = auth_details.user_session.userid
+    if not is_admin:
+        filters_dict["user_id"] = auth_details.user_session.userid
 
     if auth_details.auth_type == AuthType.ErsiliaAnonymous:
         filters_dict["session_id"] = auth_details.user_session.session_id
@@ -169,8 +181,9 @@ def load_workrequest(
                 request.map_result_to_csv()
         except:
             ContextLogger.sys_log(
-                LogLevel.ERROR, "Failed to download work request result from S3, error = [%s]"
-                % repr(exc_info())
+                LogLevel.ERROR,
+                "Failed to download work request result from S3, error = [%s]"
+                % repr(exc_info()),
             )
             raise HTTPException(
                 status_code=500,

@@ -10,6 +10,7 @@ from objects.user import User, UserModel, UserSession, UserSignUpModel
 from python_framework.logger import ContextLogger, LogLevel
 
 from objects.api import AuthType, EncodedAuthModel, LoginResponseModel
+from objects.rbac import UserPermission
 
 
 ###############################################################################
@@ -211,9 +212,7 @@ def logout(
 
 
 @router.post("/session/refresh")
-def refresh_session(
-    api_request: Request,
-):
+def refresh_session(api_request: Request):
     auth_details, tracking_details = api_handler(api_request)
 
     updated_session: UserSession = None
@@ -232,3 +231,25 @@ def refresh_session(
         raise HTTPException(500, detail="Failed to refresh session")
 
     return updated_session.to_model()
+
+
+@router.get("/permissions")
+def load_user_permissions(api_request: Request):
+    auth_details, tracking_details = api_handler(api_request)
+
+    permissions: UserPermission = None
+
+    try:
+        permissions = AuthController.instance().get_user_permissions(
+            auth_details.user_session.userid
+        )
+    except:
+        ContextLogger.sys_log(
+            LogLevel.ERROR,
+            f"Failed to get user permissions for userid = [{auth_details.user_session.userid}], error = [{repr(exc_info())}]",
+        )
+
+    if permissions is None:
+        raise HTTPException(404, detail="User Permissions not found")
+
+    return permissions.to_model()

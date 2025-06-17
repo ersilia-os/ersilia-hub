@@ -1,6 +1,5 @@
 from sys import stdout
 import traceback
-from typing import Any, Dict
 
 from controllers.model import ModelController
 from fastapi import APIRouter, HTTPException, Request
@@ -9,6 +8,7 @@ from library.fastapi_root import FastAPIRoot
 from objects.model import ModelApiModel, ModelScalingInfoModel, ModelUpdateApiModel
 
 from library.api_utils import api_handler
+from objects.rbac import Permission
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -65,7 +65,9 @@ def load_model_scaling_info(
     model_id: str,
     api_request: Request,
 ):
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     scaling_info = ModelController.instance().get_model_scaling_info(model_id)
 
@@ -82,7 +84,9 @@ def create_model(
     model: ModelApiModel,
     api_request: Request,
 ) -> ModelApiModel:
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     if model is None:
         raise HTTPException(status_code=400, detail="Missing request body")
@@ -113,7 +117,9 @@ def update_model(
     model_update: ModelUpdateApiModel,
     api_request: Request,
 ) -> ModelApiModel:
-    auth_details, tracking_details = api_handler(api_request)
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
 
     if model_update is None:
         raise HTTPException(status_code=400, detail="Missing request body")

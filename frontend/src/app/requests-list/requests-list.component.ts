@@ -12,6 +12,7 @@ import { RequestsCreateComponent } from '../request-create/request-create.compon
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
 import { mapRequest, RequestDisplay } from '../../objects/request-view';
 import { RequestViewComponent } from '../request-view/request-view.component';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-requests-list',
@@ -29,6 +30,8 @@ export class RequestsListComponent implements OnDestroy {
   };
 
   readonly dialog = inject(MatDialog);
+  private authService = inject(AuthService);
+  private userId: Signal<string | undefined>;
 
   requests: Signal<RequestDisplay[]>;
   loading: Signal<boolean>;
@@ -43,13 +46,18 @@ export class RequestsListComponent implements OnDestroy {
   };
 
   constructor() {
+    this.userId = this.authService.computeUserSessionSignal(userSession => userSession == null ? undefined : userSession.userid);
+
     this.loading = this.requestService.computeRequestsLoadingSignal<boolean>(
       _loading => this.requests == null || (this.requests().length == 0 && _loading)
     );
+
     this.requests = this.requestService.computeRequestsSignal<RequestDisplay[]>(
       requests => requests.map(mapRequest)
     );
-    this.refreshTimer$ = timer(0, 3000).subscribe(_ => {
+
+    this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
+      this.requestFilters.user_id = this.userId();
       this.requestService.loadRequests(this.requestFilters);
     });
   }
