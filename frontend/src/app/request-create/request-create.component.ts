@@ -59,7 +59,7 @@ export class RequestsCreateComponent implements OnInit {
     submissionResult: RequestSubmissionResult | undefined;
 
     constructor() {
-        this.models = this.modelsService.getModelsSignal();
+        this.models = this.modelsService.computeModelsSignal(models => models.filter(m => m.enabled));
         this.modelsLoading = this.modelsService.computeModelsLoadingSignal(_loading => {
             return this.models == null || _loading
         });
