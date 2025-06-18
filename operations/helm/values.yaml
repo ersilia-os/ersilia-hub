@@ -10,7 +10,7 @@ secret:
   serverPasswordSalt: ""
 
 server:
-  version: 0.0.5
+  version: 0.0.8
   replicas: 1
 
   env:
@@ -22,11 +22,12 @@ server:
     logLevelScalingWorker: INFO
     logLevelWorkRequestController: INFO
     logLevelWorkRequestWorker: INFO
+    logLevelJobSubmissionTask: INFO
     logLevelS3IntegrationController: INFO
     logLevelAuthController: INFO
 
 frontend:
-  version: 0.0.4
+  version: 0.0.6
   replicas: 1
 
 aws:
