@@ -1,3 +1,5 @@
+from math import floor
+from random import shuffle
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
@@ -16,7 +18,17 @@ from python_framework.config_utils import load_environment_variable
 
 from config.application_config import ApplicationConfig
 from db.daos.work_request import WorkRequestDAO, WorkRequestQuery, WorkRequestRecord
-from python_framework.time import utc_now
+from python_framework.time import utc_now, now_delta
+
+from db.daos.work_request_stats import (
+    WorkRequestStatsDAO,
+    WorkRequestStatsQuery,
+    WorkRequestStatsRecord,
+)
+from objects.work_request_stats import (
+    WorkRequestStatsFilterData,
+    WorkRequestStatsModel,
+)
 
 
 class WorkRequestControllerKillInstance(KillInstance):
@@ -27,7 +39,7 @@ class WorkRequestControllerKillInstance(KillInstance):
 class WorkRequestController(Thread):
 
     WORKER_LOADBALANCE_WAIT_TIME = 20
-    NUM_WORKERS = 1
+    NUM_WORKERS = 4
 
     _instance: "WorkRequestController" = None
 
@@ -241,11 +253,29 @@ class WorkRequestController(Thread):
             return
 
         models = ModelController.instance().get_models()
+        active_model_ids: List[str] = list(
+            map(lambda m: m.id, filter(lambda fm: fm.enabled, models))
+        )
+        shuffle(active_model_ids)
+        models_per_worker: List[List[str]] = []
 
-        worker = WorkRequestWorker(self)
-        worker.update_model_ids(list(map(lambda m: m.id, models)))
-        worker.start()
-        self._workers.append(worker)
+        for x in range(len(active_model_ids)):
+            worker_index = x % WorkRequestController.NUM_WORKERS
+
+            if len(models_per_worker) < worker_index + 1:
+                models_per_worker.append([])
+
+            models_per_worker[worker_index].append(active_model_ids[x])
+
+        workers: List[WorkRequestWorker] = []
+
+        for worker_models in models_per_worker:
+            worker = WorkRequestWorker(self)
+            worker.update_model_ids(worker_models)
+            worker.start()
+            workers.append(worker)
+
+        self._workers = ThreadSafeList(workers)
 
     def _stop_workers(self):
         for worker in self._workers:
@@ -292,3 +322,52 @@ class WorkRequestController(Thread):
             raise Exception("Failed to update WorkRequest [%s]" % work_request.id)
 
         return updated_work_request
+
+    def load_stats(
+        self,
+        model_ids: List[str] = None,
+        user_id: str = None,
+        session_id: str = None,
+        request_date_from: str = None,
+        request_date_to: str = None,
+        request_statuses: List[str] = None,
+    ) -> List[WorkRequestStatsModel]:
+        try:
+            _request_date_from = (
+                request_date_from
+                if request_date_from is not None
+                else now_delta("-21d")
+            )
+
+            results: List[WorkRequestStatsRecord] = WorkRequestStatsDAO.execute_query(
+                WorkRequestStatsQuery.FILTERED_STATS,
+                ApplicationConfig.instance().database_config,
+                query_kwargs={
+                    "model_ids": model_ids,
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "request_date_from": _request_date_from,
+                    "request_date_to": request_date_to,
+                    "request_statuses": request_statuses,
+                },
+            )
+
+            if results is None or len(results) == 0:
+                return []
+
+            return list(
+                map(lambda x: WorkRequestStatsModel.init_from_record(x), results)
+            )
+        except:
+            error_str = "Failed to load WorkRequestStats, error = [%s]" % (
+                repr(exc_info()),
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+        return []
+
+    def load_stats_filter_data(self) -> WorkRequestStatsFilterData:
+        return WorkRequestStatsFilterData(
+            model_ids=list(map(lambda x: x.id, ModelController.instance().get_models()))
+        )

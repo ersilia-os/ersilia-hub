@@ -97,7 +97,9 @@ def anon_login(
         raise HTTPException(500, detail="Failed to start anonymous session")
 
     return LoginResponseModel(
-        session=user_session.to_model(), user=UserModel.from_object(user)
+        session=user_session.to_model(),
+        user=UserModel.from_object(user),
+        permissions=[],
     )
 
 
@@ -173,8 +175,16 @@ def login(
     if user_session is None:
         raise HTTPException(500, detail="Failed to login")
 
+    user_permissions = AuthController.instance().get_user_permissions(existing_user.id)
+    user_permissions_str = []
+
+    if user_permissions is not None:
+        user_permissions_str = list(map(str, user_permissions.permissions))
+
     return LoginResponseModel(
-        session=user_session.to_model(), user=UserModel.from_object(existing_user)
+        session=user_session.to_model(),
+        user=UserModel.from_object(existing_user),
+        permissions=user_permissions_str,
     )
 
 

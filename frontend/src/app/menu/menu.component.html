@@ -1,0 +1,12 @@
+<div class="backdrop" (click)="hideMenu()"></div>
+
+<div class="menu-container">
+    @for (item of menu; track item.text) {
+    <div class="menu-item" (click)="activateMenuItem(item)">
+        <div class="menu-icon">
+            <mat-icon>{{ item.icon }}</mat-icon>
+        </div>
+        <div class="menu-text">{{ item.text }}</div>
+    </div>
+    }
+</div>

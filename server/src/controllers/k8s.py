@@ -151,6 +151,9 @@ class K8sController(Thread):
             .copy()
             .transform_for_model(model_id, size_megabytes, disable_memory_limit)
         )
+        ContextLogger.trace(
+            self._logger_key, "pod template [%s]" % template.to_object()
+        )
         _pod = template.to_pod()
 
         if annotations is not None:

@@ -64,6 +64,8 @@ spec:
               value: {{ .Values.server.env.logLevelWorkRequestController }}
             - name: LOG_LEVEL_WorkRequestWorker
               value: {{ .Values.server.env.logLevelWorkRequestWorker }}
+            - name: LOG_LEVEL_JobSubmissionTask
+              value: {{ .Values.server.env.logLevelJobSubmissionTask }}
             - name: LOG_LEVEL_S3IntegrationController
               value: {{ .Values.server.env.logLevelS3IntegrationController }}
             - name: LOG_LEVEL_AuthController

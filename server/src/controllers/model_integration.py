@@ -6,6 +6,7 @@ from time import sleep, time
 from requests import get, post
 from objects.model_integration import (
     JobResult,
+    JobStatus,
     JobStatusResponse,
     JobSubmissionRequest,
     JobSubmissionResponse,
@@ -223,6 +224,84 @@ class ModelIntegrationController:
             traceback.print_exc(file=stdout)
 
             raise Exception(error_str)
+
+    def submit_job_sync(
+        self, model_id: str, request_id: str, host: str, entries: List[str]
+    ) -> Tuple[JobStatus, str, JobResult]:
+        ContextLogger.debug(
+            self._logger_key,
+            "Submitting SYNC job using host = [%s]..." % host,
+        )
+
+        if not self.wait_for_model_readiness(model_id, request_id, host):
+            error_str = "model failed readiness - model [%s], request_id [%s]" % (
+                model_id,
+                request_id,
+            )
+            ContextLogger.error(self._logger_key, error_str)
+
+            raise Exception(error_str)
+
+        _host, _port = self._proxied_host_and_port(
+            model_id, request_id, host, self._model_port
+        )
+
+        try:
+            _url = f"http://{_host}:{_port}/run"
+            _request = JobSubmissionRequest(
+                entries,
+                {
+                    "orient": "records",
+                    "min_workers": 1,
+                    "max_workers": 12,
+                    "fetch_cache": True,
+                    "save_cache": True,
+                    "cache_only": False,
+                },
+            )
+            _json = _request.body
+            _params = _request.params
+
+            ContextLogger.trace(
+                self._logger_key,
+                "submitting SYNC job to [%s], body [%s], params [%s]"
+                % (_url, _json, _params),
+            )
+
+            response = post(
+                url=_url,
+                json=_json,
+                params=_params,
+                timeout=1200,  # 20min timeout
+            )
+            response.raise_for_status()
+
+            ContextLogger.debug(
+                ModelIntegrationController.instance()._logger_key,
+                "SYNC Job successfully completed for host = [%s]" % _host,
+            )
+
+            return (
+                JobStatus.COMPLETED,
+                "Job completed",
+                response.json(),
+            )
+        except:
+            error_str = "Failed to submit job for host = [%s], error = [%s]" % (
+                _host,
+                repr(exc_info()),
+            )
+            ContextLogger.error(
+                ModelIntegrationController.instance()._logger_key,
+                error_str,
+            )
+            traceback.print_exc(file=stdout)
+
+            return (
+                JobStatus.FAILED,
+                "Job submission failed, error = [%s]" % repr(exc_info()),
+                None,
+            )
 
     def get_job_status(
         self, model_id: str, request_id: str, host: str, job_id: str

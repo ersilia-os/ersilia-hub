@@ -2,18 +2,22 @@ import { Component, inject, OnInit, signal, Signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { RequestsListComponent } from './requests-list/requests-list.component';
 import { NotificationsComponent } from './notifications/notifications.component';
-import { AuthService } from '../services/auth.service';
+import { AuthService, hasPermission } from '../services/auth.service';
 import { LoginComponent } from './login/login.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { AuthType, User } from '../objects/auth';
+import { AppPermissions, AuthType, EmptyPermissions, User } from '../objects/auth';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { NotificationsService, Notification } from './notifications/notifications.service';
+import { MenuComponent } from './menu/menu.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RequestsListComponent, NotificationsComponent, LoginComponent, MatIconModule, MatMenuModule],
+  imports: [
+    RouterOutlet, RequestsListComponent,
+    NotificationsComponent, LoginComponent,
+    MatIconModule, MatMenuModule, MenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -26,6 +30,9 @@ export class AppComponent implements OnInit {
 
   sessionDetails: Signal<SessionDetails>;
   user: Signal<User | undefined>;
+  appPermissions: Signal<AppPermissions> = signal(EmptyPermissions());
+
+  menuExpanded: boolean = false;
 
   constructor() {
     this.sessionDetails = this.authService.computeUserSessionSignal(session => {
@@ -36,6 +43,14 @@ export class AppComponent implements OnInit {
       };
     })
     this.user = this.authService.getUserSignal();
+    this.appPermissions = this.authService.computePermissionsSignal(p => {
+      return {
+        canViewMenu: hasPermission(p, ["ADMIN"]),
+        canViewStats: hasPermission(p, ["ADMIN"]),
+        canManageRequests: hasPermission(p, ["ADMIN"]),
+        canManageInstances: hasPermission(p, ["ADMIN"])
+      }
+    });
   }
 
   ngOnInit() {
@@ -56,6 +71,10 @@ export class AppComponent implements OnInit {
     } else {
       this.notificationsService.pushNotification(Notification('WARN', 'Failed to copy Session Id'))
     }
+  }
+
+  toggleMenu() {
+    this.menuExpanded = !this.menuExpanded;
   }
 }
 
