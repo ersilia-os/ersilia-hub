@@ -53,13 +53,13 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
         link: ''
     });
 
-    if (permissions.canViewStats) {
-        menu.push({
-            text: 'Stats',
-            icon: 'analytics',
-            link: 'stats'
-        });
-    }
+    // if (permissions.canViewStats) {
+    //     menu.push({
+    //         text: 'Stats',
+    //         icon: 'analytics',
+    //         link: 'stats'
+    //     });
+    // }
 
     return menu;
 }

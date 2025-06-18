@@ -1,3 +1,29 @@
+[x] Ensure multiple of same model executable at once (check requestworker)
+[x] Change pullpolicy to IfNotPresent
+[x] Add 16GB and 32GB to node selectors
+[x] Add additional node groups (in aws-utils)
+  * 16GB
+  * 32GB
+  * change existing to 8GB
+  * ensure spot pricing (might have to manually update anyway)
+
+[x] Add new models locally WITH LIMITS ENABLED
+  [x] check model info, add 400MB buffer to each "expected" model size
+[x] Test new models locally (with multiple workers)
+
+[ ] sync execution support
+  [ ] Add execution_mode to model details (SYNC or ASYNC)
+  [ ] Add sync processing to ModelIntegration controller
+    [ ] check if the api for /run is the same
+    [ ] add functions to execute the /run and wait (long timeout !!, 20min , hardcoded)
+  [ ] in JobSubmissionTask, check model execution_mode and call either sync or async
+  [ ] handle work request updating in JobSubmissionTask for SYNC process
+    [ ] wait for response
+    [ ] apply same logic for handle_job_completion -> complete / fail
+
+[ ] Deploy
+
+---
 
 
 [x] add queries for stats

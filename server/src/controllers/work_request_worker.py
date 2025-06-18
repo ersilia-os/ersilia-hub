@@ -3,8 +3,9 @@ from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep, time
 import traceback
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Tuple, Union
 from python_framework.thread_safe_list import ThreadSafeList
+from python_framework.thread_safe_cache import ThreadSafeCache
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 from string import ascii_lowercase
@@ -64,10 +65,221 @@ class WorkRequestControllerStub:
         pass
 
 
+class JobSubmissionTask(Thread):
+
+    _logger_key: str
+    _kill_event: Event
+
+    _controller: WorkRequestControllerStub
+
+    work_request: WorkRequest
+    pod: K8sPod
+    retry_count: int
+    id: str
+
+    _pod_ready_timeout: int
+
+    def __init__(
+        self,
+        controller: WorkRequestControllerStub,
+        work_request: WorkRequest,
+        pod: K8sPod,
+        retry_count: int = 1,
+    ):
+        Thread.__init__(self)
+
+        self._controller = controller
+        self.work_request = work_request
+        self.pod = pod
+        self.retry_count = retry_count
+        self.id = JobSubmissionTask.infer_id(work_request)
+
+        self._logger_key = "JobSubmissionTask[%s]" % self.id
+        self._kill_event = Event()
+
+        self._pod_ready_timeout = int(
+            load_environment_variable(
+                "WORK_REQUEST_WORKER_POD_READY_TIMEOUT",
+                default=WorkRequestWorker.DEFAULT_POD_READY_TIMEOUT,
+            )
+        )
+
+        ContextLogger.instance().create_logger_for_context(
+            self._logger_key,
+            LogLevel.from_string(
+                load_environment_variable(
+                    "LOG_LEVEL_JobSubmissionTask", default=LogLevel.INFO.name
+                )
+            ),
+        )
+
+    @staticmethod
+    def infer_id(work_request: WorkRequest) -> str:
+        return f"{work_request.model_id}_{work_request.id}"
+
+    def _wait_or_kill(self, timeout: float) -> bool:
+        return self._kill_event.wait(timeout)
+
+    def kill(self):
+        self._kill_event.set()
+
+    def _wait_for_pod(self) -> Tuple[WorkRequest, K8sPod]:
+        ContextLogger.debug(
+            self._logger_key,
+            "Waiting for pod [%s] to be ready for workrequest [%d]..."
+            % (self.pod.name, self.work_request.id),
+        )
+
+        start_time = time()
+        _pod = self.pod
+
+        # wait for the model to become available
+        while not _pod.state.ready:
+            current_time = time()
+
+            if current_time - start_time > self._pod_ready_timeout:
+                ModelInstanceLogController.instance().log_instance(
+                    log_event=ModelInstanceLogEvent.INSTANCE_READINESS_FAILED,
+                    k8s_pod=_pod,
+                )
+
+                raise Exception(
+                    "Instance [%s] took longer than [%d]s to start - workrequest [%d]"
+                    % (_pod.name, self._pod_ready_timeout, self.work_request.id)
+                )
+
+            sleep(8)
+
+            _pod = K8sController.instance().get_pod(_pod.name)
+
+        ContextLogger.debug(
+            self._logger_key,
+            "pod [%s] is ready for workrequest [%d]..."
+            % (self.pod.name, self.work_request.id),
+        )
+
+        ModelInstanceLogController.instance().log_instance(
+            log_event=ModelInstanceLogEvent.INSTANCE_READY,
+            k8s_pod=_pod,
+        )
+
+        updated_work_request: WorkRequest = self.work_request.copy()
+
+        try:
+            updated_work_request.pod_ready_timestamp = utc_now()
+            _updated_work_request = self._controller.update_request(
+                updated_work_request, retry_count=1
+            )
+
+            if _updated_work_request is None:
+                raise Exception("Update returned null")
+
+            return _updated_work_request, _pod
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to persist podreadytimestamp for workrequest id = [%s], error = [%s]"
+                % (updated_work_request.id, repr(exc_info())),
+            )
+
+        return updated_work_request, _pod
+
+    def _submit_job(self) -> WorkRequest:
+        ContextLogger.debug(
+            self._logger_key,
+            "Submitting job to model [%s] for workrequest [%d]..."
+            % (self.work_request.model_id, self.work_request.id),
+        )
+
+        attempt_count = 0
+        job_id = None
+
+        while attempt_count <= self.retry_count:
+            try:
+                job_submission_response = (
+                    ModelIntegrationController.instance().submit_job(
+                        self.work_request.model_id,
+                        str(self.work_request.id),
+                        self.pod.ip,
+                        self.work_request.request_payload.entries,
+                    )
+                )
+                job_id = job_submission_response.job_id
+
+                break
+            except:
+                error_str = (
+                    "Failed to submit job for instance [%s], workrequest [%d], error [%s]"
+                    % (self.pod.name, self.work_request.id, repr(exc_info()))
+                )
+
+                if attempt_count < self.retry_count:
+                    ContextLogger.warn(self._logger_key, error_str)
+                else:
+                    raise Exception(error_str)
+
+            attempt_count += 1
+
+        if job_id is None:
+            raise Exception(
+                "Failed to submit job for instance [%s], workrequest [%d] after [%d] attempts"
+                % (self.pod.name, self.work_request.id, attempt_count)
+            )
+
+        updated_work_request: WorkRequest = self.work_request.copy()
+        updated_work_request.request_status = WorkRequestStatus.PROCESSING
+        updated_work_request.model_job_id = job_id
+        updated_work_request.request_status_reason = "JOB SUBMITTED"
+        updated_work_request.job_submission_timestamp = utc_now()
+        updated_work_request = self._controller.update_request(
+            updated_work_request, retry_count=1
+        )
+
+        if updated_work_request is None:
+            raise Exception(
+                "Failed to update workrequest [%d] with new job_id"
+                % self.work_request.id
+            )
+
+        ModelInstanceLogController.instance().log_instance(
+            log_event=ModelInstanceLogEvent.INSTANCE_JOB_SUBMITTED,
+            k8s_pod=self.pod,
+        )
+
+        return updated_work_request
+
+    def run(self):
+        try:
+            updated_work_request, updated_pod = self._wait_for_pod()
+            self.work_request = (
+                updated_work_request
+                if updated_work_request is not None
+                else self.work_request
+            )
+            self.pod = updated_pod if updated_pod is not None else self.pod
+
+            updated_work_request = self._submit_job()
+            self.work_request = (
+                updated_work_request
+                if updated_work_request is not None
+                else self.work_request
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Job submision failed for workrequest [%d] on pod [%s], error = [%s]"
+                % (self.work_request.id, self.pod.name, repr(exc_info())),
+            )
+            traceback.print_exc(file=stdout)
+
+        # NOTE: this is a bit dodge and we should update the ContextLogger to remove loggers
+        del ContextLogger.instance().context_logger_map[self._logger_key]
+
+
 class WorkRequestWorker(Thread):
 
     DEFAULT_PROCESSING_WAIT_TIME = 10
-    DEFAULT_POD_READY_TIMEOUT = 300
+    DEFAULT_POD_READY_TIMEOUT = 600
 
     _logger_key: str = None
     _kill_event: Event
@@ -79,13 +291,15 @@ class WorkRequestWorker(Thread):
     _pod_ready_timeout: int
     _processing_wait_time: int
 
+    _job_submission_tasks: ThreadSafeCache[str, JobSubmissionTask]
+
     def __init__(self, controller: WorkRequestControllerStub):
         Thread.__init__(self)
 
         self._controller = controller
 
         self.id = "".join(choices(ascii_lowercase, k=6))
-        self.model_ids = ThreadSafeList
+        self.model_ids = ThreadSafeList()
 
         self._logger_key = "WorkRequestWorker[%s]" % self.id
         self._kill_event = Event()
@@ -101,6 +315,7 @@ class WorkRequestWorker(Thread):
                 default=WorkRequestWorker.DEFAULT_PROCESSING_WAIT_TIME,
             )
         )
+        self._job_submission_tasks = ThreadSafeCache()
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -119,6 +334,19 @@ class WorkRequestWorker(Thread):
 
     def update_model_ids(self, model_ids: List[str]):
         self.model_ids = ThreadSafeList(model_ids)
+
+    def has_job_submission_task(self, work_request: WorkRequest) -> bool:
+        return JobSubmissionTask.infer_id(work_request) in self._job_submission_tasks
+
+    def get_job_submission_task(
+        self, work_request: WorkRequest
+    ) -> JobSubmissionTask | None:
+        id = JobSubmissionTask.infer_id(work_request)
+
+        if id not in self._job_submission_tasks:
+            return None
+
+        return self._job_submission_tasks[id]
 
     def _upload_result_to_s3(self, work_request: WorkRequest, result: JobResult):
         result_obj = S3ResultObject(
@@ -176,7 +404,23 @@ class WorkRequestWorker(Thread):
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%d]" % work_request.id)
 
-    def _handle_processing_work_request(self, work_request: WorkRequest, pod: K8sPod):
+    def _handle_processing_work_request(
+        self, work_request: WorkRequest, pod: K8sPod
+    ) -> WorkRequest:
+        if self.has_job_submission_task(work_request):
+            task = self._job_submission_tasks[JobSubmissionTask.infer_id(work_request)]
+
+            if task.is_alive():
+                ContextLogger.debug(
+                    self._logger_key,
+                    "JobSubmissionTask still in progress for workrequest [%d], ignoring PROCESSING state"
+                    % work_request.id,
+                )
+                return work_request
+
+            # clear task
+            del self._job_submission_tasks[task.id]
+
         try:
             status_response = ModelIntegrationController.instance().get_job_status(
                 work_request.model_id,
@@ -190,7 +434,13 @@ class WorkRequestWorker(Thread):
             if status_response.status == JobStatus.COMPLETED:
                 updated_work_request = self._process_completed_job(work_request, pod)
             elif status_response.status == JobStatus.FAILED:
-                updated_work_request = self._process_failed_job(work_request, pod)
+                updated_work_request = self._process_failed_job(work_request)
+            else:
+                ContextLogger.debug(
+                    self._logger_key,
+                    "Job still processing for workrequest [%d]" % work_request.id,
+                )
+                return work_request
 
             try:
                 if (
@@ -287,7 +537,14 @@ class WorkRequestWorker(Thread):
                     work_request.model_job_id is None
                     or len(work_request.model_job_id) == 0
                 ):
-                    if potentially_new_workload:
+                    if self.has_job_submission_task(work_request):
+                        ContextLogger.debug(
+                            self._logger_key,
+                            "Active JobSubmissionTask found for workrequest [%d], skipping"
+                            % work_request.id,
+                        )
+                        continue
+                    elif potentially_new_workload:
                         # might still be submitting the job
                         ContextLogger.warn(
                             self._logger_key,
@@ -386,98 +643,22 @@ class WorkRequestWorker(Thread):
             "Submitting job to model [%s] for workrequest [%d]..."
             % (work_request.model_id, work_request.id),
         )
-        start_time = time()
 
-        _pod = pod
-
-        # wait for the model to become available
-        while not _pod.state.ready:
-            current_time = time()
-
-            if current_time - start_time > self._pod_ready_timeout:
-                ModelInstanceLogController.instance().log_instance(
-                    log_event=ModelInstanceLogEvent.INSTANCE_READINESS_CHECKED,
-                    k8s_pod=_pod,
-                )
-
-                raise Exception(
-                    "Instance [%s] took longer than [%d]s to start - workrequest [%d]"
-                    % (_pod.name, self._pod_ready_timeout, work_request.id)
-                )
-
-            sleep(5)
-
-            _pod = K8sController.instance().get_pod(_pod.name)
-
-        updated_work_request: WorkRequest = work_request.copy()
-
-        try:
-            updated_work_request.pod_ready_timestamp = utc_now()
-            _updated_work_request = self._controller.update_request(
-                updated_work_request, retry_count=1
-            )
-
-            if _updated_work_request is None:
-                raise Exception("Update returned null")
-
-            updated_work_request = _updated_work_request
-        except:
-            ContextLogger.warn(
+        if self.has_job_submission_task(work_request):
+            ContextLogger.debug(
                 self._logger_key,
-                "Failed to persist podreadytimestamp for workrequest id = [%s], error = [%s]"
-                % (updated_work_request.id, repr(exc_info())),
+                "Existing JobSubmissionTask for workrequest [%d], skipping."
+                % work_request.id,
             )
+            return work_request
 
-        attempt_count = 0
-        job_id = None
-
-        while attempt_count <= retry_count:
-            try:
-                job_submission_response = (
-                    ModelIntegrationController.instance().submit_job(
-                        updated_work_request.model_id,
-                        str(updated_work_request.id),
-                        _pod.ip,
-                        updated_work_request.request_payload.entries,
-                    )
-                )
-                job_id = job_submission_response.job_id
-
-                break
-            except:
-                error_str = (
-                    "Failed to submit job for instance [%s], workrequest [%d], error [%s]"
-                    % (_pod.name, work_request.id, repr(exc_info()))
-                )
-
-                if attempt_count < retry_count:
-                    ContextLogger.warn(self._logger_key, error_str)
-                else:
-                    raise Exception(error_str)
-
-            attempt_count += 1
-
-        if job_id is None:
-            raise Exception(
-                "Failed to submit job for instance [%s], workrequest [%d] after [%d] attempts"
-                % (_pod.name, updated_work_request.id, attempt_count)
-            )
-
-        updated_work_request.request_status = WorkRequestStatus.PROCESSING
-        updated_work_request.model_job_id = job_id
-        updated_work_request.request_status_reason = "JOB SUBMITTED"
-        updated_work_request.job_submission_timestamp = utc_now()
-        updated_work_request = self._controller.update_request(
-            updated_work_request, retry_count=1
+        task = JobSubmissionTask(
+            self._controller, work_request.copy(), pod, retry_count
         )
+        self._job_submission_tasks[task.id] = task
+        task.start()
 
-        if updated_work_request is None:
-            raise Exception(
-                "Failed to update workrequest [%d] with new job_id"
-                % updated_work_request.id
-            )
-
-        return updated_work_request
+        return work_request
 
     def _handle_queued_requests(self, work_requests: List[WorkRequest]):
         ContextLogger.debug(self._logger_key, "Handling [QUEUED] requests...")

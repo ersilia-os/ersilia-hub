@@ -40,7 +40,7 @@ export MODEL_S3_DATA_PATH="model-data"
 export MODEL_INTEGRATION_PORT="80"
 export MODEL_INTEGRATION_MOCK_SUCCESS_ID="eos3nn9"
 export MODEL_INTEGRATION_MOCK_FAIL_ID="eos4e40"
-export MODEL_INTEGRATION_PROXY_IDS="eos5axz,eos7d58"
+export MODEL_INTEGRATION_PROXY_IDS="eos5axz,eos7d58,eos42ez,eos3804,eos2db3,eos18ie,eos5dti,eos7m30,eos37l0,eos2m0f"
 
 export AWS_PROFILE="h3d"
 

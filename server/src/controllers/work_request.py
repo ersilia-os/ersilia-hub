@@ -1,3 +1,5 @@
+from math import floor
+from random import shuffle
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
@@ -37,7 +39,7 @@ class WorkRequestControllerKillInstance(KillInstance):
 class WorkRequestController(Thread):
 
     WORKER_LOADBALANCE_WAIT_TIME = 20
-    NUM_WORKERS = 1
+    NUM_WORKERS = 4
 
     _instance: "WorkRequestController" = None
 
@@ -251,11 +253,29 @@ class WorkRequestController(Thread):
             return
 
         models = ModelController.instance().get_models()
+        active_model_ids: List[str] = list(
+            map(lambda m: m.id, filter(lambda fm: fm.enabled, models))
+        )
+        shuffle(active_model_ids)
+        models_per_worker: List[List[str]] = []
 
-        worker = WorkRequestWorker(self)
-        worker.update_model_ids(list(map(lambda m: m.id, models)))
-        worker.start()
-        self._workers.append(worker)
+        for x in range(len(active_model_ids)):
+            worker_index = x % WorkRequestController.NUM_WORKERS
+
+            if len(models_per_worker) < worker_index + 1:
+                models_per_worker.append([])
+
+            models_per_worker[worker_index].append(active_model_ids[x])
+
+        workers: List[WorkRequestWorker] = []
+
+        for worker_models in models_per_worker:
+            worker = WorkRequestWorker(self)
+            worker.update_model_ids(worker_models)
+            worker.start()
+            workers.append(worker)
+
+        self._workers = ThreadSafeList(workers)
 
     def _stop_workers(self):
         for worker in self._workers:
