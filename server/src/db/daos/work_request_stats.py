@@ -12,6 +12,7 @@ class WorkRequestStatsQuery(Enum):
 
 class WorkRequestStatsRecord(DAORecord):
     model_id: str
+    input_size: int
     total_count: int
     success_count: int
     fail_count: int
@@ -71,9 +72,10 @@ class WorkRequestStatsRecord(DAORecord):
         super().__init__(result)
 
         self.model_id = result["model_id"]
+        self.input_size = result["input_size"]
         self.total_count = result["total_count"]
         self.success_count = result["success_count"]
-        self.fail_count = result["fail_count"]
+        self.failed_count = result["failed_count"]
         self.active_count = result["active_count"]
 
         key: str = None
@@ -100,6 +102,7 @@ class WorkRequestStatsRecord(DAORecord):
 
 
 class WorkRequestFilteredStatsQuery(DAOQuery):
+
     def __init__(
         self,
         model_ids: List[str] | None = None,
@@ -108,6 +111,9 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
         request_date_from: str | None = None,
         request_date_to: str | None = None,
         request_statuses: List[str] | None = None,
+        input_size_ge: int | None = None,
+        input_size_le: int | None = None,
+        group_by: List[str] = None,
     ):
         super().__init__(WorkRequestStatsRecord)
 
@@ -117,10 +123,16 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
         self.request_date_from = request_date_from
         self.request_date_to = request_date_to
         self.request_statuses = request_statuses
+        self.input_size_ge = input_size_ge
+        self.input_size_le = input_size_le
+        self.group_by = group_by
 
     def to_sql(self):
         field_map = {}
         custom_filters = []
+        custom_group_by = ["ModelId"]
+        success_join = ["TotalStats.model_id = SuccessStats.s_model_id"]
+        failed_join = ["TotalStats.model_id = FailedStats.f_model_id"]
 
         if self.model_ids is not None:
             custom_filters.append(
@@ -155,10 +167,29 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                 % ",".join(map(lambda x: "'%s'" % x, self.request_statuses))
             )
 
+        if self.input_size_ge is not None and self.input_size_ge > 0:
+            custom_filters.append("InputSize >= :query_InputSizeGE")
+            field_map["query_InputSizeGE"] = self.input_size_ge
+        elif self.input_size_le is not None and self.input_size_le > 0:
+            custom_filters.append("InputSize <= :query_InputSizeLE")
+            field_map["query_InputSizeLE"] = self.input_size_le
+
+        if self.group_by is not None and len(self.group_by) > 0:
+            for entry in self.group_by:
+                if entry == "InputSize":
+                    custom_group_by.append(entry)
+                    success_join.append(
+                        "TotalStats.input_size = SuccessStats.s_input_size"
+                    )
+                    failed_join.append(
+                        "TotalStats.input_size = FailedStats.f_input_size"
+                    )
+
         sql = """
             WITH FilteredRequests AS (
                 SELECT
                     ModelId,
+                    InputSize,
                     RequestDate,
                     RequestStatus,
                     PodReadyTimestamp,
@@ -168,12 +199,13 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                     EXTRACT(EPOCH FROM (JobSubmissionTimestamp - RequestDate)) AS request_start_time,
                     EXTRACT(EPOCH FROM (ProcessedTimestamp - JobSubmissionTimestamp)) AS job_execution_time
                 FROM WorkRequest
-                %s
+                %(custom_filters)s
             ),
 
             TotalStats AS (
                 SELECT
                     ModelId as model_id,
+                    InputSize as input_size,
                     count(*) AS total_count,
                     sum(request_time) as total_all_request_time,
                     max(request_time) as max_all_request_time,
@@ -188,12 +220,13 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                     min(job_execution_time) as min_all_job_execution_time,
                     avg(job_execution_time) as avg_all_job_execution_time
                 FROM FilteredRequests
-                GROUP BY ModelId
+                GROUP BY %(custom_group_by)s
             ),
 
             SuccessStats AS (
                 SELECT
-                    ModelId as model_id,
+                    ModelId as s_model_id,
+                    InputSize as s_input_size,
                     count(*) AS success_count,
                     sum(request_time) as total_success_request_time,
                     max(request_time) as max_success_request_time,
@@ -209,13 +242,14 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                     avg(job_execution_time) as avg_success_job_execution_time
                 FROM FilteredRequests
                 WHERE RequestStatus = 'COMPLETED'
-                GROUP BY ModelId
+                GROUP BY %(custom_group_by)s
             ),
 
             FailedStats AS (
                 SELECT
-                    ModelId as model_id,
-                    count(*) AS fail_count,
+                    ModelId as f_model_id,
+                    InputSize as f_input_size,
+                    count(*) AS failed_count,
                     sum(request_time) as total_fail_request_time,
                     max(request_time) as max_fail_request_time,
                     min(request_time) as min_fail_request_time,
@@ -230,7 +264,7 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                     avg(job_execution_time) as avg_fail_job_execution_time
                 FROM FilteredRequests
                 WHERE RequestStatus = 'FAILED'
-                GROUP BY ModelId
+                GROUP BY %(custom_group_by)s
             )
 
             SELECT
@@ -239,12 +273,19 @@ class WorkRequestFilteredStatsQuery(DAOQuery):
                 FailedStats.*
             FROM TotalStats
             LEFT JOIN SuccessStats
-                ON TotalStats.model_id = SuccessStats.model_id
+                ON %(success_join)s
             LEFT JOIN FailedStats
-                ON TotalStats.model_id = FailedStats.model_id
-        """ % (
-            "" if len(custom_filters) == 0 else "WHERE " + " AND ".join(custom_filters),
-        )
+                ON %(failed_join)s
+        """ % {
+            "custom_filters": (
+                ""
+                if len(custom_filters) == 0
+                else "WHERE " + " AND ".join(custom_filters)
+            ),
+            "custom_group_by": ", ".join(custom_group_by),
+            "success_join": " AND ".join(success_join),
+            "failed_join": " AND ".join(failed_join),
+        }
 
         return sql, field_map
 

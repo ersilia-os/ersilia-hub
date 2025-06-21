@@ -6,9 +6,10 @@ from db.daos.work_request_stats import WorkRequestStatsRecord
 
 class WorkRequestStatsModel(BaseModel):
     model_id: str
+    input_size: int
     total_count: int
     success_count: int
-    fail_count: int
+    failed_count: int
 
     ###
 
@@ -64,6 +65,7 @@ class WorkRequestStatsModel(BaseModel):
     @staticmethod
     def init(
         model_id: str,
+        input_size: int,
         total_count: int,
         success_count: int,
         fail_count: int,
@@ -106,6 +108,7 @@ class WorkRequestStatsModel(BaseModel):
     ):
         return WorkRequestStatsModel(
             model_id=model_id,
+            input_size=input_size,
             total_count=total_count,
             success_count=success_count,
             fail_count=fail_count,
@@ -151,6 +154,7 @@ class WorkRequestStatsModel(BaseModel):
     def init_from_record(record: WorkRequestStatsRecord) -> "WorkRequestStatsModel":
         return WorkRequestStatsModel.init(
             record.model_id,
+            record.input_size,
             record.total_count,
             record.success_count,
             record.fail_count,
@@ -205,6 +209,9 @@ class WorkRequestStatsFilters(BaseModel):
     request_date_from: str = None
     request_date_to: str = None
     request_statuses: List[str] = []
+    input_size_ge: int | None = None
+    input_size_le: int | None = None
+    group_by: List[str] = None
 
     def to_object(self) -> Dict[str, Any]:
         filters = {
@@ -214,6 +221,9 @@ class WorkRequestStatsFilters(BaseModel):
             "request_date_from": self.request_date_from,
             "request_date_to": self.request_date_to,
             "request_statuses": self.request_statuses,
+            "input_size_ge": self.input_size_ge,
+            "input_size_le": self.input_size_le,
+            "group_by": self.group_by,
         }
 
         return filters
@@ -222,3 +232,4 @@ class WorkRequestStatsFilters(BaseModel):
 class WorkRequestStatsFilterData(BaseModel):
 
     model_ids: List[str]
+    group_by: List[str] = ["ModelId"]

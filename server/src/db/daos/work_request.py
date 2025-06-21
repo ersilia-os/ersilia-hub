@@ -24,6 +24,7 @@ class WorkRequestRecord(DAORecord):
     pod_ready_timestamp: Union[str, None]
     job_submission_timestamp: Union[str, None]
     processed_timestamp: Union[str, None]
+    input_size: int | None
 
     def __init__(self, result: dict):
         super().__init__(result)
@@ -59,6 +60,7 @@ class WorkRequestRecord(DAORecord):
             if result["processedtimestamp"] is None
             else timestamp_to_utc_timestamp(result["processedtimestamp"])
         )
+        self.input_size = result["inputsize"]
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return {
@@ -72,6 +74,7 @@ class WorkRequestRecord(DAORecord):
             "pod_ready_timestamp": self.pod_ready_timestamp,
             "job_submission_timestamp": self.job_submission_timestamp,
             "processed_timestamp": self.processed_timestamp,
+            "input_size": self.input_size,
         }
 
     def generate_update_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -114,7 +117,8 @@ class WorkRequestSelectAllQuery(DAOQuery):
                 WorkRequest.LastUpdated::text,
                 WorkRequest.PodReadyTimestamp::text,
                 WorkRequest.JobSubmissionTimestamp::text,
-                WorkRequest.ProcessedTimestamp::text
+                WorkRequest.ProcessedTimestamp::text,
+                WorkRequest.InputSize
             FROM WorkRequest
             LEFT JOIN WorkRequestData
                 ON WorkRequest.Id = WorkRequestData.RequestId
@@ -204,7 +208,8 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
                 WorkRequest.LastUpdated::text,
                 WorkRequest.PodReadyTimestamp::text,
                 WorkRequest.JobSubmissionTimestamp::text,
-                WorkRequest.ProcessedTimestamp::text
+                WorkRequest.ProcessedTimestamp::text,
+                WorkRequest.InputSize
             FROM WorkRequest
             LEFT JOIN WorkRequestData
                 ON WorkRequest.Id = WorkRequestData.RequestId
@@ -232,6 +237,7 @@ class WorkRequestInsertQuery(DAOQuery):
         pod_ready_timestamp: str,
         job_submission_timestamp: str,
         processed_timestamp: str,
+        input_size: int,
     ):
         super().__init__(WorkRequestRecord)
 
@@ -245,6 +251,7 @@ class WorkRequestInsertQuery(DAOQuery):
         self.pod_ready_timestamp = pod_ready_timestamp
         self.job_submission_timestamp = job_submission_timestamp
         self.processed_timestamp = processed_timestamp
+        self.input_size = input_size
 
     def to_sql(self):
         field_map = {
@@ -258,6 +265,7 @@ class WorkRequestInsertQuery(DAOQuery):
             "query_PodReadyTimestamp": self.pod_ready_timestamp,
             "query_JobSubmissionTimestamp": self.job_submission_timestamp,
             "query_ProcessedTimestamp": self.processed_timestamp,
+            "query_InputSize": self.input_size,
         }
 
         sql = """
@@ -272,7 +280,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     LastUpdated,
                     PodReadyTimestamp,
                     JobSubmissionTimestamp,
-                    ProcessedTimestamp
+                    ProcessedTimestamp,
+                    InputSize
                 )
                 VALUES (
                     :query_ModelId,
@@ -284,7 +293,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     CURRENT_TIMESTAMP,
                     :query_PodReadyTimestamp,
                     :query_JobSubmissionTimestamp,
-                    :query_ProcessedTimestamp
+                    :query_ProcessedTimestamp,
+                    :query_InputSize
                 )
                 RETURNING
                     Id,
@@ -298,7 +308,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     LastUpdated::text,
                     PodReadyTimestamp::text,
                     JobSubmissionTimestamp::text,
-                    ProcessedTimestamp::text
+                    ProcessedTimestamp::text,
+                    InputSize
             ),
 
             WorkRequestDataInsert AS (
@@ -331,7 +342,8 @@ class WorkRequestInsertQuery(DAOQuery):
                 WorkRequestInsert.LastUpdated::text,
                 WorkRequestInsert.PodReadyTimestamp::text,
                 WorkRequestInsert.JobSubmissionTimestamp::text,
-                WorkRequestInsert.ProcessedTimestamp::text
+                WorkRequestInsert.ProcessedTimestamp::text,
+                WorkRequestInsert.InputSize
             FROM WorkRequestInsert
             INNER JOIN WorkRequestDataInsert
                 ON WorkRequestInsert.Id = WorkRequestDataInsert.RequestId
@@ -400,7 +412,8 @@ class WorkRequestUpdateQuery(DAOQuery):
                     LastUpdated::text,
                     PodReadyTimestamp::text,
                     JobSubmissionTimestamp::text,
-                    ProcessedTimestamp::text
+                    ProcessedTimestamp::text,
+                    InputSize
             )
 
             SELECT 
@@ -416,7 +429,8 @@ class WorkRequestUpdateQuery(DAOQuery):
                 WorkRequestUpdate.LastUpdated::text,
                 WorkRequestUpdate.PodReadyTimestamp::text,
                 WorkRequestUpdate.JobSubmissionTimestamp::text,
-                WorkRequestUpdate.ProcessedTimestamp::text
+                WorkRequestUpdate.ProcessedTimestamp::text,
+                WorkRequestUpdate.InputSize
             FROM WorkRequestUpdate
             LEFT JOIN WorkRequestData
                 ON WorkRequestUpdate.Id = WorkRequestData.RequestId
