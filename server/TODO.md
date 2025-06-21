@@ -1,13 +1,11 @@
+[ ] install metrics server
+[ ] investigate metrics server integration (check API)
+[ ] Create model_instance_monitor (thread)
+  [ ] when starting a model, start monitor thread
+  [ ] get metrics from metric server and keep in-mem (limit to 30min, configurable metrics threshold, 4s default)
+  [ ] 
 
-[ ] stats frontend
-  [ ] simple table
-  [ ] filters
-    * toggle between anon vs user account
-    * date from + to filter (no time, only date)
-    * model ids filter
-    * userid filter (but for anon, it's actually SESSION)
-  [ ] group_by
-  [ ] download to CSV
+---
 
 [ ] need to add loader on requests load, maybe a global loader ?
 [ ] make email required during signup
@@ -17,6 +15,17 @@
   auth.service.ts:295 session_start_time = 1750048724742
   auth.service.ts:296 session_max_age_seconds = 300
   auth.service.ts:297 check = true
+
+[ ] ensure logout on session expiry or invalidation
+
+[ ] release
+
+---
+
+[ ] dynamically update models in workers
+  [ ] load balance models onto workers (maybe do it ON CHANGE + every 30s)
+
+[ ] models admin page
 
 [ ] release
 

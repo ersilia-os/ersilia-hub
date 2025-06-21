@@ -331,6 +331,9 @@ class WorkRequestController(Thread):
         request_date_from: str = None,
         request_date_to: str = None,
         request_statuses: List[str] = None,
+        input_size_ge: int | None = None,
+        input_size_le: int | None = None,
+        group_by: List[str] = None,
     ) -> List[WorkRequestStatsModel]:
         try:
             _request_date_from = (
@@ -349,6 +352,9 @@ class WorkRequestController(Thread):
                     "request_date_from": _request_date_from,
                     "request_date_to": request_date_to,
                     "request_statuses": request_statuses,
+                    "input_size_ge": input_size_ge,
+                    "input_size_le": input_size_le,
+                    "group_by": group_by,
                 },
             )
 

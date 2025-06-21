@@ -240,6 +240,7 @@ class K8sPod:
     labels: Dict[str, str]
     annotations: Dict[str, str]
     pod_state: K8sPodState
+    node_name: str | None
 
     def __init__(
         self,
@@ -249,6 +250,7 @@ class K8sPod:
         labels: Dict[str, str],
         annotations: Dict[str, str],
         pod_state: K8sPodState,
+        node_name: str | None,
     ):
         self.name = name
         self.state = state
@@ -256,6 +258,7 @@ class K8sPod:
         self.labels = labels
         self.annotations = annotations
         self.pod_state = pod_state
+        self.node_name = node_name
 
     @staticmethod
     def from_k8s(k8s_pod: V1Pod) -> "K8sPod":
@@ -264,8 +267,6 @@ class K8sPod:
             if k8s_pod.metadata.annotations is not None
             else {}
         )
-        # strip unnecessary large object
-        # del annotations["kubectl.kubernetes.io/last-applied-configuration"]
 
         return K8sPod(
             k8s_pod.metadata.name,
@@ -274,6 +275,7 @@ class K8sPod:
             dict(k8s_pod.metadata.labels),
             annotations,
             K8sPodState.from_k8s_status(k8s_pod.status),
+            k8s_pod.spec.node_name,
         )
 
     def get_annotation(self, annotation: str) -> Union[str, None]:
@@ -305,6 +307,7 @@ class K8sPod:
             "labels": self.labels,
             "annotations": self.annotations,
             "podState": self.pod_state.to_object(),
+            "nodeName": self.node_name,
         }
 
 

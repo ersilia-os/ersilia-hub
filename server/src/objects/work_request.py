@@ -66,26 +66,31 @@ class WorkRequestMetadata:
 
     user_agent: str
     session_id: str
+    host: str
 
     def __init__(
         self,
         user_agent: str,
         session_id: str,
+        host: str = None,
     ):
         self.user_agent = user_agent
         self.session_id = session_id
+        self.host = host
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestMetadata":
         return WorkRequestMetadata(
             obj["userAgent"],
             obj["sessionId"],
+            None if "host" not in obj else obj["host"],
         )
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "userAgent": self.user_agent,
             "sessionId": self.session_id,
+            "host": self.host,
         }
 
 
@@ -104,6 +109,7 @@ class WorkRequest:
     pod_ready_timestamp: Union[str, None]
     job_submission_timestamp: Union[str, None]
     processed_timestamp: Union[str, None]
+    input_size: int | None
 
     def __init__(
         self,
@@ -120,6 +126,7 @@ class WorkRequest:
         pod_ready_timestamp: Union[str, None] = None,
         job_submission_timestamp: Union[str, None] = None,
         processed_timestamp: Union[str, None] = None,
+        input_size: int | None = None,
     ):
         self.id = id
         self.model_id = model_id
@@ -134,6 +141,7 @@ class WorkRequest:
         self.pod_ready_timestamp = pod_ready_timestamp
         self.job_submission_timestamp = job_submission_timestamp
         self.processed_timestamp = processed_timestamp
+        self.input_size = input_size
 
     @staticmethod
     def init_from_record(record: WorkRequestRecord) -> "WorkRequest":
@@ -155,6 +163,7 @@ class WorkRequest:
             record.pod_ready_timestamp,
             record.job_submission_timestamp,
             record.processed_timestamp,
+            record.input_size,
         )
 
     def copy(self) -> "WorkRequest":
@@ -172,6 +181,7 @@ class WorkRequest:
             self.pod_ready_timestamp,
             self.job_submission_timestamp,
             self.processed_timestamp,
+            self.input_size,
         )
 
     def to_record(self) -> WorkRequestRecord:
@@ -193,10 +203,18 @@ class WorkRequest:
             podreadytimestamp=self.pod_ready_timestamp,
             jobsubmissiontimestamp=self.job_submission_timestamp,
             processedtimestamp=self.processed_timestamp,
+            inputsize=self.input_size,
         )
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequest":
+        payload = (
+            None
+            if "requestPayload" not in obj or obj["requestPayload"] is None
+            else WorkRequestPayload.from_object(obj["requestPayload"])
+        )
+        input_size = None if payload is None else len(payload.entries)
+
         return WorkRequest(
             None if "id" not in obj else obj["id"],
             obj["modelId"],
@@ -223,6 +241,7 @@ class WorkRequest:
                 else obj["jobSubmissionTimestamp"]
             ),
             None if "processedTimestamp" not in obj else obj["processedTimestamp"],
+            input_size,
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -244,6 +263,7 @@ class WorkRequest:
             "podReadyTimestamp": self.pod_ready_timestamp,
             "jobSubmissionTimestamp": self.job_submission_timestamp,
             "processedTimestamp": self.processed_timestamp,
+            "inputSize": self.input_size,
         }
 
 
@@ -278,6 +298,7 @@ class WorkRequestModel(BaseModel):
     pod_ready_timestamp: str | None = None
     job_submission_timestamp: str | None = None
     processed_timestamp: str | None = None
+    input_size: int | None = None
 
     def to_object(self) -> Dict[str, Any]:
         return {
@@ -298,6 +319,7 @@ class WorkRequestModel(BaseModel):
             "podReadyTimestamp": self.pod_ready_timestamp,
             "jobSubmissionTimestamp": self.job_submission_timestamp,
             "processedTimestamp": self.processed_timestamp,
+            "inputSize": self.input_size,
         }
 
     @staticmethod
@@ -322,6 +344,7 @@ class WorkRequestModel(BaseModel):
             pod_ready_timestamp=workrequest.pod_ready_timestamp,
             job_submission_timestamp=workrequest.job_submission_timestamp,
             processed_timestamp=workrequest.processed_timestamp,
+            input_size=workrequest.input_size,
         )
 
     def map_result_to_csv(self):
