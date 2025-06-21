@@ -109,7 +109,6 @@ class WorkRequestStatsRecord(DAORecord):
 
 
 class WorkRequestFilteredStatsQuery(DAOQuery):
-
     def __init__(
         self,
         model_ids: List[str] | None = None,
