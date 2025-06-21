@@ -1,26 +1,26 @@
-[x] debug model issues (maybe increase timeout ?)
 
-[x] fix csv output
+[ ] stats frontend
+  [ ] simple table
+  [ ] filters
+    * toggle between anon vs user account
+    * date from + to filter (no time, only date)
+    * model ids filter
+    * userid filter (but for anon, it's actually SESSION)
+  [ ] group_by
+  [ ] download to CSV
 
-[x] add Permissions to api
-  [x] add permissions table + DAO + Objects
-    * userid -> permissions csv
-  [x] add permissions cache to Auth + reload on timer
-  [x] add user_has_permission(one_of: List[]) to auth controller
-  [x] add permissions to API handler (pass list of allowed permissions)
-  [x] add static permissions Enum (for now only ADMIN permission, for full access to everything)
-  [x] add ADMIN permission to existing apis
-
-[ ] DEBUG LOCAL
+[ ] need to add loader on requests load, maybe a global loader ?
+[ ] make email required during signup
+[ ] user session refresh bug, showing "Session expired" and clearing user name 
+  Angular is running in development mode.
+  auth.service.ts:37 no session, no refresh
+  auth.service.ts:295 session_start_time = 1750048724742
+  auth.service.ts:296 session_max_age_seconds = 300
+  auth.service.ts:297 check = true
 
 [ ] release
 
 ---
-
-[ ] add permissions to user login response
-[ ] add permissions cached on frontend
-
-[ ] user session refresh bug, showing "Session expired" and clearing user name
 
 [ ] work requests admin page
   [ ] permissions check ('ADMIN')
@@ -36,9 +36,15 @@
     [ ] date from (no time)
     [ ] date to (no time)
 
-  [ ] actions for:
-    [ ] set status -> REQUESTED / FAILED
-    [ ] view sensitive data (LOG ON BACKEND + reload full request)
+[ ] release
+
+---
+
+[ ] add k8s events to modelinstance
+
+[ ] model instance history page ??
+
+---
 
 [ ] active instances page
   [ ] permissions check ('ADMIN')
@@ -56,15 +62,6 @@
     [ ] instance (pod) status
   [ ] actions
     [ ] stop instance
-    
-[ ] make email required during signup
-
-[ ] add model instances log to DB
-  [ ] timestamp, event, pod dump, correlationid (e.g. workrequestid)
-  [ ] add dump at pod creation + termination
-  [ ] ensure k8s EVENTS are in the pod details
-
-[ ] release
 
 ---
 
@@ -76,10 +73,6 @@
   [ ] session cache + refresh, only do a DB check on session failure
 
 ---
-
-[ ] stats table based on model requests 
-  * model_id, request_id, processed (bool), result_success (bool), request_timestamp, processed_timestamp
-  * add updates to existing work_request DAO
 
 [ ] cron job to clear requests based on age (7 days)
 

@@ -52,7 +52,26 @@ export function userLoginAuth(username: string, password: string): EncodedAuth {
     }
 }
 
+export type Permission = 'ADMIN';
+
 export interface LoginResponse {
     user: User;
     session: UserSession;
+    permissions: Permission[];
+}
+
+export interface AppPermissions {
+    canViewMenu: boolean;
+    canViewStats: boolean;
+    canManageRequests: boolean;
+    canManageInstances: boolean;
+}
+
+export function EmptyPermissions(): AppPermissions {
+    return {
+        canViewMenu: false,
+        canViewStats: false,
+        canManageRequests: false,
+        canManageInstances: false
+    };
 }

@@ -1,7 +1,7 @@
 from base64 import b64decode
 from enum import Enum
 from json import loads
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from fastapi import Request
 
 from re import compile
@@ -15,19 +15,28 @@ GUEST_USER_PATTERN = compile("(100|(0[0-9]{2}))00000-0000-0000-0000-000000000000
 
 class TrackingDetails:
     user_agent: str
+    host: str
 
     def __init__(
         self,
         user_agent: str,
+        host: str,
     ):
         self.user_agent = user_agent
+        self.host = host
 
     @staticmethod
     def from_request(request: Request) -> "TrackingDetails":
-        return TrackingDetails(request.headers.get("User-Agent"))
+        return TrackingDetails(
+            request.headers.get("User-Agent"),
+            request.client.host,
+        )
 
     def to_object(self) -> Dict[str, Any]:
-        return {"user_agent": self.user_agent}
+        return {
+            "user_agent": self.user_agent,
+            "host": self.host,
+        }
 
     def __str__(self) -> str:
         return str(self.to_object())
@@ -109,3 +118,4 @@ class LoginResponseModel(BaseModel):
 
     session: UserSessionModel
     user: UserModel
+    permissions: List[str]

@@ -1,7 +1,28 @@
+from enum import Enum
 from json import dumps, loads
 from typing import Any, Dict, Union
 from db.daos.model import ModelRecord
 from pydantic import BaseModel
+
+
+class ModelExecutionMode(Enum):
+
+    SYNC = "SYNC"
+    ASYNC = "ASYNC"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
 
 
 class ModelDetails:
@@ -11,6 +32,7 @@ class ModelDetails:
     size_megabytes: int
     disable_memory_limit: bool
     max_instances: int
+    execution_mode: ModelExecutionMode
 
     def __init__(
         self,
@@ -19,12 +41,14 @@ class ModelDetails:
         size_megabytes: int,
         disable_memory_limit: bool,
         max_instances: int,
+        execution_mode: ModelExecutionMode,
     ):
         self.template_version = template_version
         self.description = description
         self.size_megabytes = size_megabytes
         self.disable_memory_limit = disable_memory_limit
         self.max_instances = max_instances
+        self.execution_mode = execution_mode
 
     def copy(self) -> "ModelDetails":
         return ModelDetails(
@@ -33,6 +57,7 @@ class ModelDetails:
             self.size_megabytes,
             self.disable_memory_limit,
             self.max_instances,
+            self.execution_mode,
         )
 
     @staticmethod
@@ -43,6 +68,11 @@ class ModelDetails:
             obj["sizeMegabytes"],
             obj["disableMemoryLimit"],
             obj["maxInstances"],
+            (
+                ModelExecutionMode.ASYNC
+                if "executionMode" not in obj or obj["executionMode"] is None
+                else obj["executionMode"]
+            ),
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -52,6 +82,7 @@ class ModelDetails:
             "sizeMegabytes": self.size_megabytes,
             "disableMemoryLimit": self.disable_memory_limit,
             "maxInstances": self.max_instances,
+            "executionMode": str(self.execution_mode),
         }
 
     def __str__(self):
@@ -68,6 +99,7 @@ class ModelDetailsApiModel(BaseModel):
     size_megabytes: int
     disable_memory_limit: bool
     max_instances: int
+    execution_mode: str
 
     @staticmethod
     def from_object(model_details: ModelDetails) -> "ModelDetailsApiModel":
@@ -77,6 +109,7 @@ class ModelDetailsApiModel(BaseModel):
             size_megabytes=model_details.size_megabytes,
             disable_memory_limit=model_details.disable_memory_limit,
             max_instances=model_details.max_instances,
+            execution_mode=str(model_details.execution_mode),
         )
 
     def to_object(self) -> ModelDetails:
@@ -86,6 +119,7 @@ class ModelDetailsApiModel(BaseModel):
             self.size_megabytes,
             self.disable_memory_limit,
             self.max_instances,
+            self.execution_mode,
         )
 
 

@@ -1,0 +1,82 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+    position: absolute;
+    left: 0;
+    top: 60px;
+    width: 100%;
+    height: calc(100% - 60px);
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.backdrop {
+    width: 100%;
+    height: 100%;
+
+    position: absolute;
+    opacity: 0.4;
+    background-color: #e9e9e9;
+}
+
+.menu-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    width: 210px;
+    height: 100%;
+    z-index: 50;
+    background-color: #ffffff;
+
+    .menu-item {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+
+        border-right: 2px solid $ersilia-grey-purple;
+        width: 200px;
+        background-color: #ffffff;
+        padding: 5px;
+        cursor: pointer;
+
+        &:hover {
+            border-right: 4px solid $ersilia-purple;
+            border-top: 1px solid $ersilia-purple;
+            border-bottom: 1px solid $ersilia-purple;
+            background-color: #50285a2b;
+
+            .menu-icon {
+                color: $ersilia-purple;
+            }
+
+            .menu-text {
+                color: $ersilia-purple;
+            }
+        }
+
+        .menu-icon {
+            color: $ersilia-grey-purple;
+            width: 36px;
+            height: 36px;
+
+            .mat-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 36px;
+            }
+        }
+
+        .menu-text {
+            margin-left: 10px;
+            color: $ersilia-grey-purple;
+            font-size: 22px;
+        }
+    }
+}
