@@ -32,13 +32,9 @@
             ],
             "styles": [
               "@angular/material/prebuilt-themes/purple-green.css",
-              "src/styles.scss",
-              "node_modules/datatables.net-dt/css/dataTables.dataTables.min.css"
+              "src/styles.scss"
             ],
-            "scripts": [
-              "node_modules/jquery/dist/jquery.min.js",
-              "node_modules/datatables.net/js/dataTables.min.js"
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {

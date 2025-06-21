@@ -10,7 +10,6 @@ import { FormsModule } from "@angular/forms";
 import { MatInputModule } from "@angular/material/input";
 import { ErsiliaLoaderComponent } from "../ersilia-loader/ersilia-loader.component";
 import { MatTableModule } from "@angular/material/table";
-import { DataTablesModule } from "angular-datatables";
 import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from "@angular/material/core";
 
@@ -21,7 +20,7 @@ const DAY_IN_MILLIS = 86400000;
     standalone: true,
     imports: [
         CommonModule, MatIconModule, MatFormFieldModule, MatTableModule,
-        MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent, DataTablesModule,
+        MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent,
         MatDatepickerModule
     ],
     providers: [provideNativeDateAdapter()],
