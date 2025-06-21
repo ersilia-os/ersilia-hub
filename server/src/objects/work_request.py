@@ -72,7 +72,7 @@ class WorkRequestMetadata:
         self,
         user_agent: str,
         session_id: str,
-        host: str,
+        host: str = None,
     ):
         self.user_agent = user_agent
         self.session_id = session_id

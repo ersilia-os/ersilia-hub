@@ -1,24 +1,3 @@
-[x] Add node name to pod info (and automatically model_instance_log)
-
-[x] Add input size to request table
-[x] Add input size to stats query + filter (greater_than_eq + less_than_eq)
-[x] Add group_by_instance_size flag (keep model_id but also add instance_size)
-[x] Fix stats query (model_id stuff)
-
-[ ] stats frontend
-  [ ] simple table
-  [ ] filters
-    * date from + to filter (no time, only date)
-    * model ids filter
-    * model_size filters
-    * group_by options (model ID should be forced, model_size optional)
-
-  [ ] download to CSV
-
-[ ] release
-
----
-
 [ ] install metrics server
 [ ] investigate metrics server integration (check API)
 [ ] Create model_instance_monitor (thread)

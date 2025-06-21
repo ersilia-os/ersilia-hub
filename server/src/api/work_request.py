@@ -67,6 +67,7 @@ def create_request(
     new_work_request.user_id = auth_details.user_session.userid
     new_work_request.metadata.session_id = auth_details.user_session.session_id
     new_work_request.metadata.user_agent = tracking_details.user_agent
+    new_work_request.metadata.host = tracking_details.host
 
     persisted_request = WorkRequestController.instance().create_request(
         new_work_request
