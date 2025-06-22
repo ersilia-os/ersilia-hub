@@ -51,7 +51,7 @@ def load_stats(
             detail="Failed to load stats, see server logs",
         )
 
-    return WorkRequestStatsListModel(items=stats)
+    return WorkRequestStatsListModel(stats=stats)
 
 
 @router.get("/filter-data")
