@@ -1,8 +1,21 @@
-[ ] install metrics server
-[ ] investigate metrics server integration (check API)
+[x] install metrics server
+[x] investigate metrics server integration (check API)
+
+```
+# kubectl get --raw "/api/v1/nodes/ip-10-0-3-164.eu-south-2.compute.internal/proxy/metrics/resource"
+resource = api.get_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", namespace="ersilia-core", plural="pods", name="ersilia-hub-server-78554c56f7-klmrl")
+
+
+core_api = client.CoreV1Api()
+metrics = core_api.connect_get_node_proxy_with_path(name="ip-10-0-3-164.eu-south-2.compute.internal", path="metrics/resource")
+metrics.split("\n")
+```
+
+[ ] Implement metrics scraping
+
 [ ] Create model_instance_monitor (thread)
   [ ] when starting a model, start monitor thread
-  [ ] get metrics from metric server and keep in-mem (limit to 30min, configurable metrics threshold, 4s default)
+  [ ] get metrics directly from k8s (or is that metrics) and keep in-mem (limit to 30min, configurable metrics threshold, 4s default)
   [ ] 
 
 ---
