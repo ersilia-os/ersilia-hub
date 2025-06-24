@@ -1,3 +1,6 @@
+from typing import Dict
+
+
 class CircularBuffer:
     # TODO: go revive the circular buffer I implemented
     pass
@@ -10,11 +13,34 @@ class PodMetricValue:
     value: float
     timestamp: int
 
+    def __init__(
+        self,
+        metric_name: str,
+        namespace: str,
+        pod: str,
+        value: float,
+        timestamp: int,
+    ):
+        self.metric_name = metric_name
+        self.namespace = namespace
+        self.pod = pod
+        self.value = value
+        self.timestamp = timestamp
+
     @staticmethod
-    def parse(metric_line: str) -> "PodMetricValue":
-        # container_cpu_usage_seconds_total{container="aws-eks-nodeagent",namespace="kube-system",pod="aws-node-7k649"} 40.384910049 1750705768415
-        # container_memory_working_set_bytes{container="ebs-plugin",namespace="kube-system",pod="ebs-csi-node-v6cqf"} 9.015296e+06 1750705778923
-        pass
+    def from_parsed_line(
+        metric_name: str, labels: Dict[str, str], value: str, timestamp: str
+    ) -> "PodMetricValue":
+        try:
+            return PodMetricValue(
+                metric_name,
+                labels["namespace"],
+                labels["pod"],
+                float(value),
+                int(timestamp),
+            )
+        except:
+            return None
 
 
 # Very targetted set of Pod Metrics
@@ -23,6 +49,11 @@ class PodMetrics:
     namespace: str
 
     cpu_usage_seconds_total: CircularBuffer
+    memory_working_set_bytes: CircularBuffer
+
+    def __init__(self, pod_name: str, namespace: str):
+        self.pod_name = pod_name
+        self.namespace = namespace
 
     def push_metric_value(self, value: PodMetricValue):
         # TODO: push to the relevant buffer

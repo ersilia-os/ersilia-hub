@@ -12,6 +12,23 @@ metrics.split("\n")
 ```
 
 [ ] Implement metrics scraping
+  [ ] Monitor all active nodes
+  [ ] Scrape each node's metrics
+  [ ] Have threadsafe map of PodMetrics, relevant pods are added/removed dynamically, if the pod is not in the map, we don't collect metrics
+  [ ] parsing pipeline:
+    - filter line by metric name (starts with) => this will filter out most lines already
+      * return metric_name + rest of line
+    - split rest of line by labels + value + timestamp
+      * return metric_name + labels dict + value + timestamp
+    - filter by namespace and pod name (using the threadsafe map's keys)
+      * return None OR constructed PodMetricValue
+
+[ ] Implement NodeMonitor
+  - track active nodes
+  - create a thread per active node
+  - thread does metric scraping and calls PodMetricsController.ingest
+  
+  * eventually monitor node resources + active pods
 
 [ ] Create model_instance_monitor (thread)
   [ ] when starting a model, start monitor thread
