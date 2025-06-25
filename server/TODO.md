@@ -142,3 +142,6 @@ metrics.split("\n")
 
 ---
 
+[ ] compound caching
+
+---

@@ -248,17 +248,7 @@ class ModelIntegrationController:
 
         try:
             _url = f"http://{_host}:{_port}/run"
-            _request = JobSubmissionRequest(
-                entries,
-                {
-                    "orient": "records",
-                    "min_workers": 1,
-                    "max_workers": 12,
-                    "fetch_cache": True,
-                    "save_cache": True,
-                    "cache_only": False,
-                },
-            )
+            _request = JobSubmissionRequest.from_entries(entries)
             _json = _request.body
             _params = _request.params
 

@@ -50,7 +50,15 @@ class JobSubmissionRequest:
     def from_entries(entries: List[str]) -> "JobSubmissionRequest":
         # TODO: make the workers configurable based on model
         return JobSubmissionRequest(
-            entries, {"orient": "records", "min_workers": 1, "max_workers": 5}
+            entries,
+            {
+                "orient": "records",
+                "min_workers": 1,
+                "max_workers": 12,
+                "fetch_cache": False,
+                "save_cache": False,
+                "cache_only": False,
+            },
         )
 
 
