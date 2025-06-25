@@ -1,8 +1,3 @@
-###
-#
-###
-
-
 from base64 import b64encode
 from json import dumps
 from time import sleep, time
