@@ -11,29 +11,44 @@ metrics = core_api.connect_get_node_proxy_with_path(name="ip-10-0-3-164.eu-south
 metrics.split("\n")
 ```
 
-[ ] Implement metrics scraping
-  [ ] Monitor all active nodes
-  [ ] Scrape each node's metrics
-  [ ] Have threadsafe map of PodMetrics, relevant pods are added/removed dynamically, if the pod is not in the map, we don't collect metrics
-  [ ] parsing pipeline:
-    - filter line by metric name (starts with) => this will filter out most lines already
-      * return metric_name + rest of line
-    - split rest of line by labels + value + timestamp
-      * return metric_name + labels dict + value + timestamp
-    - filter by namespace and pod name (using the threadsafe map's keys)
-      * return None OR constructed PodMetricValue
-
-[ ] Implement NodeMonitor
-  - track active nodes
-  - create a thread per active node
-  - thread does metric scraping and calls PodMetricsController.ingest
+[x] Implement NodeMonitor
+  [x] track active nodes
+  [x] create a thread per active node
+  [x] thread does metric scraping and calls PodMetricsController.ingest
   
   * eventually monitor node resources + active pods
 
 [ ] Create model_instance_monitor (thread)
   [ ] when starting a model, start monitor thread
-  [ ] get metrics directly from k8s (or is that metrics) and keep in-mem (limit to 30min, configurable metrics threshold, 4s default)
-  [ ] 
+  [ ] on thread start, add pod to PodMetricsController
+  [ ] monitor pod liveness / existence
+  [ ] on pod terminated, persist podmetrics in DB + remove pod from metrics controller -> terminate thread
+    * need to add DB layer to persist model / pod metrics
+
+[ ] Add controller for loading model_instance (persisted OR current)
+  [ ] active models:
+    * full pod !!! NEED TO ADD RESOURCES TO PERSISTED POD !!!
+    * all running averages per metric
+  
+  [ ] persisted models:
+    * full pod (final state??)
+    * all running averages per metric
+
+  [ ] slice of values (for all metrics, no filters for now) - only active models
+  
+  [ ] recommendations for a model (global, not instance)
+    * need to calculate per input size (or input size range ??)
+    * should only consider persisted
+    * specify time range + limit, default no time but 20 limit
+    * use min / max (not avg) and compare to pod resources (as persisted)
+
+[ ] Add api to match controller
+
+[ ] Frontend
+  [ ] list active models with their running averages in-line (maybe a custom component, not table)
+  [ ] need to somehow visualize current pod resources requests / limits and thresholds (heatmap of how close / far to the threshold)
+  
+  [ ] separate "recommendations" screen for per-model analysis
 
 ---
 

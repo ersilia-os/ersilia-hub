@@ -10,8 +10,16 @@ from kubernetes.client import (
     V1PodList,
     V1Pod,
     V1PodTemplateList,
+    V1NodeList,
+    V1Node,
 )
-from objects.k8s import ErsiliaAnnotations, K8sPod, K8sPodTemplate, ErsiliaLabels
+from objects.k8s import (
+    ErsiliaAnnotations,
+    K8sNode,
+    K8sPod,
+    K8sPodTemplate,
+    ErsiliaLabels,
+)
 from library.process_lock import ProcessLock
 from subprocess import Popen
 from threading import Thread, Event
@@ -609,6 +617,38 @@ class K8sController(Thread):
             traceback.print_exc(file=stdout)
 
             return None
+
+    def list_nodes(self) -> List[K8sNode]:
+        try:
+            nodes: V1NodeList = self._api_core.list_node()
+
+            return list(map(K8sNode.from_k8s, nodes))
+        except:
+            ContextLogger.error(
+                self._logger_key, f"Failed to list nodes, error = [{repr(exc_info())}]"
+            )
+            traceback.print_exc(file=stdout)
+
+            return []
+
+    def scrape_node_metrics(self, node_name: str) -> List[str]:
+        try:
+            metrics = self._api_core.connect_get_node_proxy_with_path(
+                name=node_name,
+                path="metrics/resource",
+            )
+
+            if metrics is None or len(metrics) == 0:
+                return []
+
+            return metrics.split("\n")
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                f"Failed to scrape metrics for node [{node_name}], error = [{repr(exc_info())}]",
+            )
+
+            return []
 
     def _load_model_podtemplates(self) -> List[K8sPodTemplate]:
         pod_templates: List[K8sPodTemplate] = []

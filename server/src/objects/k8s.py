@@ -10,6 +10,7 @@ from kubernetes.client import (
     V1ObjectMeta,
     V1Affinity,
     V1NodeAffinity,
+    V1Node,
 )
 from python_framework.time import string_from_date
 
@@ -477,3 +478,27 @@ class K8sPodTemplate:
             )
 
         return model_template
+
+
+class K8sNode:
+
+    name: str
+    labels: Dict[str, str]
+    # TODO: add status
+
+    def __init__(self, name: str, labels: Dict[str, str]):
+        self.name = name
+        self.labels = labels
+
+    @staticmethod
+    def from_k8s(k8s_node: V1Node) -> "K8sNode":
+        return K8sNode(
+            k8s_node.metadata.name,
+            dict(k8s_node.metadata.labels),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "labels": self.labels,
+        }

@@ -5,6 +5,8 @@ from objects.metrics import PodMetricValue, PodMetrics
 from python_framework.thread_safe_cache import ThreadSafeCache
 from re import compile
 from platform import node
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.config_utils import load_environment_variable
 
 
 class PodMetricsController:
@@ -14,14 +16,15 @@ class PodMetricsController:
     )
     # groups: 1 = metric_name, 2 = labels list, 3 = value, 4 = timestamp
 
-    # TODO: singleton stuff
+    _instance: "PodMetricsController" = None
+    _logger_key: str = None
 
     _pod_metrics: ThreadSafeCache[str, PodMetrics]
 
     def __init__(self):
         super().__init__(self)
 
-        # TODO: logger stuff
+        self._logger_key = "PodMetricsController"
 
         self._pod_metrics = ThreadSafeCache()
 
@@ -29,6 +32,28 @@ class PodMetricsController:
         self._pod_metrics[f"ersilia-core_{_hostpod}"] = PodMetrics(
             _hostpod, "ersilia-core"
         )
+
+        ContextLogger.instance().create_logger_for_context(
+            self._logger_key,
+            LogLevel.from_string(
+                load_environment_variable(
+                    f"LOG_LEVEL_{self._logger_key}", default=LogLevel.INFO.name
+                )
+            ),
+        )
+
+    @staticmethod
+    def initialize() -> "PodMetricsController":
+        if PodMetricsController._instance is not None:
+            return PodMetricsController._instance
+
+        PodMetricsController._instance = PodMetricsController()
+
+        return PodMetricsController._instance
+
+    @staticmethod
+    def instance() -> "PodMetricsController":
+        return PodMetricsController._instance
 
     def ingest_metrics_batch(self, metrics_batch: List[str]):
         metric_values = self._parse_metrics_batch(metrics_batch)
