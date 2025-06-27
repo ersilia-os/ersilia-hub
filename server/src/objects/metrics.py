@@ -1,17 +1,14 @@
 from typing import Dict
 
-
-class CircularBuffer:
-    # TODO: go revive the circular buffer I implemented
-    pass
+from library.data_buffer import DataBuffer, NodeData
+from python_framework.advanced_threading import synchronized_method
 
 
-class PodMetricValue:
+class PodMetricValue(NodeData):
     metric_name: str
     namespace: str
     pod: str
     value: float
-    timestamp: int
 
     def __init__(
         self,
@@ -19,13 +16,20 @@ class PodMetricValue:
         namespace: str,
         pod: str,
         value: float,
-        timestamp: int,
+        timestamp: float,
     ):
+        super().__init__(timestamp)
+
         self.metric_name = metric_name
         self.namespace = namespace
         self.pod = pod
         self.value = value
-        self.timestamp = timestamp
+
+    def data(self) -> float:
+        return self.value
+
+    def repr_data(self) -> str:
+        return str(self.value)
 
     @staticmethod
     def from_parsed_line(
@@ -43,21 +47,95 @@ class PodMetricValue:
             return None
 
 
+class RunningAverages:
+
+    count: int
+    total: float
+    min: float
+    max: float
+    avg: float
+
+    count_60s: int
+    total_60s: float
+    min_60s: float
+    max_60s: float
+    avg_60s: float
+
+    def __init__(self):
+        self.count = 0
+        self.total = 0
+        self.min = -1
+        self.max = -1
+        self.avg = -1
+
+        self.count_60s = 0
+        self.total_60s = 0
+        self.min_60s = -1
+        self.max_60s = -1
+        self.avg_60s = -1
+
+    def update(self, new_value: PodMetricValue, buffer: DataBuffer):
+        self.count += 1
+        self.total += new_value.value
+
+        if self.min == -1 or self.min > new_value.value:
+            self.min = new_value.value
+
+        if self.max == -1 or self.max < new_value.value:
+            self.max = new_value.value
+
+        self.avg = self.total / self.count
+
+        new_count_60s = 0
+        new_total_60s = 0
+        new_min_60s = -1
+        new_max_60s = -1
+
+        x: PodMetricValue
+        for x in buffer.slice_values(60):
+            new_count_60s += 1
+            new_total_60s += x.value
+
+            if new_max_60s == -1 or x.value > new_max_60s:
+                new_max_60s = x.value
+
+            if new_min_60s == -1 or x.value < new_min_60s:
+                new_min_60s = x.value
+
+        self.count_60s = new_count_60s
+        self.total_60s = new_total_60s
+        self.max_60s = new_max_60s
+        self.min_60s = new_min_60s
+        self.avg_60s = self.total_60s / self.count_60s
+
+
 # Very targetted set of Pod Metrics
 class PodMetrics:
     pod_name: str
     namespace: str
 
-    cpu_usage_seconds_total: CircularBuffer
-    memory_working_set_bytes: CircularBuffer
+    cpu_usage_seconds_total: DataBuffer
+    cpu_running_averages: RunningAverages
+    memory_working_set_bytes: DataBuffer
+    memory_running_averages: RunningAverages
 
     def __init__(self, pod_name: str, namespace: str):
         self.pod_name = pod_name
         self.namespace = namespace
 
+        self.cpu_usage_seconds_total = DataBuffer()
+        self.cpu_running_averages = RunningAverages()
+        self.memory_working_set_bytes = DataBuffer()
+        self.memory_running_averages = RunningAverages()
+
+    @synchronized_method
     def push_metric_value(self, value: PodMetricValue):
-        # TODO: push to the relevant buffer
-        pass
+        if value.metric_name == "container_cpu_usage_seconds_total":
+            self.cpu_usage_seconds_total.append(value)
+            self.cpu_running_averages.update(value, self.cpu_usage_seconds_total)
+        elif value.metric_name == "container_memory_working_set_bytes":
+            self.memory_working_set_bytes.append(value)
+            self.memory_running_averages.update(value, self.memory_working_set_bytes)
 
 
 #
