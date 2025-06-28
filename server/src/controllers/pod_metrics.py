@@ -66,6 +66,22 @@ class PodMetricsController:
 
             self._pod_metrics[key].push_metric_value(value)
 
+    def register_pod(self, namespace: str, pod: str):
+        key = f"{namespace}_{pod}"
+
+        if key in self._pod_metrics:
+            return
+
+        self._pod_metrics[key] = PodMetrics(pod, namespace)
+
+    def remove_pod(self, namespace: str, pod: str):
+        key = f"{namespace}_{pod}"
+
+        if key not in self._pod_metrics:
+            return
+
+        del self._pod_metrics[key]
+
     def _parse_metrics_batch(self, metrics_batch: List[str]) -> List[PodMetricValue]:
         metric_values: List[PodMetricValue] = []
 
@@ -97,3 +113,24 @@ class PodMetricsController:
             metric_values.append(metric_value)
 
         return metric_values
+
+    def persist_metrics(
+        self, namespace: str = None, pod: str = None, pod_metrics: PodMetrics = None
+    ) -> bool:
+        _pod_metrics: PodMetrics = pod_metrics
+
+        if namespace is not None and pod is not None:
+            key = f"{namespace}_{pod}"
+
+            if key in self._pod_metrics:
+                _pod_metrics = self._pod_metrics[key]
+
+        if _pod_metrics is None:
+            ContextLogger.error(
+                self._logger_key, "Failed to persist PodMetrics, no Pod found"
+            )
+            return False
+
+        # TODO: persist
+
+        return True
