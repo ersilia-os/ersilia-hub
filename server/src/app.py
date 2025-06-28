@@ -34,7 +34,7 @@ from controllers.auth import AuthController
 from controllers.model_instance_log import ModelInstanceLogController
 from controllers.model_instance_handler import ModelInstanceController
 from controllers.node_monitor import NodeMonitorController
-from controllers.pod_metrics import PodMetricsController
+from controllers.instance_metrics import InstanceMetricsController
 
 
 def init_configs():
@@ -82,7 +82,7 @@ def init():
     ScalingManager.initialize()
     ModelInstanceLogController.initialize()
     ModelIntegrationController.initialize()
-    PodMetricsController.initialize()
+    InstanceMetricsController.initialize()
     NodeMonitorController.initialize()
     ModelInstanceController.initialize()
     WorkRequestController.initialize()

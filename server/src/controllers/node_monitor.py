@@ -6,7 +6,7 @@ from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 
 from controllers.k8s import K8sController
-from controllers.pod_metrics import PodMetricsController
+from controllers.instance_metrics import InstanceMetricsController
 from objects.k8s import K8sNode
 
 
@@ -43,7 +43,7 @@ class NodeMonitor(Thread):
         if metrics is None or len(metrics) == 0:
             return
 
-        PodMetricsController.instance().ingest_metrics_batch(metrics)
+        InstanceMetricsController.instance().ingest_metrics_batch(metrics)
 
     def run(self):
         self.on_node_started()

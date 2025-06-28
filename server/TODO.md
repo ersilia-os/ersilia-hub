@@ -18,12 +18,14 @@ metrics.split("\n")
   
   * eventually monitor node resources + active pods
 
-[ ] Create model_instance_monitor (thread)
-  [ ] when starting a model, start monitor thread
-  [ ] on thread start, add pod to PodMetricsController
-  [ ] monitor pod liveness / existence
-  [ ] on pod terminated, persist podmetrics in DB + remove pod from metrics controller -> terminate thread
+[x] Create model_instance_monitor (thread)
+  [x] when starting a model, start monitor thread
+  [x] on thread start, add pod to PodMetricsController
+  [x] monitor pod liveness / existence
+  [x] on pod terminated, persist podmetrics in DB + remove pod from metrics controller -> terminate thread
     * need to add DB layer to persist model / pod metrics
+
+[ ] TEST
 
 [ ] Add controller for loading model_instance (persisted OR current)
   [ ] active models:

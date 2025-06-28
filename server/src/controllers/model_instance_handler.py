@@ -5,7 +5,7 @@ import traceback
 from typing import Union
 
 from controllers.k8s import K8sController
-from controllers.pod_metrics import PodMetricsController
+from server.src.controllers.instance_metrics import InstanceMetricsController
 from objects.k8s import K8sPod
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
@@ -81,10 +81,12 @@ class ModelInstanceHandler(Thread):
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
 
-        PodMetricsController.instance().persist_metrics("eos-models", self.pod_name)
+        InstanceMetricsController.instance().persist_metrics(
+            "eos-models", self.pod_name
+        )
 
         # remove pod from metricscontroller
-        PodMetricsController.instance().remove_pod("eos-models", self.pod_name)
+        InstanceMetricsController.instance().remove_pod("eos-models", self.pod_name)
 
         try:
             K8sController.instance().delete_pod(
@@ -108,7 +110,7 @@ class ModelInstanceHandler(Thread):
 
         # add pod to podmetricscontroller
         # TODO: need to add namespace to pod
-        PodMetricsController.instance().register_pod("eos-models", self.pod_name)
+        InstanceMetricsController.instance().register_pod("eos-models", self.pod_name)
 
     def _check_pod_state(self):
         k8s_pod: Union[K8sPod, None] = None
