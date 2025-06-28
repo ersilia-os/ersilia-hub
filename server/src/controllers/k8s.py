@@ -622,7 +622,7 @@ class K8sController(Thread):
         try:
             nodes: V1NodeList = self._api_core.list_node()
 
-            return list(map(K8sNode.from_k8s, nodes))
+            return list(map(K8sNode.from_k8s, nodes.items))
         except:
             ContextLogger.error(
                 self._logger_key, f"Failed to list nodes, error = [{repr(exc_info())}]"

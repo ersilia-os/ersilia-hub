@@ -4,7 +4,7 @@ from typing import Any, Dict
 from library.data_buffer import DataBuffer, NodeData
 from python_framework.advanced_threading import synchronized_method
 
-from server.src.db.daos.instance_metrics import InstanceMetricsRecord
+from db.daos.instance_metrics import InstanceMetricsRecord
 
 
 class PodMetricValue(NodeData):

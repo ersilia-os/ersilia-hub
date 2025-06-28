@@ -5,7 +5,7 @@ import traceback
 from typing import Union
 
 from controllers.k8s import K8sController
-from server.src.controllers.instance_metrics import InstanceMetricsController
+from controllers.instance_metrics import InstanceMetricsController
 from objects.k8s import K8sPod
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
@@ -51,7 +51,7 @@ class ModelInstanceHandler(Thread):
     state: ModelInstanceState
 
     def __init__(self, model_id: str, work_request_id: str):
-        super().__init__(self)
+        Thread.__init__(self)
 
         self._logger_key = f"ModelInstanceHandler[{model_id}@{work_request_id}]"
         self._kill_event = Event()
@@ -86,7 +86,9 @@ class ModelInstanceHandler(Thread):
         )
 
         # remove pod from metricscontroller
-        InstanceMetricsController.instance().remove_pod("eos-models", self.pod_name)
+        InstanceMetricsController.instance().remove_instance(
+            "eos-models", self.pod_name
+        )
 
         try:
             K8sController.instance().delete_pod(
@@ -110,7 +112,9 @@ class ModelInstanceHandler(Thread):
 
         # add pod to podmetricscontroller
         # TODO: need to add namespace to pod
-        InstanceMetricsController.instance().register_pod("eos-models", self.pod_name)
+        InstanceMetricsController.instance().register_instance(
+            "eos-models", self.pod_name, self.model_id
+        )
 
     def _check_pod_state(self):
         k8s_pod: Union[K8sPod, None] = None
@@ -147,7 +151,7 @@ class ModelInstanceHandler(Thread):
             ContextLogger.error(
                 self._logger_key, f"Failed to find pod, error = [{repr(exc_info())}]"
             )
-            traceback.print_exc(file=stdout)
+            # traceback.print_exc(file=stdout)
 
             self.state = ModelInstanceState.SHOULD_TERMINATE
 
@@ -184,8 +188,6 @@ class ModelInstanceController:
     model_instance_handlers: ThreadSafeCache[str, ModelInstanceHandler]
 
     def __init__(self):
-        super().__init__(self)
-
         self._logger_key = "ModelInstanceController"
 
         self.model_instance_handlers = ThreadSafeCache()

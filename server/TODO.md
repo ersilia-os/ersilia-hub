@@ -26,6 +26,10 @@ metrics.split("\n")
     * need to add DB layer to persist model / pod metrics
 
 [ ] TEST
+  * runs but no metrics
+
+  [ ] If pod not found, don't DELETE (causes large stacktrace)
+  [ ] Add debug logs to metrics scrape + metricsvalue push
 
 [ ] Add controller for loading model_instance (persisted OR current)
   [ ] active models:

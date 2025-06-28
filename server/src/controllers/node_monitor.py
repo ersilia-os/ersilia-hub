@@ -17,12 +17,12 @@ class NodeMonitor(Thread):
 
     _kill_event: Event
 
-    def __init__(self, node_name: K8sNode, metrics_collection_rate: int = 3):
-        super().__init__(self)
+    def __init__(self, node: K8sNode, metrics_collection_rate: int = 3):
+        Thread.__init__(self)
 
         self._kill_event = Event()
 
-        self.node_name = node_name
+        self.node = node
         self.metrics_collection_rate = metrics_collection_rate
 
     def _wait_or_kill(self, timeout: float) -> bool:
@@ -71,7 +71,7 @@ class NodeMonitorController(Thread):
     node_monitors: ThreadSafeCache[str, NodeMonitor]
 
     def __init__(self):
-        super().__init__(self)
+        Thread.__init__(self)
 
         self._logger_key = "NodeMonitorController"
         self._kill_event = Event()

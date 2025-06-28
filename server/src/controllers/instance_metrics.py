@@ -9,8 +9,8 @@ from platform import node
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 
-from server.src.config.application_config import ApplicationConfig
-from server.src.db.daos.instance_metrics import (
+from config.application_config import ApplicationConfig
+from db.daos.instance_metrics import (
     InstanceMetricsDAO,
     InstanceMetricsRecord,
 )
@@ -29,15 +29,13 @@ class InstanceMetricsController:
     _instance_metrics: ThreadSafeCache[str, InstanceMetrics]
 
     def __init__(self):
-        super().__init__(self)
-
         self._logger_key = "InstanceMetricsController"
 
         self._instance_metrics = ThreadSafeCache()
 
         _hostpod = node()
         self._instance_metrics[f"ersilia-core_{_hostpod}"] = InstanceMetrics(
-            _hostpod, "ersilia-core"
+            "core", _hostpod, "ersilia-core"
         )
 
         ContextLogger.instance().create_logger_for_context(
@@ -81,7 +79,7 @@ class InstanceMetricsController:
 
         self._instance_metrics[key] = InstanceMetrics(model_id, instance_id, namespace)
 
-    def remove_pod(self, namespace: str, instance_id: str):
+    def remove_instance(self, namespace: str, instance_id: str):
         key = f"{namespace}_{instance_id}"
 
         if key not in self._instance_metrics:

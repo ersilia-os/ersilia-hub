@@ -86,7 +86,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
                 InstanceId,
                 CpuRunningAverages::text,
                 MemoryRunningAverages::text,
-                LogTimestamp::text
+                TMstamp::text
         """
 
         return sql, field_map
