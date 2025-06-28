@@ -44,7 +44,7 @@ class PodMetricValue(NodeData):
                 labels["namespace"],
                 labels["pod"],
                 float(value),
-                int(timestamp),
+                float(timestamp) / 1000,  # metrics line is in millis
             )
         except:
             return None
@@ -150,7 +150,7 @@ class RunningAverages:
         self.total_60s = new_total_60s
         self.max_60s = new_max_60s
         self.min_60s = new_min_60s
-        self.avg_60s = self.total_60s / self.count_60s
+        self.avg_60s = 0 if self.count_60s == 0 else self.total_60s / self.count_60s
 
 
 # Very targetted set of Pod Metrics

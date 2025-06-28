@@ -14,6 +14,7 @@ class NodeMonitor(Thread):
 
     node: K8sNode
     metrics_collection_rate: int
+    _logger_key: str
 
     _kill_event: Event
 
@@ -21,9 +22,19 @@ class NodeMonitor(Thread):
         Thread.__init__(self)
 
         self._kill_event = Event()
+        self._logger_key = f"NodeMonitor[{node.name}]"
 
         self.node = node
         self.metrics_collection_rate = metrics_collection_rate
+
+        ContextLogger.instance().create_logger_for_context(
+            self._logger_key,
+            LogLevel.from_string(
+                load_environment_variable(
+                    f"LOG_LEVEL_NodeMonitor", default=LogLevel.INFO.name
+                )
+            ),
+        )
 
     def _wait_or_kill(self, timeout: float) -> bool:
         return self._kill_event.wait(timeout)
@@ -41,11 +52,13 @@ class NodeMonitor(Thread):
         metrics = K8sController.instance().scrape_node_metrics(self.node.name)
 
         if metrics is None or len(metrics) == 0:
+            ContextLogger.warn(self._logger_key, "No metrics returned by node")
             return
 
         InstanceMetricsController.instance().ingest_metrics_batch(metrics)
 
     def run(self):
+        ContextLogger.info(self._logger_key, "Monitor started")
         self.on_node_started()
 
         while True:
@@ -55,6 +68,10 @@ class NodeMonitor(Thread):
                 break
 
         self.on_node_terminated()
+
+        ContextLogger.info(self._logger_key, "Monitor stopped")
+
+        del ContextLogger.instance().context_logger_map[self._logger_key]
 
 
 class NodeMonitorControllerKillInstance(KillInstance):

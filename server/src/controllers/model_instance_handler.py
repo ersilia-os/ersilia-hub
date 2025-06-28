@@ -49,6 +49,7 @@ class ModelInstanceHandler(Thread):
     k8s_pod: K8sPod
 
     state: ModelInstanceState
+    pod_exists: bool
 
     def __init__(self, model_id: str, work_request_id: str):
         Thread.__init__(self)
@@ -62,6 +63,7 @@ class ModelInstanceHandler(Thread):
         self.k8s_pod = None
 
         self.state = ModelInstanceState.REQUESTED
+        self.pod_exists = False
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -90,14 +92,15 @@ class ModelInstanceHandler(Thread):
             "eos-models", self.pod_name
         )
 
-        try:
-            K8sController.instance().delete_pod(
-                self.model_id, target_pod_name=self.pod_name
-            )
-        except:
-            pass
+        if self.pod_exists:
+            try:
+                K8sController.instance().delete_pod(
+                    self.model_id, target_pod_name=self.pod_name
+                )
+            except:
+                pass
 
-        # TODO: wait for pod to be GONE
+            # TODO: wait for pod to be GONE
 
         self.state = ModelInstanceState.TERMINATED
 
@@ -132,11 +135,13 @@ class ModelInstanceHandler(Thread):
                     self._logger_key, "Pod missing, likely terminated by k8s"
                 )
                 self.state = ModelInstanceState.SHOULD_TERMINATE
+                self.pod_exists = False
 
                 return
 
             self.k8s_pod = k8s_pod
             self.pod_name = k8s_pod.name
+            self.pod_exists = True
 
             if (
                 self.k8s_pod.state.phase == "Terminating"
@@ -154,6 +159,7 @@ class ModelInstanceHandler(Thread):
             # traceback.print_exc(file=stdout)
 
             self.state = ModelInstanceState.SHOULD_TERMINATE
+            self.pod_exists = False
 
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")

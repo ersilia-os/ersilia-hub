@@ -69,6 +69,10 @@ class InstanceMetricsController:
             if key not in self._instance_metrics:
                 continue
 
+            # ContextLogger.trace(
+            #     self._logger_key,
+            #     "pushing metric [%s] to [%s]" % (value.metric_name, key),
+            # )
             self._instance_metrics[key].push_metric_value(value)
 
     def register_instance(self, namespace: str, instance_id: str, model_id: str):
@@ -88,21 +92,34 @@ class InstanceMetricsController:
         del self._instance_metrics[key]
 
     def _parse_metrics_batch(self, metrics_batch: List[str]) -> List[PodMetricValue]:
+        # ContextLogger.trace(self._logger_key, "parsing metrics batch...")
         metric_values: List[PodMetricValue] = []
 
         for line in metrics_batch:
             line_match = InstanceMetricsController.POD_METRICS_REGEX.fullmatch(line)
+            # ContextLogger.trace(self._logger_key, f"metrics line [{line}]")
+            # ContextLogger.trace(
+            #     self._logger_key,
+            #     "metrics line match groups [%s]"
+            #     % (None if line_match is None else str(line_match.groups())),
+            # )
 
             if line_match is None or len(line_match.groups()) < 4:
                 continue
 
-            labels = dict(map(lambda x: x.split("="), line_match.group(2).split(",")))
+            labels = {}
+
+            for k, v in map(lambda x: x.split("="), line_match.group(2).split(",")):
+                labels[k] = v.replace('"', "")
+
+            # ContextLogger.trace(self._logger_key, "labels: [%s]" % labels)
 
             try:
                 if (
                     f"{labels['namespace']}_{labels['pod']}"
                     not in self._instance_metrics
                 ):
+                    # ContextLogger.trace(self._logger_key, "instance not registered")
                     continue
             except:
                 # missing labels
@@ -116,9 +133,14 @@ class InstanceMetricsController:
             )
 
             if metric_value is None:
+                # ContextLogger.trace(self._logger_key, "failed to parse PodMetricValue")
                 continue
 
             metric_values.append(metric_value)
+
+        # ContextLogger.trace(
+        #     self._logger_key, "returning [%d] parsed metrics" % len(metric_values)
+        # )
 
         return metric_values
 

@@ -21,7 +21,7 @@ from objects.k8s import (
     ErsiliaLabels,
 )
 from library.process_lock import ProcessLock
-from subprocess import Popen
+from subprocess import Popen, run
 from threading import Thread, Event
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 
@@ -56,7 +56,9 @@ class K8sController(Thread):
 
     _template_cache: ThreadSafeCache[str, K8sPodTemplate]
 
-    def __init__(self, namespace: str, load_k8s_in_cluster: bool):
+    _is_in_cluster: bool
+
+    def __init__(self, namespace: str, is_in_cluster: bool):
         Thread.__init__(self)
 
         self._logger_key = "K8sController"
@@ -65,6 +67,7 @@ class K8sController(Thread):
         self._namespace = namespace
         self._process_lock = ProcessLock()
         self._template_cache = None
+        self._is_in_cluster = is_in_cluster
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -77,7 +80,7 @@ class K8sController(Thread):
 
         ContextLogger.info(self._logger_key, "Initializing k8s client...")
 
-        if load_k8s_in_cluster:
+        if is_in_cluster:
             # TODO: load in cluster service account
             config.load_incluster_config()
         else:
@@ -439,35 +442,6 @@ class K8sController(Thread):
             if _lock_acquired:
                 self._release_lock(model_id)
 
-    # def _scale_up_pods(
-    #     self, model_id: str, current_replicas: int, new_replicas: int
-    # ) -> bool:
-    #     _lock_acquired = False
-
-    #     try:
-    #         if not self._acquire_lock(model_id):
-    #             ContextLogger.error(
-    #                 self._logger_key,
-    #                 "Failed to acquire lock on model = [%s], error = [%s]"
-    #                 % (model_id, repr(exc_info())),
-    #             )
-    #             return False
-
-    #         _lock_acquired = True
-
-    #         _current_replicas = len(self.load_model_pods(model_id))
-
-    #         while _current_replicas < new_replicas:
-    #             # TODO: add size_megabytes: int, disable_memory_limit: bool,
-    #             self.create_model_pod(model_id)
-
-    #             _current_replicas = len(self.load_model_pods(model_id))
-
-    #         return True
-    #     finally:
-    #         if _lock_acquired:
-    #             self._release_lock(model_id)
-
     def deploy_new_pod(
         self,
         model_id: str,
@@ -633,10 +607,26 @@ class K8sController(Thread):
 
     def scrape_node_metrics(self, node_name: str) -> List[str]:
         try:
-            metrics = self._api_core.connect_get_node_proxy_with_path(
-                name=node_name,
-                path="metrics/resource",
-            )
+            metrics: str = None
+
+            if self._is_in_cluster:
+                metrics = self._api_core.connect_get_node_proxy_with_path(
+                    name=node_name,
+                    path="metrics/resource",
+                )
+            else:
+                result = run(
+                    [
+                        "kubectl",
+                        "get",
+                        "--raw",
+                        f"/api/v1/nodes/{node_name}/proxy/metrics/resource",
+                    ],
+                    capture_output=True,
+                )
+                result.check_returncode()
+
+                metrics = result.stdout.decode().strip()
 
             if metrics is None or len(metrics) == 0:
                 return []
