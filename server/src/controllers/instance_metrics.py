@@ -91,6 +91,16 @@ class InstanceMetricsController:
 
         del self._instance_metrics[key]
 
+    def get_instance(
+        self, namespace: str, instance_id: str
+    ) -> Union[None, InstanceMetrics]:
+        key = f"{namespace}_{instance_id}"
+
+        if key not in self._instance_metrics:
+            return None
+
+        return self._instance_metrics[key]
+
     def _parse_metrics_batch(self, metrics_batch: List[str]) -> List[PodMetricValue]:
         # ContextLogger.trace(self._logger_key, "parsing metrics batch...")
         metric_values: List[PodMetricValue] = []

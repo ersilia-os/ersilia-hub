@@ -11,6 +11,7 @@ from kubernetes.client import (
     V1Affinity,
     V1NodeAffinity,
     V1Node,
+    V1ResourceRequirements,
 )
 from python_framework.time import string_from_date
 
@@ -233,6 +234,86 @@ class K8sPodState:
         }
 
 
+def parse_k8s_cpu_value(k8s_value: str) -> Union[int, None]:
+    if k8s_value is None or len(k8s_value) == 0:
+        return None
+
+    _k8s_value = k8s_value.strip()
+
+    if _k8s_value.endswith("m"):
+        return int(_k8s_value[:-1])
+    else:
+        # assume integer value for full cores
+        return int(_k8s_value) * 1000
+
+
+def parse_k8s_memory_value(k8s_value: str) -> Union[int, None]:
+    if k8s_value is None or len(k8s_value) == 0:
+        return None
+
+    _k8s_value = k8s_value.strip()
+
+    if _k8s_value.endswith("Mi"):
+        return int(_k8s_value[:-2])
+    elif _k8s_value.endswith("Gi"):
+        return int(_k8s_value[:-2]) * 1024
+
+    return 0
+
+
+class K8sPodResources:
+    cpu_request: int  # in millicores
+    cpu_limit: Union[int, None]  # in millicores
+    memory_request: int  # in megabytes
+    memory_limit: Union[int, None]  # in megabytes
+
+    def __init__(
+        self,
+        cpu_request: int,
+        cpu_limit: Union[int, None],
+        memory_request: int,
+        memory_limit: Union[int, None],
+    ):
+        self.cpu_request = cpu_request
+        self.cpu_limit = cpu_limit
+        self.memory_request = memory_request
+        self.memory_limit = memory_limit
+
+    @staticmethod
+    def from_k8s(k8s_resources: V1ResourceRequirements) -> "K8sPodResources":
+        return K8sPodResources(
+            (
+                None
+                if k8s_resources.requests is None or "cpu" not in k8s_resources.requests
+                else parse_k8s_cpu_value(k8s_resources.requests["cpu"])
+            ),
+            (
+                None
+                if k8s_resources.limits is None or "cpu" not in k8s_resources.limits
+                else parse_k8s_cpu_value(k8s_resources.limits["cpu"])
+            ),
+            (
+                None
+                if k8s_resources.requests is None
+                or "memory" not in k8s_resources.requests
+                else parse_k8s_memory_value(k8s_resources.requests["memory"])
+            ),
+            (
+                None
+                if k8s_resources.limits is None or "memory" not in k8s_resources.limits
+                else parse_k8s_memory_value(k8s_resources.limits["memory"])
+            ),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "cpuRequest": self.cpu_request,
+            "cpuLimit": self.cpu_limit,
+            "memoryRequest": self.memory_request,
+            "memoryLimit": self.memory_limit,
+        }
+
+
 class K8sPod:
 
     name: str
@@ -242,6 +323,7 @@ class K8sPod:
     annotations: Dict[str, str]
     pod_state: K8sPodState
     node_name: str | None
+    resources: K8sPodResources
 
     def __init__(
         self,
@@ -252,6 +334,7 @@ class K8sPod:
         annotations: Dict[str, str],
         pod_state: K8sPodState,
         node_name: str | None,
+        resources: K8sPodResources | None,
     ):
         self.name = name
         self.state = state
@@ -260,6 +343,7 @@ class K8sPod:
         self.annotations = annotations
         self.pod_state = pod_state
         self.node_name = node_name
+        self.resources = resources
 
     @staticmethod
     def from_k8s(k8s_pod: V1Pod) -> "K8sPod":
@@ -277,6 +361,7 @@ class K8sPod:
             annotations,
             K8sPodState.from_k8s_status(k8s_pod.status),
             k8s_pod.spec.node_name,
+            K8sPodResources.from_k8s(k8s_pod.spec.containers[0].resources),
         )
 
     def get_annotation(self, annotation: str) -> Union[str, None]:
@@ -309,6 +394,7 @@ class K8sPod:
             "annotations": self.annotations,
             "podState": self.pod_state.to_object(),
             "nodeName": self.node_name,
+            "resources": None if self.resources is None else self.resources.to_object(),
         }
 
 

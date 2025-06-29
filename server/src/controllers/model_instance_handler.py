@@ -2,7 +2,7 @@ from enum import Enum
 from sys import exc_info, stdout
 from threading import Event, Thread
 import traceback
-from typing import Union
+from typing import List, Union
 
 from controllers.k8s import K8sController
 from controllers.instance_metrics import InstanceMetricsController
@@ -11,6 +11,8 @@ from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.thread_safe_cache import ThreadSafeCache
+
+from server.src.objects.instance import ModelInstance
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -253,3 +255,28 @@ class ModelInstanceController:
             return self.model_instance_handlers[key]
 
         return None
+
+    def load_active_instances(
+        self, model_ids: List[str] = None, work_request_id: Union[str, None] = None
+    ) -> List[ModelInstance]:
+        active_instances: List[ModelInstance] = []
+
+        for handler in self.model_instance_handlers.values():
+            # TODO: apply filters
+
+            metrics = InstanceMetricsController.instance().get_instance(
+                "eos-models", handler.k8s_pod.name
+            )
+
+            active_instances.append(ModelInstance(handler.k8s_pod, metrics))
+
+        return active_instances
+
+    def load_persisted_instances(
+        self,
+        model_ids: List[str] = None,
+        work_request_id: Union[str, None] = None,
+        instance_id: Union[str, None] = None,
+    ) -> List[ModelInstance]:
+        # TODO: load from DB. custom query to join between model_instance_log and instance_metrics
+        pass

@@ -1,60 +1,30 @@
-[x] install metrics server
-[x] investigate metrics server integration (check API)
 
-```
-# kubectl get --raw "/api/v1/nodes/ip-10-0-3-164.eu-south-2.compute.internal/proxy/metrics/resource"
-resource = api.get_namespaced_custom_object(group="metrics.k8s.io", version="v1beta1", namespace="ersilia-core", plural="pods", name="ersilia-hub-server-78554c56f7-klmrl")
-
-
-core_api = client.CoreV1Api()
-metrics = core_api.connect_get_node_proxy_with_path(name="ip-10-0-3-164.eu-south-2.compute.internal", path="metrics/resource")
-metrics.split("\n")
-```
-
-[x] Implement NodeMonitor
-  [x] track active nodes
-  [x] create a thread per active node
-  [x] thread does metric scraping and calls PodMetricsController.ingest
+[x] Add controller for loading active models:
+  * full pod !!! NEED TO ADD RESOURCES TO PERSISTED POD !!!
+  * all running averages for all metrics
   
-  * eventually monitor node resources + active pods
+[ ] Add API to load active models (no filters for now)
 
-[x] Create model_instance_monitor (thread)
-  [x] when starting a model, start monitor thread
-  [x] on thread start, add pod to PodMetricsController
-  [x] monitor pod liveness / existence
-  [x] on pod terminated, persist podmetrics in DB + remove pod from metrics controller -> terminate thread
-    * need to add DB layer to persist model / pod metrics
+[ ] Add frontend to visualize active models
+  * state
+  * running averages metrics
+  * compared to requests/limits ? colour-coded type of visualization to start with + percentage margins
 
-[ ] TEST
-  * runs but no metrics
 
-  [ ] If pod not found, don't DELETE (causes large stacktrace)
-  [ ] Add debug logs to metrics scrape + metricsvalue push
+[ ] Add loading of persisted models to controller:
+    * full pod (final "active" state, just before TERMINATED, i.e. sort desc by timestamp and filter out TERMINATE)
+    * all running averages for all metrics
 
-[ ] Add controller for loading model_instance (persisted OR current)
-  [ ] active models:
-    * full pod !!! NEED TO ADD RESOURCES TO PERSISTED POD !!!
-    * all running averages per metric
-  
-  [ ] persisted models:
-    * full pod (final state??)
-    * all running averages per metric
+[ ] Implement recommendations engine
+  * need to calculate per input size (or input size range ??)
+  * should only consider persisted
+  * specify time range + limit, default no time but 100 limit
+  * use min / max (not avg) and compare to pod resources (as persisted)
 
-  [ ] slice of values (for all metrics, no filters for now) - only active models
-  
-  [ ] recommendations for a model (global, not instance)
-    * need to calculate per input size (or input size range ??)
-    * should only consider persisted
-    * specify time range + limit, default no time but 20 limit
-    * use min / max (not avg) and compare to pod resources (as persisted)
+[ ] API for recommendations (eventually we will run this nightly and persist it)
 
-[ ] Add api to match controller
+[ ] Create recommendations UI
 
-[ ] Frontend
-  [ ] list active models with their running averages in-line (maybe a custom component, not table)
-  [ ] need to somehow visualize current pod resources requests / limits and thresholds (heatmap of how close / far to the threshold)
-  
-  [ ] separate "recommendations" screen for per-model analysis
 
 ---
 
