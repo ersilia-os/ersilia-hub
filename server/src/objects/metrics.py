@@ -1,6 +1,8 @@
 from json import dumps, loads
 from typing import Any, Dict
 
+from pydantic import BaseModel
+
 from library.data_buffer import DataBuffer, NodeData
 from python_framework.advanced_threading import synchronized_method
 
@@ -151,6 +153,36 @@ class RunningAverages:
         self.max_60s = new_max_60s
         self.min_60s = new_min_60s
         self.avg_60s = 0 if self.count_60s == 0 else self.total_60s / self.count_60s
+
+
+class RunningAveragesModel(BaseModel):
+
+    count: int
+    total: float
+    min: float
+    max: float
+    avg: float
+
+    count_60s: int
+    total_60s: float
+    min_60s: float
+    max_60s: float
+    avg_60s: float
+
+    @staticmethod
+    def from_object(obj: RunningAverages) -> "RunningAveragesModel":
+        return RunningAveragesModel(
+            count=obj.count,
+            total=obj.total,
+            min=obj.min,
+            max=obj.max,
+            avg=obj.avg,
+            count_60s=obj.count_60s,
+            total_60s=obj.total_60s,
+            min_60s=obj.min_60s,
+            max_60s=obj.max_60s,
+            avg_60s=obj.avg_60s,
+        )
 
 
 # Very targetted set of Pod Metrics

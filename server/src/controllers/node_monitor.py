@@ -168,6 +168,6 @@ class NodeMonitorController(Thread):
 
             self._update_active_nodes()
 
-        self.terminate_monitors()
+        self.terminate_monitors(True)
 
         ContextLogger.info(self._logger_key, "controller stopped.")

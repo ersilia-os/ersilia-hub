@@ -12,7 +12,7 @@ from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.thread_safe_cache import ThreadSafeCache
 
-from server.src.objects.instance import ModelInstance
+from objects.instance import ModelInstance
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
