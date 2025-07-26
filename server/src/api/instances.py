@@ -41,7 +41,7 @@ def load_instances(
             map(
                 ModelInstanceModel.from_object,
                 ModelInstanceController.instance().load_active_instances(
-                    model_ids=[filters.model_id]
+                    model_ids=(None if filters.model_id is None else [filters.model_id])
                 ),
             )
         )
@@ -51,7 +51,12 @@ def load_instances(
             map(
                 ModelInstanceModel.from_object,
                 ModelInstanceController.instance().load_persisted_instances(
-                    model_ids=[filters.model_id], instance_id=filters.instance_id
+                    model_ids=(
+                        None if filters.model_id is None else [filters.model_id]
+                    ),
+                    instance_id=(
+                        None if filters.instance_id is None else [filters.instance_id]
+                    ),
                 ),
             )
         )

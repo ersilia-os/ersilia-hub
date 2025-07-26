@@ -20,7 +20,8 @@ export class ModelInstancesComponent implements OnDestroy {
   private instancesService = inject(InstancesService);
   private refreshTimer$: Subscription | undefined;
   private instanceFilters: ModelInstanceFilters = {
-    active: true
+    active: true,
+    persisted: true
   };
 
   readonly dialog = inject(MatDialog);

@@ -171,6 +171,9 @@ class RunningAveragesModel(BaseModel):
 
     @staticmethod
     def from_object(obj: RunningAverages) -> "RunningAveragesModel":
+        if obj is None:
+            return None
+
         return RunningAveragesModel(
             count=obj.count,
             total=obj.total,
@@ -231,6 +234,9 @@ class InstanceMetricsModel(BaseModel):
 
     @staticmethod
     def from_object(obj: InstanceMetrics) -> "InstanceMetricsModel":
+        if obj is None:
+            return None
+
         return InstanceMetricsModel(
             model_id=obj.model_id,
             instance_id=obj.instance_id,
@@ -284,6 +290,7 @@ class PersistedInstanceMetrics:
         return InstanceMetricsRecord.init(
             modelid=self.model_id,
             instanceid=self.instance_id,
+            namespace=self.namespace,
             cpurunningaverages=dumps(self.cpu_running_averages.to_object()),
             memoryrunningaverages=dumps(self.memory_running_averages.to_object()),
         )
@@ -293,6 +300,7 @@ class PersistedInstanceMetricsModel(BaseModel):
 
     model_id: str
     instance_id: str
+    namespace: str
     cpu_running_averages: RunningAveragesModel
     memory_running_averages: RunningAveragesModel
     timestamp: str

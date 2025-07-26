@@ -1,8 +1,9 @@
 from enum import Enum
+from json import loads
 from sys import exc_info, stdout
 from threading import Event, Thread
 import traceback
-from typing import List, Union
+from typing import Dict, List, Union
 
 from controllers.k8s import K8sController
 from controllers.instance_metrics import InstanceMetricsController
@@ -13,6 +14,12 @@ from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.thread_safe_cache import ThreadSafeCache
 
 from objects.instance import ModelInstance
+from config.application_config import ApplicationConfig
+from db.daos.model_instance_log import (
+    ModelInstanceLogDAO,
+    ModelInstanceLogQuery,
+    ModelInstanceLogRecord,
+)
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -40,10 +47,19 @@ class ModelInstanceState(Enum):
     TERMINATED = "TERMINATED"
 
 
+class ModelInstanceControllerStub:
+    def remove_instance(
+        self, model_id: str, work_request_id: str, terminate: bool = False
+    ):
+        pass
+
+
 class ModelInstanceHandler(Thread):
 
     _logger_key: str = None
     _kill_event: Event
+
+    _controller: ModelInstanceControllerStub
 
     model_id: str
     work_request_id: str
@@ -53,11 +69,17 @@ class ModelInstanceHandler(Thread):
     state: ModelInstanceState
     pod_exists: bool
 
-    def __init__(self, model_id: str, work_request_id: str):
+    def __init__(
+        self,
+        model_id: str,
+        work_request_id: str,
+        controller: ModelInstanceControllerStub,
+    ):
         Thread.__init__(self)
 
         self._logger_key = f"ModelInstanceHandler[{model_id}@{work_request_id}]"
         self._kill_event = Event()
+        self._controller = controller
 
         self.model_id = model_id
         self.work_request_id = work_request_id
@@ -103,6 +125,8 @@ class ModelInstanceHandler(Thread):
                 pass
 
             # TODO: wait for pod to be GONE
+
+        self._controller.remove_instance(self.model_id, self.work_request_id)
 
         self.state = ModelInstanceState.TERMINATED
 
@@ -240,11 +264,24 @@ class ModelInstanceController:
         if key in self.model_instance_handlers:
             return self.model_instance_handlers[key]
 
-        handler = ModelInstanceHandler(model_id, work_request_id)
+        handler = ModelInstanceHandler(model_id, work_request_id, self)
         self.model_instance_handlers[key] = handler
         handler.start()
 
         return handler
+
+    def remove_instance(
+        self, model_id: str, work_request_id: str, terminate: bool = False
+    ):
+        key = f"{model_id}_{work_request_id}"
+
+        if key not in self.model_instance_handlers:
+            return
+
+        if terminate:
+            self.model_instance_handlers[key].kill()
+
+        del self.model_instance_handlers[key]
 
     def get_instance(
         self, model_id: str, work_request_id: str
@@ -265,7 +302,7 @@ class ModelInstanceController:
             # TODO: apply filters
 
             metrics = InstanceMetricsController.instance().get_instance(
-                "eos-models", handler.k8s_pod.name
+                handler.k8s_pod.namespace, handler.k8s_pod.name
             )
 
             active_instances.append(ModelInstance(handler.k8s_pod, metrics))
@@ -278,5 +315,65 @@ class ModelInstanceController:
         work_request_id: Union[str, None] = None,
         instance_id: Union[str, None] = None,
     ) -> List[ModelInstance]:
-        return []
-        # TODO: load from DB. custom query to join between model_instance_log and instance_metrics
+        instances: Dict[str, ModelInstance] = {}
+        log_model_ids: List[str] = []
+        log_instance_ids: List[str] = []
+
+        print("loading persisted")
+
+        try:
+            instance_log_records: List[ModelInstanceLogRecord] = (
+                ModelInstanceLogDAO.execute_query(
+                    ModelInstanceLogQuery.SELECT_FILTERED,
+                    ApplicationConfig.instance().database_config,
+                    query_kwargs={
+                        "model_ids": model_ids,
+                        "instance_ids": None if instance_id is None else [instance_id],
+                        "correlation_ids": (
+                            None if work_request_id is None else [work_request_id]
+                        ),
+                        "log_events": ["INSTANCE_READY"],
+                    },
+                )
+            )
+
+            if instance_log_records is None or len(instance_log_records) == 0:
+                return []
+
+            for record in instance_log_records:
+                instances[record.instanceid] = ModelInstance(
+                    K8sPod.from_object(loads(record.instance_details)), None
+                )
+
+                if record.instanceid not in log_instance_ids:
+                    log_instance_ids.append(record.instanceid)
+
+                if record.modelid not in log_model_ids:
+                    log_model_ids.append(record.modelid)
+        except:
+            error_str = "Failed to load ModelInstanceLogs, error = [%s]" % (
+                repr(exc_info()),
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+            return []
+
+        try:
+            instance_metrics = InstanceMetricsController.instance().load_persisted(
+                log_model_ids, log_instance_ids
+            )
+
+            for metrics in instance_metrics:
+                if metrics.instance_id not in instances:
+                    continue
+
+                instances[metrics.instance_id].metrics = metrics
+        except:
+            error_str = "Failed to load InstanceMetrics from DB, error = [%s]" % (
+                repr(exc_info())
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+        return list(instances.values())

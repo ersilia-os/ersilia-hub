@@ -98,6 +98,14 @@ export interface K8sPodResources {
     memory_limit?: number; // in megabytes
 }
 
+export interface InstanceMetrics {
+    model_id: string;
+    instance_id: string;
+    namespace: string;
+    cpu_running_averages: RunningAverages;
+    memory_running_averages: RunningAverages;
+}
+
 export interface RunningAverages {
     count: number;
     total: number;

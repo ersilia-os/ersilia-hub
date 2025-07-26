@@ -5,86 +5,14 @@
   
 [x] Add API to load active models (no filters for now)
 
-```
-File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/api/instances.py", line 40, in load_instances
-    metrics.extend(
-    ~~~~~~~~~~~~~~^
-        map(
-        ^^^^
-    ...<4 lines>...
-        )
-        ^
-    )
-    ^
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/objects/instance.py", line 29, in from_object
-    k8s_pod=K8sPodModel.from_object(obj.k8s_pod),
-            ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/objects/k8s_model.py", line 112, in from_object
-    pod_state=K8sPodStateModel.from_object(k8s_pod.pod_state),
-              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/objects/k8s_model.py", line 69, in from_object
-    else list(map(K8sPodConditionModel.from_object, obj.conditions))
-         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/objects/k8s_model.py", line 46, in from_object
-    return K8sPodConditionModel(
-        last_probe_time=obj.last_probe_time,
-    ...<4 lines>...
-        type=obj.type,
-    )
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/.venv/lib/python3.13/site-packages/pydantic/main.py", line 253, in __init__
-    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
-pydantic_core._pydantic_core.ValidationError: 3 validation errors for K8sPodConditionModel
-last_probe_time
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-message
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-reason
-  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
-    For further information visit https://errors.pydantic.dev/2.11/v/string_type
-INFO:     ::1:54706 - "GET /api/instances?active=true HTTP/1.1" 500 Internal Server Error
-```
-
-
-```
-[ERROR - InstanceMetricsController] @ [2025-07-26T14:37:05.742Z] : Failed to insert PersistedInstanceMetrics, error = [(<class 'TypeError'>, TypeError("PersistedInstanceMetrics.__init__() missing 1 required positional argument: 'memory_running_averages'"), <traceback object at 0x105c7bd80>)]
-[ERROR - InstanceMetricsController] @ [2025-07-26T14:37:05.742Z] : Failed to insert PersistedInstanceMetrics, error = [(<class 'TypeError'>, TypeError("PersistedInstanceMetrics.__init__() missing 1 required positional argument: 'memory_running_averages'"), <traceback object at 0x103f1b1c0>)]
-[INFO - NodeMonitorController] @ [2025-07-26T14:37:05.742Z] : controller stopped.
-[INFO - ScalingManager] @ [2025-07-26T14:37:05.742Z] : Controller stopped
-Traceback (most recent call last):
-Traceback (most recent call last):
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/controllers/instance_metrics.py", line 192, in persist_metrics
-    persisted_metrics = PersistedInstanceMetrics(
-        _metrics.model_id,
-    ...<2 lines>...
-        _metrics.memory_running_averages,
-    )
-  File "/Users/nasihastander/rudolf/h3d/repos/ersilia-hub/server/src/controllers/instance_metrics.py", line 192, in persist_metrics
-    persisted_metrics = PersistedInstanceMetrics(
-        _metrics.model_id,
-    ...<2 lines>...
-        _metrics.memory_running_averages,
-    )
-```
-
-
 [ ] Add frontend to visualize active models
-  [ ] objects + service
-  [ ] new page (header + add to sidebar)
-  [ ] custom "blocks" (maybe fill width for now)
-    [ ] model id (filter out server for now, separate toggle for that)
-    [ ] instance name
-    [ ] cpu stats
-      [ ] "guage" MAX usage OVERALL out of resource limit
-      [ ] "guage" min usage OVERALL out of resource REQUEST
-      [ ] "guage" avg usage OVERALL out of resource limit
-    [ ] memory stats
-      [ ] "guage" MAX usage OVERALL out of resource limit
-      [ ] "guage" min usage OVERALL out of resource REQUEST
-      [ ] "guage" avg usage OVERALL out of resource limit
-    * stats guage should show x / x below and % (as number) inside
-    * stats guage levels, should get it from recommendation engine (or at least hardcode it for now)
+  [x] objects + service
+  [x] new page (header + add to sidebar)
+
+  [ ] add resource profile (cpu + mem) to frontend objects
+  [ ] add resource profile PERCENTAGE to cpu + memory info blocks
+    * percentage big in colour, and x / y below it
+    * hardcode the colour brackets on the frontend ??
       cpu:
       - 0 - 40% = orange (very under), 
       - 40 - 65 = yellow (under),
@@ -102,9 +30,11 @@ Traceback (most recent call last):
 
 ---
 
-[ ] Add loading of persisted models to controller:
+[x] Add loading of persisted models to controller:
     * full pod (final "active" state, just before TERMINATED, i.e. sort desc by timestamp and filter out TERMINATE)
     * all running averages for all metrics
+
+---
 
 [ ] Implement recommendations engine
   * IGNORE model input size (FOR NOW)

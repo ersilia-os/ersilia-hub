@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from pydantic import BaseModel
 
@@ -17,12 +17,12 @@ class K8sPodContainerStateModel(BaseModel):
     started: bool
     ready: bool
     restart_count: int
-    state_times: Dict[str, str]
-    last_state_times: Dict[str, str]
+    state_times: Dict[str, str | None]
+    last_state_times: Dict[str, str | None]
 
     @staticmethod
     def from_object(obj: K8sPodContainerState) -> "K8sPodContainerStateModel":
-        return K8sPodContainerState(
+        return K8sPodContainerStateModel(
             phase=obj.phase,
             started=obj.started,
             ready=obj.ready,
@@ -34,12 +34,12 @@ class K8sPodContainerStateModel(BaseModel):
 
 class K8sPodConditionModel(BaseModel):
 
-    last_probe_time: str
-    last_transition_time: str
-    message: str
-    reason: str
-    status: str
-    type: str
+    last_probe_time: str | None
+    last_transition_time: str | None
+    message: str | None
+    reason: str | None
+    status: str | None
+    type: str | None
 
     @staticmethod
     def from_object(obj: K8sPodCondition) -> "K8sPodConditionModel":
@@ -56,9 +56,9 @@ class K8sPodConditionModel(BaseModel):
 class K8sPodStateModel(BaseModel):
 
     conditions: List[K8sPodConditionModel]
-    message: str
-    reason: str
-    start_time: str
+    message: str | None
+    reason: str | None
+    start_time: str | None
 
     @staticmethod
     def from_object(obj: K8sPodState) -> "K8sPodStateModel":
@@ -76,12 +76,15 @@ class K8sPodStateModel(BaseModel):
 
 class K8sPodResourcesModel(BaseModel):
     cpu_request: int  # in millicores
-    cpu_limit: Union[int, None]  # in millicores
+    cpu_limit: int | None  # in millicores
     memory_request: int  # in megabytes
-    memory_limit: Union[int, None]  # in megabytes
+    memory_limit: int | None  # in megabytes
 
     @staticmethod
     def from_object(obj: K8sPodResources) -> "K8sPodResourcesModel":
+        if obj is None:
+            return obj
+
         return K8sPodResourcesModel(
             cpu_request=obj.cpu_request,
             cpu_limit=obj.cpu_limit,
@@ -93,18 +96,20 @@ class K8sPodResourcesModel(BaseModel):
 class K8sPodModel(BaseModel):
 
     name: str
+    namespace: str
     state: K8sPodContainerStateModel
-    ip: str
+    ip: str | None
     labels: Dict[str, str]
     annotations: Dict[str, str]
     pod_state: K8sPodStateModel
     node_name: str | None
-    resources: K8sPodResourcesModel
+    resources: K8sPodResourcesModel | None
 
     @staticmethod
     def from_object(k8s_pod: K8sPod) -> "K8sPodModel":
         return K8sPodModel(
             name=k8s_pod.name,
+            namespace=k8s_pod.namespace,
             state=K8sPodContainerStateModel.from_object(k8s_pod.state),
             ip=k8s_pod.ip,
             labels=k8s_pod.labels,

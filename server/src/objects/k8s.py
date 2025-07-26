@@ -137,6 +137,17 @@ class K8sPodContainerState:
             "lastStateTimes": self.last_state_times,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodContainerState":
+        return K8sPodContainerState(
+            obj["phase"],
+            obj["started"],
+            obj["ready"],
+            obj["restartCount"],
+            obj["stateTimes"],
+            obj["lastStateTimes"],
+        )
+
 
 class K8sPodCondition:
 
@@ -192,6 +203,20 @@ class K8sPodCondition:
             "type": self.type,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodCondition":
+        if obj is None:
+            return None
+
+        return K8sPodCondition(
+            obj["lastProbeTime"],
+            obj["lastTransitionTime"],
+            obj["message"],
+            obj["reason"],
+            obj["status"],
+            obj["type"],
+        )
+
 
 class K8sPodState:
 
@@ -232,6 +257,18 @@ class K8sPodState:
             "reason": self.reason,
             "startTime": self.start_time,
         }
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodState":
+        if obj is None:
+            return None
+
+        return K8sPodState(
+            list(map(K8sPodCondition.from_object, obj["conditions"])),
+            obj["message"],
+            obj["reason"],
+            obj["startTime"],
+        )
 
 
 def parse_k8s_cpu_value(k8s_value: str) -> Union[int, None]:
@@ -313,10 +350,23 @@ class K8sPodResources:
             "memoryLimit": self.memory_limit,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodResources":
+        if obj is None:
+            return None
+
+        return K8sPodResources(
+            obj["cpuRequest"],
+            obj["cpuLimit"],
+            obj["memoryRequest"],
+            obj["memoryLimit"],
+        )
+
 
 class K8sPod:
 
     name: str
+    namespace: str
     state: K8sPodContainerState
     ip: str
     labels: Dict[str, str]
@@ -335,8 +385,10 @@ class K8sPod:
         pod_state: K8sPodState,
         node_name: str | None,
         resources: K8sPodResources | None,
+        namespace: str,
     ):
         self.name = name
+        self.namespace = namespace
         self.state = state
         self.ip = ip
         self.labels = labels
@@ -362,6 +414,7 @@ class K8sPod:
             K8sPodState.from_k8s_status(k8s_pod.status),
             k8s_pod.spec.node_name,
             K8sPodResources.from_k8s(k8s_pod.spec.containers[0].resources),
+            k8s_pod.metadata.namespace,
         )
 
     def get_annotation(self, annotation: str) -> Union[str, None]:
@@ -388,6 +441,7 @@ class K8sPod:
     def to_object(self) -> Dict[str, Any]:
         return {
             "name": self.name,
+            "namespace": self.namespace,
             "state": self.state.to_object(),
             "ip": self.ip,
             "labels": self.labels,
@@ -396,6 +450,24 @@ class K8sPod:
             "nodeName": self.node_name,
             "resources": None if self.resources is None else self.resources.to_object(),
         }
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPod":
+        return K8sPod(
+            obj["name"],
+            K8sPodContainerState.from_object(obj["state"]),
+            obj["ip"],
+            obj["labels"],
+            obj["annotations"],
+            None if "podState" not in obj else K8sPodState.from_object(obj["podState"]),
+            None if "nodeName" not in obj else obj["nodeName"],
+            (
+                None
+                if "resources" not in obj
+                else K8sPodResources.from_object(obj["resources"])
+            ),
+            "" if "namespace" not in obj else obj["namespace"],
+        )
 
 
 class K8sPodTemplate:

@@ -12,6 +12,7 @@ from python_framework.config_utils import load_environment_variable
 from config.application_config import ApplicationConfig
 from db.daos.instance_metrics import (
     InstanceMetricsDAO,
+    InstanceMetricsQuery,
     InstanceMetricsRecord,
 )
 
@@ -192,6 +193,7 @@ class InstanceMetricsController:
             persisted_metrics = PersistedInstanceMetrics(
                 _metrics.model_id,
                 _metrics.instance_id,
+                _metrics.namespace,
                 _metrics.cpu_running_averages,
                 _metrics.memory_running_averages,
             )
@@ -221,3 +223,29 @@ class InstanceMetricsController:
             traceback.print_exc(file=stdout)
 
         return None
+
+    def load_persisted(
+        self, model_ids: List[str] = None, instance_ids: List[str] = None
+    ) -> List[InstanceMetrics]:
+        try:
+            results: List[InstanceMetricsRecord] = InstanceMetricsDAO.execute_query(
+                InstanceMetricsQuery.SELECT_FILTERED,
+                ApplicationConfig.instance().database_config,
+                query_kwargs={
+                    "model_ids": model_ids,
+                    "instance_ids": instance_ids,
+                },
+            )
+
+            if results is None or len(results) == 0:
+                return []
+
+            return list(map(PersistedInstanceMetrics.init_from_record, results))
+        except:
+            error_str = "Failed to insert PersistedInstanceMetrics, error = [%s]" % (
+                repr(exc_info()),
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+        return []
