@@ -101,6 +101,14 @@ class InstanceMetricsController:
 
         return self._instance_metrics[key]
 
+    def load_active(self, model_id: Union[str, None] = None) -> List[InstanceMetrics]:
+        if model_id is None:
+            return list(self._instance_metrics.values())
+
+        return list(
+            filter(lambda x: x.model_id == model_id, self._instance_metrics.values())
+        )
+
     def _parse_metrics_batch(self, metrics_batch: List[str]) -> List[PodMetricValue]:
         # ContextLogger.trace(self._logger_key, "parsing metrics batch...")
         metric_values: List[PodMetricValue] = []

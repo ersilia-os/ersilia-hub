@@ -20,7 +20,6 @@ class ModelInstance:
 
 class ModelInstanceModel(BaseModel):
 
-    # TODO: add Model classes for these and do a transform
     k8s_pod: K8sPodModel
     running_averages: RunningAveragesModel
 
@@ -30,3 +29,10 @@ class ModelInstanceModel(BaseModel):
             k8s_pod=K8sPodModel.from_object(obj.k8s_pod),
             running_averages=RunningAveragesModel.from_object(obj.running_averages),
         )
+
+
+class InstancesLoadFilters(BaseModel):
+    active: bool | None = True
+    persisted: bool | None = False
+    model_id: str | None = None
+    instance_id: str | None = None

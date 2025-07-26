@@ -216,10 +216,39 @@ class InstanceMetrics:
             self.memory_running_averages.update(value, self.memory_working_set_bytes)
 
 
+class InstanceMetricsModel(BaseModel):
+    model_id: str
+    instance_id: str
+    namespace: str
+
+    ##
+    # NOTE: exclude databuffers for now, maybe add later
+    ##
+    # cpu_usage_seconds_total: DataBuffer
+    cpu_running_averages: RunningAveragesModel
+    # memory_working_set_bytes: DataBuffer
+    memory_running_averages: RunningAveragesModel
+
+    @staticmethod
+    def from_object(obj: InstanceMetrics) -> "InstanceMetricsModel":
+        return InstanceMetricsModel(
+            model_id=obj.model_id,
+            instance_id=obj.instance_id,
+            namespace=obj.namespace,
+            cpu_running_averages=RunningAveragesModel.from_object(
+                obj.cpu_running_averages
+            ),
+            memory_running_averages=RunningAveragesModel.from_object(
+                obj.memory_running_averages
+            ),
+        )
+
+
 class PersistedInstanceMetrics:
 
     model_id: str
     instance_id: str
+    namespace: str
     cpu_running_averages: RunningAverages
     memory_running_averages: RunningAverages
     timestamp: str
@@ -228,12 +257,14 @@ class PersistedInstanceMetrics:
         self,
         model_id: str,
         instance_id: str,
+        namespace: str,
         cpu_running_averages: RunningAverages,
         memory_running_averages: RunningAverages,
         timestamp: str = None,
     ):
         self.model_id = model_id
         self.instance_id = instance_id
+        self.namespace = namespace
         self.cpu_running_averages = cpu_running_averages
         self.memory_running_averages = memory_running_averages
         self.timestamp = timestamp
@@ -243,6 +274,7 @@ class PersistedInstanceMetrics:
         return PersistedInstanceMetrics(
             record.modelid,
             record.instanceid,
+            record.namespace,
             RunningAverages.from_object(loads(record.cpu_running_averages)),
             RunningAverages.from_object(loads(record.memory_running_averages)),
             record.timestamp,
@@ -255,3 +287,32 @@ class PersistedInstanceMetrics:
             cpurunningaverages=dumps(self.cpu_running_averages.to_object()),
             memoryrunningaverages=dumps(self.memory_running_averages.to_object()),
         )
+
+
+class PersistedInstanceMetricsModel(BaseModel):
+
+    model_id: str
+    instance_id: str
+    cpu_running_averages: RunningAveragesModel
+    memory_running_averages: RunningAveragesModel
+    timestamp: str
+
+    @staticmethod
+    def from_object(obj: PersistedInstanceMetrics) -> "PersistedInstanceMetricsModel":
+        return PersistedInstanceMetricsModel(
+            model_id=obj.model_id,
+            instance_id=obj.instance_id,
+            namespace=obj.namespace,
+            cpu_running_averages=RunningAveragesModel.from_object(
+                obj.cpu_running_averages
+            ),
+            memory_running_averages=RunningAveragesModel.from_object(
+                obj.memory_running_averages
+            ),
+        )
+
+
+class InstanceMetricsLoadFilters(BaseModel):
+    active: bool | None = True
+    persisted: bool | None = False
+    model_id: str | None = None

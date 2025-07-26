@@ -8,6 +8,7 @@ from python_framework.time import timestamp_to_utc_timestamp
 class InstanceMetricsRecord(DAORecord):
     modelid: str
     instanceid: str
+    namespace: str
     cpu_running_averages: str
     memory_running_averages: str
     timestamp: Union[str, None]
@@ -17,6 +18,7 @@ class InstanceMetricsRecord(DAORecord):
 
         self.modelid = result["modelid"]
         self.instanceid = result["instanceid"]
+        self.namespace = result["namespace"]
         self.cpu_running_averages = result["cpurunningaverages"]
         self.memory_running_averages = result["memoryrunningaverages"]
         self.timestamp = (
@@ -29,6 +31,7 @@ class InstanceMetricsRecord(DAORecord):
         return {
             "modelid": self.modelid,
             "instanceid": self.instanceid,
+            "namespace": self.namespace,
             "cpu_running_averages": self.cpu_running_averages,
             "memory_running_averages": self.memory_running_averages,
         }
@@ -48,6 +51,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
         self,
         modelid: str,
         instanceid: str,
+        namespace: str,
         cpu_running_averages: str,
         memory_running_averages: str,
     ):
@@ -55,6 +59,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
 
         self.modelid = modelid
         self.instanceid = instanceid
+        self.namespace = namespace
         self.cpu_running_averages = cpu_running_averages
         self.memory_running_averages = memory_running_averages
 
@@ -62,6 +67,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
         field_map = {
             "query_ModelId": self.modelid,
             "query_InstanceId": self.instanceid,
+            "query_Namespace": self.namespace,
             "query_CpuRunningAverages": self.cpu_running_averages,
             "query_MemoryRunningAverages": self.memory_running_averages,
         }
@@ -70,6 +76,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
             INSERT INTO InstanceMetrics (
                 ModelId,
                 InstanceId,
+                Namespace,
                 CpuRunningAverages,
                 MemoryRunningAverages,
                 TMstamp
@@ -77,6 +84,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
             VALUES (
                 :query_ModelId,
                 :query_InstanceId,
+                :query_Namespace,
                 :query_CpuRunningAverages,
                 :query_MemoryRunningAverages,
                 CURRENT_TIMESTAMP
@@ -84,6 +92,7 @@ class InstanceMetricsInsertQuery(DAOQuery):
             RETURNING
                 ModelId,
                 InstanceId,
+                Namespace,
                 CpuRunningAverages::text,
                 MemoryRunningAverages::text,
                 TMstamp::text

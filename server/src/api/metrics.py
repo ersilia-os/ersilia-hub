@@ -1,18 +1,17 @@
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 
 from library.fastapi_root import FastAPIRoot
-
 from library.api_utils import api_handler
 from objects.rbac import Permission
-from controllers.model_instance_handler import ModelInstanceController
-from objects.instance import InstancesLoadFilters, ModelInstanceModel
+from controllers.instance_metrics import InstanceMetricsController
+from objects.metrics import InstanceMetricsLoadFilters, InstanceMetricsModel
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
 ###############################################################################
 
-router = APIRouter(prefix="/api/instances", tags=["instances"])
+router = APIRouter(prefix="/api/metrics", tags=["metrics"])
 
 
 def register(fastapi_root: FastAPIRoot = None):
@@ -25,9 +24,9 @@ def register(fastapi_root: FastAPIRoot = None):
 ###############################################################################
 
 
-@router.get("")
+@router.get("/instances")
 def load_instances(
-    filters: Annotated[InstancesLoadFilters, Query()],
+    filters: Annotated[InstanceMetricsLoadFilters, Query()],
     api_request: Request,
 ):
     auth_details, tracking_details = api_handler(
@@ -39,21 +38,13 @@ def load_instances(
     if filters.active:
         metrics.extend(
             map(
-                ModelInstanceModel.from_object,
-                ModelInstanceController.instance().load_active_instances(
-                    model_ids=[filters.model_id]
+                InstanceMetricsModel.from_object,
+                InstanceMetricsController.instance().load_active(
+                    model_id=filters.model_id
                 ),
             )
         )
 
-    if filters.persisted:
-        metrics.extend(
-            map(
-                ModelInstanceModel.from_object,
-                ModelInstanceController.instance().load_persisted_instances(
-                    model_ids=[filters.model_id], instance_id=filters.instance_id
-                ),
-            )
-        )
+    # TODO: add persisted here
 
     return {"items": metrics}

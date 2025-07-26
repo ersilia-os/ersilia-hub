@@ -61,5 +61,13 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
         });
     }
 
+    if (permissions.canManageInstances) {
+        menu.push({
+            text: 'Instances',
+            icon: 'developer_board',
+            link: 'instances'
+        });
+    }
+
     return menu;
 }

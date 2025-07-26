@@ -1,5 +1,7 @@
 from typing import Dict, List, Union
 
+from pydantic import BaseModel
+
 from objects.k8s import (
     K8sPod,
     K8sPodCondition,
@@ -9,7 +11,7 @@ from objects.k8s import (
 )
 
 
-class K8sPodContainerStateModel:
+class K8sPodContainerStateModel(BaseModel):
 
     phase: str
     started: bool
@@ -30,7 +32,7 @@ class K8sPodContainerStateModel:
         )
 
 
-class K8sPodConditionModel:
+class K8sPodConditionModel(BaseModel):
 
     last_probe_time: str
     last_transition_time: str
@@ -51,7 +53,7 @@ class K8sPodConditionModel:
         )
 
 
-class K8sPodStateModel:
+class K8sPodStateModel(BaseModel):
 
     conditions: List[K8sPodConditionModel]
     message: str
@@ -72,7 +74,7 @@ class K8sPodStateModel:
         )
 
 
-class K8sPodResourcesModel:
+class K8sPodResourcesModel(BaseModel):
     cpu_request: int  # in millicores
     cpu_limit: Union[int, None]  # in millicores
     memory_request: int  # in megabytes
@@ -88,7 +90,7 @@ class K8sPodResourcesModel:
         )
 
 
-class K8sPodModel:
+class K8sPodModel(BaseModel):
 
     name: str
     state: K8sPodContainerStateModel

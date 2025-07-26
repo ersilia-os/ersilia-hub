@@ -278,5 +278,5 @@ class ModelInstanceController:
         work_request_id: Union[str, None] = None,
         instance_id: Union[str, None] = None,
     ) -> List[ModelInstance]:
+        return []
         # TODO: load from DB. custom query to join between model_instance_log and instance_metrics
-        pass
