@@ -1,23 +1,33 @@
 
-
-
 [ ] frontend:
   [ ] add ModelInstanceResourceProfile + ModelInstanceRecommendations to frontend objects
   [ ] update modelinstance filters object
     * also default profiles + recommendations in the filter (FOR DEBUGGING, will disable later)
   
   [ ] create resource component
+    * inputs the full instance + "profileId" (cpu_min, max ...)
+
     [ ] IF no profile, only show current value
     [ ] IF profile available: add resource profile PERCENTAGE to cpu + memory info blocks
       * use values from ModelInstanceResourceProfile but colour from ModelInstanceRecommendations (profile_state)
+      NOTE: recommendations are optional, hence colour is also optional (IGNORE COLOUR FOR NOW, focus on recommendations UI)
       * percentage big and x / y below it -> BOTH in same colour
-      * hardcode the colours per profile_state
 
----
+  [ ] add resources to info blocks
 
-[x] Add loading of persisted models to controller:
-    * full pod (final "active" state, just before TERMINATED, i.e. sort desc by timestamp and filter out TERMINATE)
-    * all running averages for all metrics
+  [ ] filters
+    [ ] active toggle
+    [ ] persisted toggle
+    [ ] resource profiling toggle
+    [ ] NO RECOMMENDATION TOGGLES (for now)
+    [ ] model_id, single select (load models, copy from other components)
+
+    [ ] move refresh to the side
+
+  [ ] final styling checks
+    * size of info blocks text + headers
+    * does it look / feel similar to other pages ?
+    * not ugly / janky ?
 
 ---
 
@@ -25,55 +35,38 @@
   * IGNORE model input size (FOR NOW)
   * should only consider persisted, not active
   * specify time range + limit, default no time but 100 limit
-  * use min / max (not avg) and compare to pod resources (as persisted)
-  * use percentage as hieuristic for each resource req / lim
-  * LIST of profileconfigs:
-    - {min: int, max: int, profile: VERY_UNDER, UNDER, RECOMMENDED, OVER, VERY_OVER, CRITICAL}
-  * based on %, reccommend adjustment for each resource (round to full numbers, target middle of green range)
-      cpu:
-      - 0 - 40% = orange (very under), 
-      - 40 - 65 = yellow (under),
-      - 65 - 85 = green (recommended),
-      - 85 - 95 = yellow (over)
-      - 95 - 105 = orange (very over)
-      - 105+ red 
-      mem:
-      - 0 - 40% = orange (very under)
-      - 40 - 65 = yellow (under),
-      - 65 - 80 = green (recommended),
-      - 80 - 90 = yellow (over)
-      - 90 - 93 = orange (very over)
-      - 93+ red (anything above is dangerously close to OOM) 
 
-    [ ] on start, wait 5min before auto-running (ONCE) -> infinite "waiting" loop 
-    [ ] lock on execution, can only run one at a time
-    [ ] in-mem state:
-      - last updated
-      - status: running | up_to_date | outdated (for future automation reasons)
-      - recommendations:
-        {model_id : { timestamp: str, cpu: resource_recomendations, memory: resource_recommendations}}
-    [ ] hardcode profile configs: 
-      * cpu_min
-      * cpu_max
-      * memory_min
-      * memory_max
-    [ ] execution:
-      - load active models (list of strings) (eventually filter on active / not)
-      - per model (separate function):
-          - load persisted instances (existing function)
-          - get min MIN over all (just the metrics values)
-          - get max MAX over all (just the metrics values)
-          - use profile_resources(metrics) on overall min/max
-          - apply profiles (hardcode for now, but can persist later) 
-            -> ResourceRecommendation: {profile_state: over/under/recommended..., current_value: float, current_percentage: int, recommended_value: INT}
-            * this should give the current percentage value AND what the recommended value is
-            * use the middle of the "recommended" bracket
-          - update in-mem map of per-model recommendations
+  [ ] on start, wait 5min before auto-running (ONCE) -> infinite "waiting" loop 
+  [ ] lock on execution, can only run one at a time
+  [ ] in-mem state:
+    - last updated
+    - status: running | up_to_date | outdated (for future automation reasons)
+    - recommendations:
+      {model_id : { timestamp: str, cpu: resource_recomendations, memory: resource_recommendations}}
+  [ ] hardcode profile configs: 
+    * cpu_min
+    * cpu_max
+    * memory_min
+    * memory_max
+  [ ] execution:
+    - load active models (list of strings) (eventually filter on active / not)
+    - per model (separate function):
+        - load persisted instances (existing function)
+        - get min MIN over all (just the metrics values)
+        - get max MAX over all (just the metrics values)
+        - use profile_resources(metrics) on overall min/max
+        - apply profiles (hardcode for now, but can persist later) 
+          -> ResourceRecommendation: {profile_state: over/under/recommended..., current_value: float, current_percentage: int, recommended_value: INT}
+          * this should give the current percentage value AND what the recommended value is
+          * use the middle of the "recommended" bracket
+        - update in-mem map of per-model recommendations
+
 
 [ ] API for recommendations (eventually we will run this nightly and persist it)
   [ ] load
   [ ] run all
   [ ] run model
+
 
 [ ] Create recommendations UI
   [ ] service / objects
@@ -85,6 +78,13 @@
 
   [ ] custom components (similar to existing model instances)
     * block of model details
+    * block per profile of recommendations
+      * current usage , in brackets percentage
+      * recommended range - min, max values, with percentages in brackets
+      * colour all of it based on profile state (over , under, etc.)
+
+  * NOTE: next "sprint", we'll add actions to apply recommendation
+
 ---
 
 Model Instance actions
@@ -93,11 +93,15 @@ Model Instance actions
 - download logs (no filtering, just all of it)
 - view instance history (actions on instance + full pod dump)
 
----
-
 [ ] dynamic model updates:
   [ ] add k8s_resources object to model (replace maxMem + disableMemLimit)
+  [ ] when creating the model instance, apply k8s_resources to the template
   [ ] reload models in controller (consider enable / disable to also update the work_request_worker loadbalancing)
+
+[ ] add actions to recommendations engine / ui
+  * apply recommendation (per model, per profile) -> update and persist model -> reload anything required
+
+[ ] model management page
 
 ---
 
