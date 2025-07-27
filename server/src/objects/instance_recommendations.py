@@ -3,7 +3,7 @@ from math import ceil, floor
 from pydantic import BaseModel
 
 
-class ModelInstanceResourceProfile:
+class ResourceProfile:
 
     min_usage: float
     max_usage: float
@@ -38,7 +38,7 @@ class ModelInstanceResourceProfile:
         )
 
 
-class ModelInstanceResourceProfileModel(BaseModel):
+class ResourceProfileModel(BaseModel):
 
     min_usage: float
     max_usage: float
@@ -49,9 +49,9 @@ class ModelInstanceResourceProfileModel(BaseModel):
 
     @staticmethod
     def from_object(
-        obj: ModelInstanceResourceProfile,
-    ) -> "ModelInstanceResourceProfileModel":
-        return ModelInstanceResourceProfileModel(
+        obj: ResourceProfile,
+    ) -> "ResourceProfileModel":
+        return ResourceProfileModel(
             min_usage=obj.min_usage,
             max_usage=obj.max_usage,
             min_allocatable=obj.min_allocatable,
@@ -59,3 +59,13 @@ class ModelInstanceResourceProfileModel(BaseModel):
             min_usage_percentage=obj.min_usage_percentage,
             max_usage_percentage=obj.max_usage_percentage,
         )
+
+
+class ModelInstanceResourceProfile:
+
+    cpu: ResourceProfile
+    memory: ResourceProfile
+
+    # TODO: this
+
+    # TODO: model

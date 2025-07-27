@@ -319,8 +319,6 @@ class ModelInstanceController:
         log_model_ids: List[str] = []
         log_instance_ids: List[str] = []
 
-        print("loading persisted")
-
         try:
             instance_log_records: List[ModelInstanceLogRecord] = (
                 ModelInstanceLogDAO.execute_query(

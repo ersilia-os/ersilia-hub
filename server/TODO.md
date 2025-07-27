@@ -1,32 +1,42 @@
 
-[x] Add controller for loading active models:
-  * full pod !!! NEED TO ADD RESOURCES TO PERSISTED POD !!!
-  * all running averages for all metrics
-  
-[x] Add API to load active models (no filters for now)
 
-[ ] Add frontend to visualize active models
-  [x] objects + service
-  [x] new page (header + add to sidebar)
+[ ] add recommendation engine on backend (just singleton, not thread stuff)
+[ ] add hardcoded profile configs in engine
+  * profileconfigs:
+  - {id: cpu_min, cpu_max, etc. , min: int, max: int, profile: VERY_UNDER, UNDER, RECOMMENDED, OVER, VERY_OVER, CRITICAL}
+  cpu:
+    - 0 - 40% = orange (very under), 
+    - 40 - 65 = yellow (under),
+    - 65 - 85 = green (recommended),
+    - 85 - 95 = yellow (over)
+    - 95 - 105 = orange (very over)
+    - 105+ red 
+    mem:
+    - 0 - 40% = orange (very under)
+    - 40 - 65 = yellow (under),
+    - 65 - 80 = green (recommended),
+    - 80 - 90 = yellow (over)
+    - 90 - 93 = orange (very over)
+    - 93+ red (anything above is dangerously close to OOM) 
+  * load from in-mem json string LIST
 
-  [ ] add resource profile (cpu + mem) to frontend objects
-  [ ] add resource profile PERCENTAGE to cpu + memory info blocks
-    * percentage big in colour, and x / y below it
-    * hardcode the colour brackets on the frontend ??
-      cpu:
-      - 0 - 40% = orange (very under), 
-      - 40 - 65 = yellow (under),
-      - 65 - 85 = green (recommended),
-      - 85 - 95 = yellow (over)
-      - 95 - 105 = orange (very over)
-      - 105+ red 
-      mem:
-      - 0 - 40% = orange (very under)
-      - 40 - 65 = yellow (under),
-      - 65 - 80 = green (recommended),
-      - 80 - 90 = yellow (over)
-      - 90 - 93 = orange (very over)
-      - 93+ red (anything above is dangerously close to OOM) 
+[ ] implement profile_resources(metrics) -> ModelInstanceResourceProfile
+  [ ] update instance objects + instance api
+
+[ ] implement apply_profiles(ModelInstanceResourceProfile) -> 
+  ModelInstanceRecommendations : { cpu_min: ResourceRecommendation
+    cpu_max: ResourceRecommendation
+    ...
+  }
+    ResourceRecommendation: {profile_state: over/under/recommended..., current_value: float, current_percentage: int, recommended_value: INT}
+[ ] add ModelInstanceRecommendations to modelinstance (nullable)
+
+
+[ ] add ModelInstanceResourceProfile + ModelInstanceRecommendations to frontend objects
+[ ] add resource profile PERCENTAGE to cpu + memory info blocks
+  * use values from ModelInstanceResourceProfile but colour from ModelInstanceRecommendations (profile_state)
+  * percentage big and x / y below it -> BOTH in same colour
+  * hardcode the colours per profile_state
 
 ---
 
@@ -42,6 +52,8 @@
   * specify time range + limit, default no time but 100 limit
   * use min / max (not avg) and compare to pod resources (as persisted)
   * use percentage as hieuristic for each resource req / lim
+  * LIST of profileconfigs:
+    - {min: int, max: int, profile: VERY_UNDER, UNDER, RECOMMENDED, OVER, VERY_OVER, CRITICAL}
   * based on %, reccommend adjustment for each resource (round to full numbers, target middle of green range)
       cpu:
       - 0 - 40% = orange (very under), 
@@ -58,10 +70,46 @@
       - 90 - 93 = orange (very over)
       - 93+ red (anything above is dangerously close to OOM) 
 
+    [ ] on start, wait 5min before auto-running (ONCE) -> infinite "waiting" loop 
+    [ ] lock on execution, can only run one at a time
+    [ ] in-mem state:
+      - last updated
+      - status: running | up_to_date | outdated (for future automation reasons)
+      - recommendations:
+        {model_id : { timestamp: str, cpu: resource_recomendations, memory: resource_recommendations}}
+    [ ] hardcode profile configs: 
+      * cpu_min
+      * cpu_max
+      * memory_min
+      * memory_max
+    [ ] execution:
+      - load active models (list of strings) (eventually filter on active / not)
+      - per model (separate function):
+          - load persisted instances (existing function)
+          - get min MIN over all (just the metrics values)
+          - get max MAX over all (just the metrics values)
+          - use profile_resources(metrics) on overall min/max
+          - apply profiles (hardcode for now, but can persist later) 
+            -> ResourceRecommendation: {profile_state: over/under/recommended..., current_value: float, current_percentage: int, recommended_value: INT}
+            * this should give the current percentage value AND what the recommended value is
+            * use the middle of the "recommended" bracket
+          - update in-mem map of per-model recommendations
+
 [ ] API for recommendations (eventually we will run this nightly and persist it)
+  [ ] load
+  [ ] run all
+  [ ] run model
 
 [ ] Create recommendations UI
+  [ ] service / objects
+  [ ] new page + sidebar link
+  [ ] "toolbar" with state:
+    * state
+    * last execution 
+  [ ] actions : run all
 
+  [ ] custom components (similar to existing model instances)
+    * block of model details
 ---
 
 Model Instance actions

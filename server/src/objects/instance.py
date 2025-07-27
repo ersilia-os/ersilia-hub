@@ -15,16 +15,19 @@ class ModelInstance:
 
     k8s_pod: K8sPod
     metrics: InstanceMetrics | None
-    cpu_resource_profile: ModelInstanceResourceProfile
-    memory_resource_profile: ModelInstanceResourceProfile
+    resource_profile: ModelInstanceResourceProfile | None
 
     def __init__(
         self,
         k8s_pod: K8sPod,
         metrics: InstanceMetrics | None,
+        resource_profile: ModelInstanceResourceProfile | None,
     ):
         self.k8s_pod = k8s_pod
         self.metrics = metrics
+        self.resource_profile = resource_profile
+
+        # TODO: move this to RecommendationsEngine
         self.cpu_resource_profile = ModelInstanceResourceProfile(
             (
                 0.0
@@ -75,6 +78,7 @@ class ModelInstanceModel(BaseModel):
 
     k8s_pod: K8sPodModel
     metrics: InstanceMetricsModel | None
+    # TODO: update this
     cpu_resource_profile: ModelInstanceResourceProfileModel
     memory_resource_profile: ModelInstanceResourceProfileModel
 
