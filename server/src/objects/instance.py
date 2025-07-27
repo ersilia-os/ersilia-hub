@@ -6,6 +6,8 @@ from objects.metrics import (
     InstanceMetricsModel,
 )
 from objects.instance_recommendations import (
+    ModelInstanceRecommendations,
+    ModelInstanceRecommendationsModel,
     ModelInstanceResourceProfile,
     ModelInstanceResourceProfileModel,
 )
@@ -16,82 +18,38 @@ class ModelInstance:
     k8s_pod: K8sPod
     metrics: InstanceMetrics | None
     resource_profile: ModelInstanceResourceProfile | None
+    resource_recommendations: ModelInstanceRecommendations | None
 
     def __init__(
         self,
         k8s_pod: K8sPod,
-        metrics: InstanceMetrics | None,
-        resource_profile: ModelInstanceResourceProfile | None,
+        metrics: InstanceMetrics | None = None,
+        resource_profile: ModelInstanceResourceProfile | None = None,
+        resource_recommendations: ModelInstanceRecommendations | None = None,
     ):
         self.k8s_pod = k8s_pod
         self.metrics = metrics
         self.resource_profile = resource_profile
-
-        # TODO: move this to RecommendationsEngine
-        self.cpu_resource_profile = ModelInstanceResourceProfile(
-            (
-                0.0
-                if metrics is None or metrics.cpu_running_averages is None
-                else metrics.cpu_running_averages.min
-            ),
-            (
-                0.0
-                if metrics is None or metrics.cpu_running_averages is None
-                else metrics.cpu_running_averages.max
-            ),
-            (
-                0.0
-                if k8s_pod.resources is None or k8s_pod.resources.cpu_request is None
-                else float(k8s_pod.resources.cpu_request)
-            ),
-            (
-                0.0
-                if k8s_pod.resources is None or k8s_pod.resources.cpu_limit is None
-                else float(k8s_pod.resources.cpu_limit)
-            ),
-        )
-        self.memory_resource_profile = ModelInstanceResourceProfile(
-            (
-                0.0
-                if metrics is None or metrics.memory_running_averages is None
-                else metrics.memory_running_averages.min
-            ),
-            (
-                0.0
-                if metrics is None or metrics.memory_running_averages is None
-                else metrics.memory_running_averages.max
-            ),
-            (
-                0.0
-                if k8s_pod.resources is None or k8s_pod.resources.memory_request is None
-                else float(k8s_pod.resources.memory_request)
-            ),
-            (
-                0.0
-                if k8s_pod.resources is None or k8s_pod.resources.memory_limit is None
-                else float(k8s_pod.resources.memory_limit)
-            ),
-        )
+        self.resource_recommendations = resource_recommendations
 
 
 class ModelInstanceModel(BaseModel):
 
     k8s_pod: K8sPodModel
     metrics: InstanceMetricsModel | None
-    # TODO: update this
-    cpu_resource_profile: ModelInstanceResourceProfileModel
-    memory_resource_profile: ModelInstanceResourceProfileModel
+    resource_profile: ModelInstanceResourceProfileModel | None
+    resource_recommendations: ModelInstanceRecommendationsModel | None
 
     @staticmethod
     def from_object(obj: ModelInstance) -> "ModelInstanceModel":
         return ModelInstanceModel(
             k8s_pod=K8sPodModel.from_object(obj.k8s_pod),
             metrics=InstanceMetricsModel.from_object(obj.metrics),
-            cpu_resource_profile=ModelInstanceResourceProfileModel.from_object(
-                obj.cpu_resource_profile
+            resource_profile=ModelInstanceResourceProfileModel.from_object(
+                obj.resource_profile
             ),
-            memory_resource_profile=ModelInstanceResourceProfileModel.from_object(
-                obj.memory_resource_profile
+            resource_recommendations=ModelInstanceRecommendationsModel.from_object(
+                obj.resource_recommendations
             ),
         )
 
@@ -101,3 +59,5 @@ class InstancesLoadFilters(BaseModel):
     persisted: bool | None = False
     model_id: str | None = None
     instance_id: str | None = None
+    load_resource_profiles: bool | None = False
+    load_recommendations: bool | None = False

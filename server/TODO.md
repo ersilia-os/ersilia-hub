@@ -1,23 +1,17 @@
 
 
-[ ] implement profile_resources(metrics) -> ModelInstanceResourceProfile
-  [ ] update instance objects
-  [ ] update instance handler or instance api ??
 
-[ ] implement apply_profiles(ModelInstanceResourceProfile) -> 
-  ModelInstanceRecommendations : { cpu_min: ResourceRecommendation
-    cpu_max: ResourceRecommendation
-    ...
-  }
-    ResourceRecommendation: {profile_state: over/under/recommended..., current_value: float, current_percentage: int, recommended_value: INT}
-[ ] add ModelInstanceRecommendations to modelinstance (nullable)
-
-
-[ ] add ModelInstanceResourceProfile + ModelInstanceRecommendations to frontend objects
-[ ] add resource profile PERCENTAGE to cpu + memory info blocks
-  * use values from ModelInstanceResourceProfile but colour from ModelInstanceRecommendations (profile_state)
-  * percentage big and x / y below it -> BOTH in same colour
-  * hardcode the colours per profile_state
+[ ] frontend:
+  [ ] add ModelInstanceResourceProfile + ModelInstanceRecommendations to frontend objects
+  [ ] update modelinstance filters object
+    * also default profiles + recommendations in the filter (FOR DEBUGGING, will disable later)
+  
+  [ ] create resource component
+    [ ] IF no profile, only show current value
+    [ ] IF profile available: add resource profile PERCENTAGE to cpu + memory info blocks
+      * use values from ModelInstanceResourceProfile but colour from ModelInstanceRecommendations (profile_state)
+      * percentage big and x / y below it -> BOTH in same colour
+      * hardcode the colours per profile_state
 
 ---
 
@@ -98,6 +92,12 @@ Model Instance actions
 - stop / destroy instance
 - download logs (no filtering, just all of it)
 - view instance history (actions on instance + full pod dump)
+
+---
+
+[ ] dynamic model updates:
+  [ ] add k8s_resources object to model (replace maxMem + disableMemLimit)
+  [ ] reload models in controller (consider enable / disable to also update the work_request_worker loadbalancing)
 
 ---
 

@@ -86,6 +86,9 @@ class ModelInstanceResourceProfileModel(BaseModel):
     def from_object(
         obj: ModelInstanceResourceProfile,
     ) -> "ModelInstanceResourceProfileModel":
+        if obj is None:
+            return None
+
         return ModelInstanceResourceProfileModel(
             cpu=ResourceProfileModel.from_object(obj.cpu),
             memory=ResourceProfileModel.from_object(obj.memory),
@@ -192,6 +195,8 @@ class ResourceRecommendation:
     current_percentage: int
     current_profile_state: ResourceProfileConfig
     recommended_profile: ResourceProfileConfig
+    recommended_min_value: float
+    recommended_max_value: float
 
     def __init__(
         self,
@@ -200,12 +205,16 @@ class ResourceRecommendation:
         current_percentage: int,
         current_profile_state: ResourceProfileConfig,
         recommended_profile: ResourceProfileConfig,
+        recommended_min_value: float,
+        recommended_max_value: float,
     ):
         self.profile_id = profile_id
         self.current_value = current_value
         self.current_percentage = current_percentage
         self.current_profile_state = current_profile_state
         self.recommended_profile = recommended_profile
+        self.recommended_min_value = recommended_min_value
+        self.recommended_max_value = recommended_max_value
 
 
 class ResourceRecommendationModel(BaseModel):
@@ -215,6 +224,8 @@ class ResourceRecommendationModel(BaseModel):
     current_percentage: int
     current_profile_state: ResourceProfileConfigModel
     recommended_profile: ResourceProfileConfigModel
+    recommended_min_value: float
+    recommended_max_value: float
 
     @staticmethod
     def from_object(obj: ResourceRecommendation) -> "ResourceRecommendationModel":
@@ -224,6 +235,8 @@ class ResourceRecommendationModel(BaseModel):
             current_percentage=obj.current_percentage,
             current_profile_state=ResourceProfileConfigModel.from_object(obj),
             recommended_profile=ResourceProfileConfigModel.from_object(obj),
+            recommended_min_value=obj.recommended_min_value,
+            recommended_max_value=obj.recommended_max_value,
         )
 
 
@@ -258,6 +271,9 @@ class ModelInstanceRecommendationsModel(BaseModel):
     def from_object(
         obj: ModelInstanceRecommendations,
     ) -> "ModelInstanceRecommendationsModel":
+        if obj is None:
+            return None
+
         return ModelInstanceRecommendations(
             cpu_min=ResourceRecommendationModel.from_object(obj.cpu_min),
             cpu_max=ResourceRecommendationModel.from_object(obj.cpu_max),

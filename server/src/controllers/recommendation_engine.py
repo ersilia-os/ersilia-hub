@@ -1,5 +1,6 @@
 from json import loads
-from typing import List
+from math import floor
+from typing import Dict, List, Union
 from python_framework.thread_safe_cache import ThreadSafeCache
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
@@ -7,9 +8,14 @@ from python_framework.config_utils import load_environment_variable
 from objects.instance_recommendations import (
     ModelInstanceRecommendations,
     ModelInstanceResourceProfile,
+    ResourceProfile,
     ResourceProfileConfig,
+    ResourceProfileId,
+    ResourceProfileState,
+    ResourceRecommendation,
 )
-from objects.metrics import InstanceMetrics
+from objects.metrics import InstanceMetrics, PersistedInstanceMetrics, RunningAverages
+from objects.k8s import K8sPodResources
 
 PROFILE_CONFIGS = """
 [
@@ -143,15 +149,22 @@ class RecommendationEngine:
     _logger_key: str = None
 
     model_recommendations: ThreadSafeCache[str, ModelInstanceRecommendations]
-    profile_configs: List[ResourceProfileConfig]
+    profile_configs: Dict[str, List[ResourceProfileConfig]]
 
     def __init__(self):
         self._logger_key = "RecommendationEngine"
 
         self.model_recommendations = ThreadSafeCache()
-        self.profile_configs = list(
+
+        self.profile_configs = {}
+
+        for profile_config in list(
             map(ResourceProfileConfig.from_object, loads(PROFILE_CONFIGS))
-        )
+        ):
+            if profile_config.id not in self.profile_configs:
+                self.profile_configs[profile_config.id] = [profile_config]
+            else:
+                self.profile_configs[profile_config.id].append(profile_config)
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -175,14 +188,140 @@ class RecommendationEngine:
     def instance() -> "RecommendationEngine":
         return RecommendationEngine._instance
 
-    def profile_resources(
-        self, metrics: InstanceMetrics
+    def profile_resources_batch(
+        self,
+        metrics_batch: List[Union[InstanceMetrics, PersistedInstanceMetrics]],
+        k8s_resources: K8sPodResources,
     ) -> ModelInstanceResourceProfile:
-        # TODO
-        pass
+        batched_cpu_running_averages = RunningAverages()
+        batched_memory_running_averages = RunningAverages()
+
+        for metrics in metrics_batch:
+            if (
+                batched_cpu_running_averages.min == -1
+                or metrics.cpu_running_averages.min < batched_cpu_running_averages.min
+            ):
+                batched_cpu_running_averages.min = metrics.cpu_running_averages.min
+
+            if (
+                batched_cpu_running_averages.max == -1
+                or metrics.cpu_running_averages.max > batched_cpu_running_averages.max
+            ):
+                batched_cpu_running_averages.max = metrics.cpu_running_averages.max
+
+            if (
+                batched_memory_running_averages.min == -1
+                or metrics.memory_running_averages.min
+                < batched_memory_running_averages.min
+            ):
+                batched_memory_running_averages.min = (
+                    metrics.memory_running_averages.min
+                )
+
+            if (
+                batched_memory_running_averages.max == -1
+                or metrics.memory_running_averages.max
+                > batched_memory_running_averages.max
+            ):
+                batched_memory_running_averages.max = (
+                    metrics.memory_running_averages.max
+                )
+
+        return ModelInstanceResourceProfile(
+            ResourceProfile(
+                min_usage=batched_cpu_running_averages.min,
+                min_allocatable=(
+                    -1.0
+                    if k8s_resources.cpu_request is None
+                    else float(k8s_resources.cpu_request)
+                ),
+                max_usage=batched_cpu_running_averages.max,
+                max_allocatable=(
+                    -1.0
+                    if k8s_resources.cpu_limit is None
+                    else float(k8s_resources.cpu_limit)
+                ),
+            ),
+            ResourceProfile(
+                min_usage=batched_memory_running_averages.min,
+                min_allocatable=(
+                    -1.0
+                    if k8s_resources.memory_request is None
+                    else float(k8s_resources.memory_request)
+                ),
+                max_usage=batched_memory_running_averages.max,
+                max_allocatable=(
+                    -1.0
+                    if k8s_resources.memory_limit is None
+                    else float(k8s_resources.memory_limit)
+                ),
+            ),
+        )
+
+    def _calculate_profile_recommendations(
+        self, profile_id: ResourceProfileId, resource_profile: ResourceProfile
+    ) -> ResourceRecommendation:
+        recommendation = ResourceRecommendation(
+            profile_id=profile_id,
+            current_value=0,
+            current_profile_state=None,
+            recommended_profile=list(
+                filter(
+                    lambda x: x.state == ResourceProfileState.RECOMMENDED,
+                    self.profile_configs[profile_id],
+                )
+            )[0],
+            recommended_min_value=0.0,
+            recommended_max_value=0.0,
+        )
+
+        if profile_id in [ResourceProfileId.CPU_MAX, ResourceProfileId.MEMORY_MAX]:
+            recommendation.current_value = resource_profile.max_usage
+            recommendation.current_percentage = resource_profile.max_usage_percentage
+            recommendation.recommended_min_value = floor(
+                resource_profile.max_allocatable
+                * (recommendation.recommended_profile.min / 100)
+            )
+            recommendation.recommended_max_value = floor(
+                resource_profile.max_allocatable
+                * (recommendation.recommended_profile.max / 100)
+            )
+        elif profile_id in [ResourceProfileId.CPU_MIN, ResourceProfileId.MEMORY_MIN]:
+            recommendation.current_value = resource_profile.min_usage
+            recommendation.current_percentage = resource_profile.min_usage_percentage
+            recommendation.recommended_min_value = floor(
+                resource_profile.min_allocatable
+                * (recommendation.recommended_profile.min / 100)
+            )
+            recommendation.recommended_max_value = floor(
+                resource_profile.min_allocatable
+                * (recommendation.recommended_profile.max / 100)
+            )
+
+        for profile_config in self.profile_configs[profile_id]:
+            if (
+                recommendation.current_percentage >= profile_config.min
+                and recommendation.current_percentage < profile_config.max
+            ):
+                recommendation.current_profile_state = profile_config
+                break
+
+        return recommendation
 
     def calculate_recommendations(
         self, resource_profile: ModelInstanceResourceProfile
     ) -> ModelInstanceRecommendations:
-        # TODO
-        pass
+        return ModelInstanceRecommendations(
+            cpu_min=self._calculate_profile_recommendations(
+                ResourceProfileId.CPU_MIN, resource_profile.cpu
+            ),
+            cpu_max=self._calculate_profile_recommendations(
+                ResourceProfileId.CPU_MAX, resource_profile.cpu
+            ),
+            memory_min=self._calculate_profile_recommendations(
+                ResourceProfileId.MEMORY_MIN, resource_profile.memory
+            ),
+            memory_max=self._calculate_profile_recommendations(
+                ResourceProfileId.MEMORY_MAX, resource_profile.memory
+            ),
+        )

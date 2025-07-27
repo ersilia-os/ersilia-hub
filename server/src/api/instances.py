@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from library.fastapi_root import FastAPIRoot
@@ -6,7 +6,8 @@ from library.fastapi_root import FastAPIRoot
 from library.api_utils import api_handler
 from objects.rbac import Permission
 from controllers.model_instance_handler import ModelInstanceController
-from objects.instance import InstancesLoadFilters, ModelInstanceModel
+from objects.instance import InstancesLoadFilters, ModelInstance, ModelInstanceModel
+from server.src.controllers.recommendation_engine import RecommendationEngine
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -34,31 +35,45 @@ def load_instances(
         api_request, required_permissions=[Permission.ADMIN]
     )
 
-    metrics = []
+    instances: List[ModelInstance] = []
 
     if filters.active:
-        metrics.extend(
-            map(
-                ModelInstanceModel.from_object,
-                ModelInstanceController.instance().load_active_instances(
-                    model_ids=(None if filters.model_id is None else [filters.model_id])
-                ),
-            )
+        instances.extend(
+            ModelInstanceController.instance().load_active_instances(
+                model_ids=(None if filters.model_id is None else [filters.model_id])
+            ),
         )
 
     if filters.persisted:
-        metrics.extend(
-            map(
-                ModelInstanceModel.from_object,
-                ModelInstanceController.instance().load_persisted_instances(
-                    model_ids=(
-                        None if filters.model_id is None else [filters.model_id]
-                    ),
-                    instance_id=(
-                        None if filters.instance_id is None else [filters.instance_id]
-                    ),
+        instances.extend(
+            ModelInstanceController.instance().load_persisted_instances(
+                model_ids=(None if filters.model_id is None else [filters.model_id]),
+                instance_id=(
+                    None if filters.instance_id is None else [filters.instance_id]
                 ),
-            )
+            ),
         )
 
-    return {"items": metrics}
+    if filters.load_resource_profiles or filters.load_recommendations:
+        for instance in instances:
+            if instance.metrics is None or instance.k8s_pod.resources is None:
+                continue
+
+            instance.resource_profile = (
+                RecommendationEngine.instance().profile_resources_batch(
+                    [instance.metrics], instance.k8s_pod.resources
+                )
+            )
+
+    if filters.load_recommendations:
+        for instance in instances:
+            if instance.resource_profile is None:
+                continue
+
+            instance.resource_recommendations = (
+                RecommendationEngine.instance().calculate_recommendations(
+                    instance.resource_profile
+                )
+            )
+
+    return {"items": list(map(ModelInstanceModel.from_object, instances))}
