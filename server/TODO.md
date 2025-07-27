@@ -1,27 +1,8 @@
 
 
-[ ] add recommendation engine on backend (just singleton, not thread stuff)
-[ ] add hardcoded profile configs in engine
-  * profileconfigs:
-  - {id: cpu_min, cpu_max, etc. , min: int, max: int, profile: VERY_UNDER, UNDER, RECOMMENDED, OVER, VERY_OVER, CRITICAL}
-  cpu:
-    - 0 - 40% = orange (very under), 
-    - 40 - 65 = yellow (under),
-    - 65 - 85 = green (recommended),
-    - 85 - 95 = yellow (over)
-    - 95 - 105 = orange (very over)
-    - 105+ red 
-    mem:
-    - 0 - 40% = orange (very under)
-    - 40 - 65 = yellow (under),
-    - 65 - 80 = green (recommended),
-    - 80 - 90 = yellow (over)
-    - 90 - 93 = orange (very over)
-    - 93+ red (anything above is dangerously close to OOM) 
-  * load from in-mem json string LIST
-
 [ ] implement profile_resources(metrics) -> ModelInstanceResourceProfile
-  [ ] update instance objects + instance api
+  [ ] update instance objects
+  [ ] update instance handler or instance api ??
 
 [ ] implement apply_profiles(ModelInstanceResourceProfile) -> 
   ModelInstanceRecommendations : { cpu_min: ResourceRecommendation

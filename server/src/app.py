@@ -35,6 +35,7 @@ from controllers.model_instance_log import ModelInstanceLogController
 from controllers.model_instance_handler import ModelInstanceController
 from controllers.node_monitor import NodeMonitorController
 from controllers.instance_metrics import InstanceMetricsController
+from controllers.recommendation_engine import RecommendationEngine
 
 
 def init_configs():
@@ -89,6 +90,7 @@ def init():
     S3IntegrationController.initialize()
     K8sProxyController.initialize()
     AuthController.initialize()
+    RecommendationEngine.initialize()
 
     FastAPIRoot.initialize(
         ApplicationConfig.instance().application_name,
