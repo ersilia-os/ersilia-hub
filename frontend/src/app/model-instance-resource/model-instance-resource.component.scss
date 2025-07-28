@@ -1,0 +1,76 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+    color: #ccc;
+    background-color: #2c2c2cf2;
+    padding: 10px;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: bold;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.usage {
+    &.profile-state-very_under {
+        color: $alert-orange;
+    }
+
+    &.profile-state-under {
+        color: $alert-yellow;
+    }
+
+    &.profile-state-recommended {
+        color: $alert-green;
+    }
+
+    &.profile-state-over {
+        color: $alert-yellow;
+    }
+
+    &.profile-state-very_over {
+        color: $alert-orange;
+    }
+
+    &.profile-state-critical {
+        color: $alert-red;
+    }
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+
+    .separator {
+        margin: 0px 5px;
+    }
+}
+
+.percentage {
+    &.profile-state-very_under {
+        color: $alert-orange;
+    }
+
+    &.profile-state-under {
+        color: $alert-yellow;
+    }
+
+    &.profile-state-recommended {
+        color: $alert-green;
+    }
+
+    &.profile-state-over {
+        color: $alert-yellow;
+    }
+
+    &.profile-state-very_over {
+        color: $alert-orange;
+    }
+
+    &.profile-state-critical {
+        color: $alert-red;
+    }
+}

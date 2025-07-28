@@ -1,0 +1,10 @@
+<div class="usage" [ngClass]="ngClass">
+    <div class="value">{{ usageValue == null ? 0 : usageValue | number }}</div>
+    @if (allocationValue != null) {
+    <div class="separator">/</div>
+    <div class="allocation">{{ allocationValue | number }}</div>
+    }
+</div>
+@if (usagePercentage != null) {
+<div class="percentage" [ngClass]="ngClass">{{ usagePercentage | number }}%</div>
+}

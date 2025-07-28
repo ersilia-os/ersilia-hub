@@ -82,7 +82,8 @@
         align-items: flex-start;
         justify-content: flex-start;
 
-        width: calc(100% - 70px); // 50px + 20px padding
+        width: 85%;
+        min-width: 1300px;
         padding: 10px;
         margin: 0px 15px;
         margin-bottom: 20px;
@@ -96,10 +97,11 @@
             justify-content: flex-start;
             align-items: flex-start;
 
-            padding: 10px;
+            padding: 0px 10px;
+            margin: 0px 15px;
 
             .info-block-title {
-                font-size: 16px;
+                font-size: 18px;
                 font-weight: bold;
                 text-align: center;
 
@@ -115,6 +117,7 @@
                 flex-direction: column;
                 justify-content: flex-start;
                 align-items: flex-start;
+                padding: 5px 10px;
 
                 .detail {
                     display: flex;
@@ -125,6 +128,7 @@
 
                     .name {
                         font-weight: bold;
+                        font-size: 15px;
                         color: $ersilia-purple;
                         margin-right: 8px;
                     }
@@ -133,5 +137,3 @@
         }
     }
 }
-
-.guage {}

@@ -7,11 +7,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
 import { InstancesService } from '../../services/instances.service';
 import { ModelInstance, ModelInstanceFilters } from '../../objects/instance';
+import { ModelInstanceResourceComponent } from '../model-instance-resource/model-instance-resource.component';
 
 @Component({
   selector: 'app-model-instances',
   standalone: true,
-  imports: [MatButtonModule, CommonModule, MatIconModule, ErsiliaLoaderComponent],
+  imports: [MatButtonModule, CommonModule, MatIconModule, ErsiliaLoaderComponent, ModelInstanceResourceComponent],
   templateUrl: './model-instances.component.html',
   styleUrl: './model-instances.component.scss'
 })

@@ -29,15 +29,17 @@
                     <div class="name">Type</div>
                     <div class="value">{{ instance.is_model ? "Model" : "Hub Service" }}</div>
                 </div>
-                <div class="detail">
-                    <div class="name">Name</div>
-                    <div class="value">{{ instance.k8s_pod.name }}</div>
-                </div>
                 @if (instance.is_model) {
                 <div class="detail">
                     <div class="name">Model</div>
                     <div class="value">{{ instance.model_id }}</div>
                 </div>
+                }
+                <div class="detail">
+                    <div class="name">Name</div>
+                    <div class="value">{{ instance.k8s_pod.name }}</div>
+                </div>
+                @if (instance.is_model) {
                 <div class="detail">
                     <div class="name">Request ID</div>
                     <div class="value">{{ instance.request_id }}</div>
@@ -73,6 +75,20 @@
                 CPU Metrics
             </div>
             <div class="info-block-details">
+                <div class="detail">
+                    <div class="name">Max</div>
+                    <div class="value">
+                        <model-instance-resource [instance]="instance"
+                            [resourceProfileId]="'CPU_MAX'"></model-instance-resource>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="name">Min</div>
+                    <div class="value">
+                        <model-instance-resource [instance]="instance"
+                            [resourceProfileId]="'CPU_MIN'"></model-instance-resource>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -81,9 +97,30 @@
                 Memory Metrics
             </div>
             <div class="info-block-details">
+                <div class="detail">
+                    <div class="name">Max</div>
+                    <div class="value">
+                        <model-instance-resource [instance]="instance"
+                            [resourceProfileId]="'MEMORY_MAX'"></model-instance-resource>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="name">Min</div>
+                    <div class="value">
+                        <model-instance-resource [instance]="instance"
+                            [resourceProfileId]="'MEMORY_MIN'"></model-instance-resource>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <div class="info-block">
+            <div class="info-block-title">
+                Actions
+            </div>
+            <div class="info-block-details">
+            </div>
+        </div>
     </div>
     }
 </div>

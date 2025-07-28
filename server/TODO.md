@@ -1,29 +1,13 @@
 
 [ ] frontend:
-  [ ] create resource component
-    * inputs the full instance + "profileId" (cpu_min, max ...)
-
-    [ ] IF no profile, only show current value
-    [ ] IF profile available: add resource profile PERCENTAGE to cpu + memory info blocks
-      * use values from ModelInstanceResourceProfile but colour from ModelInstanceRecommendations (profile_state)
-      NOTE: recommendations are optional, hence colour is also optional (IGNORE COLOUR FOR NOW, focus on recommendations UI)
-      * percentage big and x / y below it -> BOTH in same colour
-
-  [ ] add resources to info blocks
-
   [ ] filters
     [ ] active toggle
     [ ] persisted toggle
-    [ ] resource profiling toggle
-    [ ] NO RECOMMENDATION TOGGLES (for now)
+    [ ] resource profiling toggle (this toggles both profiles + recommendations)
+    [ ] NO RECOMMENDATION TOGGLES
     [ ] model_id, single select (load models, copy from other components)
 
     [ ] move refresh to the side
-
-  [ ] final styling checks
-    * size of info blocks text + headers
-    * does it look / feel similar to other pages ?
-    * not ugly / janky ?
 
 ---
 
