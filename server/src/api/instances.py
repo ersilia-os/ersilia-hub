@@ -7,7 +7,7 @@ from library.api_utils import api_handler
 from objects.rbac import Permission
 from controllers.model_instance_handler import ModelInstanceController
 from objects.instance import InstancesLoadFilters, ModelInstance, ModelInstanceModel
-from server.src.controllers.recommendation_engine import RecommendationEngine
+from controllers.recommendation_engine import RecommendationEngine
 
 ###############################################################################
 ## API REGISTRATION                                                          ##

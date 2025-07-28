@@ -30,13 +30,13 @@ class ResourceProfile:
         self.min_usage_percentage = (
             0
             if self.min_allocatable <= 0.0
-            else floor(self.min_usage / self.min_allocatable)
+            else int(floor(self.min_usage / self.min_allocatable * 100))
         )
 
         self.max_usage_percentage = (
             0
             if self.max_allocatable <= 0.0
-            else ceil(self.max_usage / self.max_allocatable)
+            else int(ceil(self.max_usage / self.max_allocatable * 100))
         )
 
 
@@ -79,8 +79,8 @@ class ModelInstanceResourceProfile:
 
 class ModelInstanceResourceProfileModel(BaseModel):
 
-    cpu: ResourceProfile
-    memory: ResourceProfile
+    cpu: ResourceProfileModel
+    memory: ResourceProfileModel
 
     @staticmethod
     def from_object(
@@ -171,6 +171,12 @@ class ResourceProfileConfig:
             obj["max"],
         )
 
+    def __str__(self):
+        return f"ResourceProfileConfig[id = {self.id}, state = {self.state}, min = {self.min}, max = {self.max}]"
+
+    def __repr__(self):
+        return str(self)
+
 
 class ResourceProfileConfigModel(BaseModel):
     id: str
@@ -180,6 +186,9 @@ class ResourceProfileConfigModel(BaseModel):
 
     @staticmethod
     def from_object(obj: ResourceProfileConfig) -> "ResourceProfileConfigModel":
+        if obj is None:
+            return None
+
         return ResourceProfileConfigModel(
             id=str(obj.id),
             state=str(obj.state),
@@ -222,8 +231,8 @@ class ResourceRecommendationModel(BaseModel):
     profile_id: str
     current_value: float
     current_percentage: int
-    current_profile_state: ResourceProfileConfigModel
-    recommended_profile: ResourceProfileConfigModel
+    current_profile_state: ResourceProfileConfigModel | None
+    recommended_profile: ResourceProfileConfigModel | None
     recommended_min_value: float
     recommended_max_value: float
 
@@ -233,8 +242,12 @@ class ResourceRecommendationModel(BaseModel):
             profile_id=str(obj.profile_id),
             current_value=obj.current_value,
             current_percentage=obj.current_percentage,
-            current_profile_state=ResourceProfileConfigModel.from_object(obj),
-            recommended_profile=ResourceProfileConfigModel.from_object(obj),
+            current_profile_state=ResourceProfileConfigModel.from_object(
+                obj.current_profile_state
+            ),
+            recommended_profile=ResourceProfileConfigModel.from_object(
+                obj.recommended_profile
+            ),
             recommended_min_value=obj.recommended_min_value,
             recommended_max_value=obj.recommended_max_value,
         )
@@ -274,7 +287,7 @@ class ModelInstanceRecommendationsModel(BaseModel):
         if obj is None:
             return None
 
-        return ModelInstanceRecommendations(
+        return ModelInstanceRecommendationsModel(
             cpu_min=ResourceRecommendationModel.from_object(obj.cpu_min),
             cpu_max=ResourceRecommendationModel.from_object(obj.cpu_max),
             memory_min=ResourceRecommendationModel.from_object(obj.memory_min),

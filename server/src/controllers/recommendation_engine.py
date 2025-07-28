@@ -197,19 +197,19 @@ class RecommendationEngine:
         batched_memory_running_averages = RunningAverages()
 
         for metrics in metrics_batch:
-            if (
+            if metrics.cpu_running_averages.min >= 0 and (
                 batched_cpu_running_averages.min == -1
                 or metrics.cpu_running_averages.min < batched_cpu_running_averages.min
             ):
                 batched_cpu_running_averages.min = metrics.cpu_running_averages.min
 
-            if (
+            if metrics.cpu_running_averages.max >= 0 and (
                 batched_cpu_running_averages.max == -1
                 or metrics.cpu_running_averages.max > batched_cpu_running_averages.max
             ):
                 batched_cpu_running_averages.max = metrics.cpu_running_averages.max
 
-            if (
+            if metrics.memory_running_averages.min >= 0 and (
                 batched_memory_running_averages.min == -1
                 or metrics.memory_running_averages.min
                 < batched_memory_running_averages.min
@@ -218,7 +218,7 @@ class RecommendationEngine:
                     metrics.memory_running_averages.min
                 )
 
-            if (
+            if metrics.memory_running_averages.max >= 0 and (
                 batched_memory_running_averages.max == -1
                 or metrics.memory_running_averages.max
                 > batched_memory_running_averages.max
@@ -242,14 +242,15 @@ class RecommendationEngine:
                     else float(k8s_resources.cpu_limit)
                 ),
             ),
+            # convert bytes to megabytes
             ResourceProfile(
-                min_usage=batched_memory_running_averages.min,
+                min_usage=batched_memory_running_averages.min / 1024 / 1024,
                 min_allocatable=(
                     -1.0
                     if k8s_resources.memory_request is None
                     else float(k8s_resources.memory_request)
                 ),
-                max_usage=batched_memory_running_averages.max,
+                max_usage=batched_memory_running_averages.max / 1024 / 1024,
                 max_allocatable=(
                     -1.0
                     if k8s_resources.memory_limit is None
@@ -264,6 +265,7 @@ class RecommendationEngine:
         recommendation = ResourceRecommendation(
             profile_id=profile_id,
             current_value=0,
+            current_percentage=0,
             current_profile_state=None,
             recommended_profile=list(
                 filter(
@@ -278,6 +280,10 @@ class RecommendationEngine:
         if profile_id in [ResourceProfileId.CPU_MAX, ResourceProfileId.MEMORY_MAX]:
             recommendation.current_value = resource_profile.max_usage
             recommendation.current_percentage = resource_profile.max_usage_percentage
+            ##
+            # TODO: the current usage should match the "recommended" bracket
+            #       e.g. 65% - 80%, based on 100 "usage" =  XXXXXXX
+            ##
             recommendation.recommended_min_value = floor(
                 resource_profile.max_allocatable
                 * (recommendation.recommended_profile.min / 100)
@@ -299,12 +305,18 @@ class RecommendationEngine:
             )
 
         for profile_config in self.profile_configs[profile_id]:
+            print("profile_config: ", profile_config)
+            print("current percentage = ", recommendation.current_percentage)
+
             if (
                 recommendation.current_percentage >= profile_config.min
                 and recommendation.current_percentage < profile_config.max
             ):
+                print("profile matched")
                 recommendation.current_profile_state = profile_config
                 break
+            else:
+                print("profile not matched")
 
         return recommendation
 

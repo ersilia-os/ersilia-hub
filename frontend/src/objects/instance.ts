@@ -1,8 +1,12 @@
+import { ModelInstanceRecommendations, ModelInstanceResourceProfile } from "./recommendations";
+
 export interface ModelInstanceFilters {
     active?: boolean;
     persisted?: boolean;
     model_id?: string;
     instance_id?: string
+    load_resource_profiles?: boolean;
+    load_recommendations?: boolean;
 }
 
 export enum ModelInstanceState {
@@ -16,7 +20,9 @@ export enum ModelInstanceState {
 
 export interface ModelInstance {
     k8s_pod: K8sPod;
-    running_averages: RunningAverages;
+    metrics?: InstanceMetrics;
+    resource_profile?: ModelInstanceResourceProfile;
+    resource_recommendations?: ModelInstanceRecommendations;
 
     // details not on API
     is_model?: boolean;

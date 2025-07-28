@@ -21,7 +21,9 @@ export class ModelInstancesComponent implements OnDestroy {
   private refreshTimer$: Subscription | undefined;
   private instanceFilters: ModelInstanceFilters = {
     active: true,
-    persisted: true
+    persisted: true,
+    load_resource_profiles: true,
+    load_recommendations: true
   };
 
   readonly dialog = inject(MatDialog);
