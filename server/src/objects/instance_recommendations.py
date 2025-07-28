@@ -200,8 +200,9 @@ class ResourceProfileConfigModel(BaseModel):
 class ResourceRecommendation:
 
     profile_id: ResourceProfileId
-    current_value: float
-    current_percentage: int
+    current_usage_value: float
+    current_allocation_value: int
+    current_usage_percentage: int
     current_profile_state: ResourceProfileConfig
     recommended_profile: ResourceProfileConfig
     recommended_min_value: float
@@ -210,16 +211,18 @@ class ResourceRecommendation:
     def __init__(
         self,
         profile_id: ResourceProfileId,
-        current_value: float,
-        current_percentage: int,
+        current_usage_value: float,
+        current_allocation_value: int,
+        current_usage_percentage: int,
         current_profile_state: ResourceProfileConfig,
         recommended_profile: ResourceProfileConfig,
         recommended_min_value: float,
         recommended_max_value: float,
     ):
         self.profile_id = profile_id
-        self.current_value = current_value
-        self.current_percentage = current_percentage
+        self.current_usage_value = current_usage_value
+        self.current_allocation_value = current_allocation_value
+        self.current_usage_percentage = current_usage_percentage
         self.current_profile_state = current_profile_state
         self.recommended_profile = recommended_profile
         self.recommended_min_value = recommended_min_value
@@ -229,8 +232,9 @@ class ResourceRecommendation:
 class ResourceRecommendationModel(BaseModel):
 
     profile_id: str
-    current_value: float
-    current_percentage: int
+    current_usage_value: float
+    current_allocation_value: int
+    current_usage_percentage: int
     current_profile_state: ResourceProfileConfigModel | None
     recommended_profile: ResourceProfileConfigModel | None
     recommended_min_value: float
@@ -240,8 +244,9 @@ class ResourceRecommendationModel(BaseModel):
     def from_object(obj: ResourceRecommendation) -> "ResourceRecommendationModel":
         return ResourceRecommendationModel(
             profile_id=str(obj.profile_id),
-            current_value=obj.current_value,
-            current_percentage=obj.current_percentage,
+            current_usage_value=obj.current_usage_value,
+            current_allocation_value=obj.current_allocation_value,
+            current_usage_percentage=obj.current_usage_percentage,
             current_profile_state=ResourceProfileConfigModel.from_object(
                 obj.current_profile_state
             ),

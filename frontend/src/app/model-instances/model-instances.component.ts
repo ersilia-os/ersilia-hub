@@ -38,9 +38,11 @@ export class ModelInstancesComponent implements OnDestroy {
 
     this.instances = this.instancesService.getInstancesSignal();
 
-    this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
-      this.instancesService.loadInstances(this.instanceFilters);
-    });
+    if (this.autoRefreshEnabled()) {
+      this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
+        this.instancesService.loadInstances(this.instanceFilters);
+      });
+    }
   }
 
   /**

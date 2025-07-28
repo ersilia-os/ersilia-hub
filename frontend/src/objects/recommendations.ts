@@ -37,8 +37,9 @@ export interface ResourceProfileConfig {
 
 export interface ResourceRecommendation {
     profile_id: ResourceProfileId;
-    current_value: number;
-    current_percentage: number;
+    current_usage_value: number;
+    current_allocation_value: number;
+    current_usage_percentage: number;
     current_profile_state: ResourceProfileConfig;
     recommended_profile: ResourceProfileConfig;
     recommended_min_value: number;

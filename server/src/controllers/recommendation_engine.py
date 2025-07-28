@@ -1,6 +1,6 @@
 from json import loads
-from math import floor
-from typing import Dict, List, Union
+from math import ceil, floor
+from typing import Dict, List, Tuple, Union
 from python_framework.thread_safe_cache import ThreadSafeCache
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
@@ -259,13 +259,32 @@ class RecommendationEngine:
             ),
         )
 
+    def _calculate_profile_values(
+        self, profile_min: int, profile_max: int, resource_value: float
+    ) -> Tuple[int, int]:
+        """
+        Calculate the min and max values, based on given percentages and value.
+        The given resource_value should fall in the center of the bracket.
+        """
+        # this is the percentage of the "center", i.e. the resource value
+        profile_mid = profile_min + (profile_max - profile_min) / 2
+        profile_min_diff = profile_mid - profile_min
+        profile_max_diff = profile_max - profile_mid
+
+        # min and max values is the percentage "diff" from the middle
+        return (
+            int(floor(resource_value - (resource_value * profile_min_diff / 100))),
+            int(ceil(resource_value + (resource_value * profile_max_diff / 100))),
+        )
+
     def _calculate_profile_recommendations(
         self, profile_id: ResourceProfileId, resource_profile: ResourceProfile
     ) -> ResourceRecommendation:
         recommendation = ResourceRecommendation(
             profile_id=profile_id,
-            current_value=0,
-            current_percentage=0,
+            current_usage_value=0,
+            current_allocation_value=0,
+            current_usage_percentage=0,
             current_profile_state=None,
             recommended_profile=list(
                 filter(
@@ -278,45 +297,34 @@ class RecommendationEngine:
         )
 
         if profile_id in [ResourceProfileId.CPU_MAX, ResourceProfileId.MEMORY_MAX]:
-            recommendation.current_value = resource_profile.max_usage
-            recommendation.current_percentage = resource_profile.max_usage_percentage
-            ##
-            # TODO: the current usage should match the "recommended" bracket
-            #       e.g. 65% - 80%, based on 100 "usage" =  XXXXXXX
-            ##
-            recommendation.recommended_min_value = floor(
-                resource_profile.max_allocatable
-                * (recommendation.recommended_profile.min / 100)
-            )
-            recommendation.recommended_max_value = floor(
-                resource_profile.max_allocatable
-                * (recommendation.recommended_profile.max / 100)
+            recommendation.current_usage_value = resource_profile.max_usage
+            recommendation.current_allocation_value = resource_profile.max_allocatable
+            recommendation.current_usage_percentage = (
+                resource_profile.max_usage_percentage
             )
         elif profile_id in [ResourceProfileId.CPU_MIN, ResourceProfileId.MEMORY_MIN]:
-            recommendation.current_value = resource_profile.min_usage
-            recommendation.current_percentage = resource_profile.min_usage_percentage
-            recommendation.recommended_min_value = floor(
-                resource_profile.min_allocatable
-                * (recommendation.recommended_profile.min / 100)
+            recommendation.current_usage_value = resource_profile.min_usage
+            recommendation.current_allocation_value = resource_profile.min_allocatable
+            recommendation.current_usage_percentage = (
+                resource_profile.min_usage_percentage
             )
-            recommendation.recommended_max_value = floor(
-                resource_profile.min_allocatable
-                * (recommendation.recommended_profile.max / 100)
-            )
+
+        (
+            recommendation.recommended_min_value,
+            recommendation.recommended_max_value,
+        ) = self._calculate_profile_values(
+            recommendation.recommended_profile.min,
+            recommendation.recommended_profile.max,
+            recommendation.current_usage_value,
+        )
 
         for profile_config in self.profile_configs[profile_id]:
-            print("profile_config: ", profile_config)
-            print("current percentage = ", recommendation.current_percentage)
-
             if (
-                recommendation.current_percentage >= profile_config.min
-                and recommendation.current_percentage < profile_config.max
+                recommendation.current_usage_percentage >= profile_config.min
+                and recommendation.current_usage_percentage < profile_config.max
             ):
-                print("profile matched")
                 recommendation.current_profile_state = profile_config
                 break
-            else:
-                print("profile not matched")
 
         return recommendation
 

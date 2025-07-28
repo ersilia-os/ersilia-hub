@@ -1,9 +1,5 @@
 
 [ ] frontend:
-  [ ] add ModelInstanceResourceProfile + ModelInstanceRecommendations to frontend objects
-  [ ] update modelinstance filters object
-    * also default profiles + recommendations in the filter (FOR DEBUGGING, will disable later)
-  
   [ ] create resource component
     * inputs the full instance + "profileId" (cpu_min, max ...)
 
