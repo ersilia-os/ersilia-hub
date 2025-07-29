@@ -1,19 +1,4 @@
 
-[ ] frontend:
-  [ ] fixed width resource blocks
-  [ ] pretty resource "bar" (replace percentage)
-
-  [ ] filters
-    [ ] active toggle
-    [ ] persisted toggle
-    [ ] resource profiling toggle (this toggles both profiles + recommendations)
-    [ ] NO RECOMMENDATION TOGGLES
-    [ ] model_id, single select (load models, copy from other components)
-
-    [ ] move refresh to the side
-
----
-
 [ ] Implement recommendations engine
   * IGNORE model input size (FOR NOW)
   * should only consider persisted, not active

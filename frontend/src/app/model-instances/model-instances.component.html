@@ -3,22 +3,40 @@
 </div>
 
 <div class="component-toolbar">
-    <!-- TODO: eventually add filters here -->
-    <div class="spacer"></div>
-    <div class="filter refresh">
-        <div class="ersilia-button icon-only refresh" (click)="load()"
-            [ngClass]="{'disabled': loading() || autoRefreshEnabled()}">
-            @if(loading()) {
-            <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-            } @else {
-            <mat-icon>refresh</mat-icon>
-            }
+
+    <div class="filters">
+        <div class="filter">
+            <mat-checkbox [(ngModel)]="filtersLoadActive">Active Instances</mat-checkbox>
+        </div>
+
+        <div class="filter">
+            <mat-checkbox [(ngModel)]="filtersLoadPersisted">Persisted Instances</mat-checkbox>
+        </div>
+
+        <div class="filter">
+            <mat-checkbox [(ngModel)]="filtersLoadMetrics">Resource Metrics</mat-checkbox>
+        </div>
+
+        <!-- TODO: add models filter -->
+
+        <div class="spacer"></div>
+
+        <div class="filter refresh">
+            <div class="ersilia-button icon-only refresh" (click)="load()"
+                [ngClass]="{'disabled': loading() || autoRefreshEnabled()}">
+                @if(loading()) {
+                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                } @else {
+                <mat-icon>refresh</mat-icon>
+                }
+            </div>
         </div>
     </div>
+
 </div>
 
 <div class="model-instances-container">
-    @for (instance of instances(); track instance.k8s_pod.name) {
+    @for (instance of instances(); track trackBy($index, instance)) {
     <div class="model-instance mat-elevation-z8">
         <div class="info-block">
             <div class="info-block-title">

@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Signal } from '@angular/core';
+import { Component, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -8,11 +8,15 @@ import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.compone
 import { InstancesService } from '../../services/instances.service';
 import { ModelInstance, ModelInstanceFilters } from '../../objects/instance';
 import { ModelInstanceResourceComponent } from '../model-instance-resource/model-instance-resource.component';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { FormsModule } from '@angular/forms';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 @Component({
   selector: 'app-model-instances',
   standalone: true,
-  imports: [MatButtonModule, CommonModule, MatIconModule, ErsiliaLoaderComponent, ModelInstanceResourceComponent],
+  imports: [MatButtonModule, FormsModule, MatFormFieldModule, CommonModule, MatIconModule, MatCheckboxModule,
+    ErsiliaLoaderComponent, ModelInstanceResourceComponent],
   templateUrl: './model-instances.component.html',
   styleUrl: './model-instances.component.scss'
 })
@@ -22,7 +26,7 @@ export class ModelInstancesComponent implements OnDestroy {
   private refreshTimer$: Subscription | undefined;
   private instanceFilters: ModelInstanceFilters = {
     active: true,
-    persisted: true,
+    persisted: false,
     load_resource_profiles: true,
     load_recommendations: true
   };
@@ -33,6 +37,7 @@ export class ModelInstancesComponent implements OnDestroy {
   loading: Signal<boolean>;
 
   constructor() {
+
     this.loading = this.instancesService.computeInstancesLoadingSignal<boolean>(
       _loading => this.instances == null || (this.instances().length == 0 && _loading)
     );
@@ -40,10 +45,33 @@ export class ModelInstancesComponent implements OnDestroy {
     this.instances = this.instancesService.getInstancesSignal();
 
     if (this.autoRefreshEnabled()) {
-      this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
-        this.instancesService.loadInstances(this.instanceFilters);
-      });
+      this.startRefreshTimer();
     }
+  }
+
+  get filtersLoadActive(): boolean {
+    return this.instanceFilters.active ?? false;
+  }
+
+  set filtersLoadActive(value: boolean) {
+    this.instanceFilters.active = value;
+  }
+
+  get filtersLoadPersisted(): boolean {
+    return this.instanceFilters.persisted ?? false;
+  }
+
+  set filtersLoadPersisted(value: boolean) {
+    this.instanceFilters.persisted = value;
+  }
+
+  get filtersLoadMetrics(): boolean {
+    return (this.instanceFilters.load_recommendations ?? false) && (this.instanceFilters.load_resource_profiles ?? false);
+  }
+
+  set filtersLoadMetrics(value: boolean) {
+    this.instanceFilters.load_recommendations = value;
+    this.instanceFilters.load_resource_profiles = value;
   }
 
   /**
@@ -54,13 +82,29 @@ export class ModelInstancesComponent implements OnDestroy {
     this.refreshTimer$?.unsubscribe();
   }
 
+  startRefreshTimer() {
+    if (this.refreshTimer$ != null) {
+      return;
+    }
+
+    this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
+      if (!this.autoRefreshEnabled()) {
+        this.refreshTimer$?.unsubscribe();
+        this.refreshTimer$ = undefined;
+        return;
+      }
+
+      this.instancesService.loadInstances(this.instanceFilters);
+    });
+  }
+
   hasRequests(): boolean {
     return this.instances != null && this.instances().length > 0;
   }
 
   autoRefreshEnabled(): boolean {
     // fluffy logic based on filters
-    return !this.instanceFilters.persisted;
+    return !this.instanceFilters.persisted && this.refreshTimer$ != null;
   }
 
   load() {
@@ -68,8 +112,17 @@ export class ModelInstancesComponent implements OnDestroy {
       return;
     }
 
+    if (!this.instanceFilters.persisted) {
+      this.startRefreshTimer();
+      return;
+    }
+
     this.instancesService.loadInstances(this.instanceFilters);
   }
+
+  trackBy: TrackByFunction<ModelInstance> = (index: number, item: ModelInstance) => {
+    return `${item.k8s_pod.name}_${item.resource_profile == null}_${item.resource_recommendations == null}`;
+  };
 
   /**
    * TODO: open dialog for model recommendations ?? -> load for specific model
