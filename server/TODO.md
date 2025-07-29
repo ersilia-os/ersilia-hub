@@ -1,5 +1,8 @@
 
 [ ] frontend:
+  [ ] fixed width resource blocks
+  [ ] pretty resource "bar" (replace percentage)
+
   [ ] filters
     [ ] active toggle
     [ ] persisted toggle

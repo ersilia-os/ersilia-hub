@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostBinding, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { ModelInstance } from '../../objects/instance';
-import { ResourceProfileId, ResourceProfileState } from '../../objects/recommendations';
+import { ResourceProfileConfig, ResourceProfileId, ResourceProfileState } from '../../objects/recommendations';
 
 @Component({
     standalone: true,
@@ -20,8 +20,10 @@ export class ModelInstanceResourceComponent implements OnInit {
     allocationValue: number | undefined;
     usagePercentage: number | undefined;
     currentProfileState: ResourceProfileState | undefined;
+    recommendedProfile: ResourceProfileConfig | undefined;
 
     ngClass: { [key: string]: boolean } = {};
+    gradientStyle: string | undefined;
 
     ngOnInit() {
         if (this.instance == null || this.resourceProfileId == null) {
@@ -44,6 +46,7 @@ export class ModelInstanceResourceComponent implements OnInit {
                 this.allocationValue = this.instance.resource_profile?.cpu.max_allocatable;
 
                 if (this.instance.resource_recommendations != null) {
+                    this.recommendedProfile = this.instance.resource_recommendations.cpu_min.recommended_profile;
                     this.currentProfileState = this.instance.resource_recommendations.cpu_max.current_profile_state.state;
                 }
 
@@ -60,6 +63,7 @@ export class ModelInstanceResourceComponent implements OnInit {
                 this.allocationValue = this.instance.resource_profile?.cpu.min_allocatable;
 
                 if (this.instance.resource_recommendations != null) {
+                    this.recommendedProfile = this.instance.resource_recommendations.cpu_min.recommended_profile;
                     this.currentProfileState = this.instance.resource_recommendations.cpu_min.current_profile_state.state;
                 }
 
@@ -76,6 +80,7 @@ export class ModelInstanceResourceComponent implements OnInit {
                 this.allocationValue = this.instance.resource_profile?.memory.max_allocatable;
 
                 if (this.instance.resource_recommendations != null) {
+                    this.recommendedProfile = this.instance.resource_recommendations.cpu_min.recommended_profile;
                     this.currentProfileState = this.instance.resource_recommendations.memory_max.current_profile_state.state;
                 }
 
@@ -92,6 +97,7 @@ export class ModelInstanceResourceComponent implements OnInit {
                 this.allocationValue = this.instance.resource_profile?.memory.min_allocatable;
 
                 if (this.instance.resource_recommendations != null) {
+                    this.recommendedProfile = this.instance.resource_recommendations.cpu_min.recommended_profile;
                     this.currentProfileState = this.instance.resource_recommendations.memory_min.current_profile_state.state;
                 }
 
@@ -101,5 +107,24 @@ export class ModelInstanceResourceComponent implements OnInit {
         if (this.currentProfileState != null) {
             this.ngClass[`profile-state-${this.currentProfileState.toLowerCase()}`] = true;
         }
+
+        this.setGradient();
+    }
+
+    setGradient() {
+        if (this.instance == null || this.instance.resource_recommendations == null || this.recommendedProfile == null) {
+            this.gradientStyle = 'linear-gradient(90deg, #f79e3a 25%, #31ec5a 65%, #f79e3a 90%)'
+            return;
+        }
+
+        let gradientPercentages = [
+            this.recommendedProfile?.min - 20,
+            this.recommendedProfile?.min - 10,
+            this.recommendedProfile?.min,
+            this.recommendedProfile?.max,
+            this.recommendedProfile?.max + 10,
+            this.recommendedProfile?.max + 20
+        ];
+        this.gradientStyle = `linear-gradient(90deg, #f79e3a ${gradientPercentages[0]}%, #f8f84a ${gradientPercentages[1]}%, #31ec5a ${gradientPercentages[2]}%, #f8f84a ${gradientPercentages[3]}%, #f79e3a ${gradientPercentages[4]}%)`
     }
 }
