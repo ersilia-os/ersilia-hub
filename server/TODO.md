@@ -4,7 +4,6 @@
   * should only consider persisted, not active
   * specify time range + limit, default no time but 100 limit
 
-  [ ] on start, wait 5min before auto-running (ONCE) -> infinite "waiting" loop 
   [ ] lock on execution, can only run one at a time
   [ ] in-mem state:
     - last updated
@@ -70,6 +69,11 @@ Model Instance actions
   * apply recommendation (per model, per profile) -> update and persist model -> reload anything required
 
 [ ] model management page
+
+---
+
+[ ] Add request details to instances page
+  * request state
 
 ---
 

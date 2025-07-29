@@ -1,8 +1,13 @@
 from json import loads
 from math import ceil, floor
+from sys import exc_info, stdout
+from threading import Event, Lock, Thread
+import traceback
 from typing import Dict, List, Tuple, Union
+from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.thread_safe_cache import ThreadSafeCache
 from python_framework.logger import ContextLogger, LogLevel
+from python_framework.time import utc_now, is_date_in_range_from_now, TimeWindow, Time
 from python_framework.config_utils import load_environment_variable
 
 from objects.instance_recommendations import (
@@ -143,18 +148,33 @@ PROFILE_CONFIGS = """
 """
 
 
-class RecommendationEngine:
+class RecommendationEngineKillInstance(KillInstance):
+    def kill(self):
+        RecommendationEngine.instance().kill()
+
+
+class RecommendationEngine(Thread):
 
     _instance: "RecommendationEngine" = None
     _logger_key: str = None
+    _kill_event: Event
 
+    last_updated: str | None
+    refresh_window: TimeWindow
     model_recommendations: ThreadSafeCache[str, ModelInstanceRecommendations]
+    model_recommendation_locks: ThreadSafeCache[str, Lock]
     profile_configs: Dict[str, List[ResourceProfileConfig]]
 
     def __init__(self):
-        self._logger_key = "RecommendationEngine"
+        Thread.__init__(self)
 
+        self._logger_key = "RecommendationEngine"
+        self._kill_event = Event()
+
+        self.last_updated = None
+        self.refresh_window = TimeWindow(Time(0, 0, 0, 0), Time(4, 0, 0, 0))
         self.model_recommendations = ThreadSafeCache()
+        self.model_recommendation_locks = ThreadSafeCache()
 
         self.profile_configs = {}
 
@@ -175,12 +195,19 @@ class RecommendationEngine:
             ),
         )
 
+    def _wait_or_kill(self, timeout: float) -> bool:
+        return self._kill_event.wait(timeout)
+
+    def kill(self):
+        self._kill_event.set()
+
     @staticmethod
     def initialize() -> "RecommendationEngine":
         if RecommendationEngine._instance is not None:
             return RecommendationEngine._instance
 
         RecommendationEngine._instance = RecommendationEngine()
+        GracefulKiller.register_kill_instance(RecommendationEngineKillInstance())
 
         return RecommendationEngine._instance
 
@@ -345,3 +372,60 @@ class RecommendationEngine:
                 ResourceProfileId.MEMORY_MAX, resource_profile.memory
             ),
         )
+
+    def refresh_model_recommendations(self, model_id: str):
+        # TODO: lock model
+        # TODO: load instances using model_id
+        # TODO: load metrics using model_id AND instance_ids in above list
+        # TODO: profile_resources_batch(), but use CURRENT model k8s_resources
+        # TODO: calculate_recommendations() -> update cache
+        pass
+
+    def refresh_all_recommendations(self):
+        # TODO: load models list
+        # TODO: REMOVE models that don't appear in list anymore
+        # TODO: refresh_model_recommendations() for ones that exist
+        pass
+
+    def refresh_missing_models_only(self):
+        # TODO: get list of all models and check if any are missing in current list
+        pass
+
+    def run(self):
+        ContextLogger.info(self._logger_key, "engine started")
+
+        # wait 4 minutes before running first full recommendation
+        if self._wait_or_kill(240):
+            ContextLogger.info(self._logger_key, "engine killed before startup")
+            return
+
+        try:
+            self.refresh_all_recommendations()
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                f"failure in refreshing recommendations: {repr(exc_info())}",
+            )
+            traceback.print_exc(file=stdout)
+
+        while True:
+            if self._wait_or_kill(600):
+                break
+
+            # refresh all recommendations nightly
+            current_time = utc_now()
+
+            # - always refresh if not refreshed previously
+            # - don't refresh if refreshed in the last 2 hours
+            # - only refresh within time window
+            if (
+                self.last_updated is not None
+                and not is_date_in_range_from_now(current_time, "-2h")
+                and not self.refresh_window.is_time_in_window(
+                    Time.from_utc_timestamp(current_time)
+                )
+            ):
+                self.refresh_missing_models_only()
+                continue
+
+            self.refresh_all_recommendations()

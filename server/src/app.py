@@ -108,6 +108,7 @@ def run():
         NodeMonitorController.instance().start()
         WorkRequestController.instance().start()
         AuthController.instance().start()
+        RecommendationEngine.instance().start()
 
         # Should be last, just before APIRoot
         AppWatch.instance().start()

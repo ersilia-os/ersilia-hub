@@ -3,6 +3,7 @@ from math import ceil, floor
 from typing import Any, Dict
 
 from pydantic import BaseModel
+from python_framework.time import utc_now
 
 
 class ResourceProfile:
@@ -264,6 +265,7 @@ class ModelInstanceRecommendations:
     cpu_max: ResourceRecommendation
     memory_min: ResourceRecommendation
     memory_max: ResourceRecommendation
+    last_updated: str | None
 
     def __init__(
         self,
@@ -271,11 +273,13 @@ class ModelInstanceRecommendations:
         cpu_max: ResourceRecommendation,
         memory_min: ResourceRecommendation,
         memory_max: ResourceRecommendation,
+        last_updated: str | None = None,
     ):
         self.cpu_min = cpu_min
         self.cpu_max = cpu_max
         self.memory_min = memory_min
         self.memory_max = memory_max
+        self.last_updated = last_updated if last_updated is not None else utc_now()
 
 
 class ModelInstanceRecommendationsModel(BaseModel):
@@ -284,6 +288,7 @@ class ModelInstanceRecommendationsModel(BaseModel):
     cpu_max: ResourceRecommendationModel
     memory_min: ResourceRecommendationModel
     memory_max: ResourceRecommendationModel
+    last_updated: str | None
 
     @staticmethod
     def from_object(
@@ -297,4 +302,11 @@ class ModelInstanceRecommendationsModel(BaseModel):
             cpu_max=ResourceRecommendationModel.from_object(obj.cpu_max),
             memory_min=ResourceRecommendationModel.from_object(obj.memory_min),
             memory_max=ResourceRecommendationModel.from_object(obj.memory_max),
+            last_updated=obj.last_updated,
         )
+
+
+class RecommendationEngineState:
+
+    last_updated: str
+    model_recommendations: Dict[str, ModelInstanceRecommendations]
