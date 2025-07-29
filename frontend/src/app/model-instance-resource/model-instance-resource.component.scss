@@ -73,4 +73,44 @@
     &.profile-state-critical {
         color: $alert-red;
     }
+
+    &.profile-state-black {
+        color: black;
+    }
+}
+
+.gradient-block {
+    height: 20px;
+    width: 150px;
+    padding: 3px;
+    background-color: #6f6f6f;
+    border-radius: 6px;
+    display: block;
+
+    .gradient-fill {
+        height: 20px;
+        width: 150px;
+        border-radius: 4px;
+        position: relative;
+    }
+
+    .indicator {
+        height: 22px;
+        border-radius: 3px;
+        background-color: #6f6f6f;
+        position: relative;
+        top: -21px;
+    }
+
+    .percentage {
+        height: 20px;
+        position: relative;
+        top: -20px - 22px;
+        width: 150px;
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
 }

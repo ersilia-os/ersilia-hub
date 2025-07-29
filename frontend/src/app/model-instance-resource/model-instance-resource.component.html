@@ -1,11 +1,14 @@
 <div class="usage" [ngClass]="ngClass">
-    <div class="value">{{ usageValue == null ? 0 : usageValue | number }}</div>
+    <div class="value">{{ usageValue == null ? 0 : usageValue | number:'.0-1' }}</div>
     @if (allocationValue != null) {
     <div class="separator">/</div>
-    <div class="allocation">{{ allocationValue | number }}</div>
+    <div class="allocation">{{ allocationValue | number:'.0-1' }}</div>
     }
 </div>
 @if (usagePercentage != null) {
-<!-- TODO: replace with block with background: gradientStyle -->
-<div class="percentage" [ngClass]="ngClass">{{ usagePercentage | number }}%</div>
+<div class="gradient-block">
+    <div class="gradient-fill" [ngStyle]="{'background': fillGradient}"></div>
+    <div class="indicator" [ngStyle]="{'left': indicatorPosition, 'width': indicatorWidth}"></div>
+    <div class="percentage" [ngClass]="indicatorPercentageClass">{{ usagePercentage | number }} %</div>
+</div>
 }

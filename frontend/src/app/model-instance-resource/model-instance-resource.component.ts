@@ -23,7 +23,10 @@ export class ModelInstanceResourceComponent implements OnInit {
     recommendedProfile: ResourceProfileConfig | undefined;
 
     ngClass: { [key: string]: boolean } = {};
-    gradientStyle: string | undefined;
+    fillGradient: string | undefined;
+    indicatorPosition: string | undefined;
+    indicatorWidth: string | undefined;
+    indicatorPercentageClass: { [key: string]: boolean } = {}
 
     ngOnInit() {
         if (this.instance == null || this.resourceProfileId == null) {
@@ -106,14 +109,29 @@ export class ModelInstanceResourceComponent implements OnInit {
 
         if (this.currentProfileState != null) {
             this.ngClass[`profile-state-${this.currentProfileState.toLowerCase()}`] = true;
+
+            if ((this.usagePercentage ?? 0) >= 45) {
+                this.indicatorPercentageClass['profile-state-black'] = true;
+            } else {
+                this.indicatorPercentageClass[`profile-state-${this.currentProfileState.toLowerCase()}`] = true;
+            }
         }
 
-        this.setGradient();
+        this.setFill();
     }
 
-    setGradient() {
+    setFill() {
+        if ((this.usagePercentage ?? 0) >= 100) {
+            this.indicatorPosition = '0px';
+            this.indicatorWidth = '0px';
+        } else {
+            let indicatorPositionValue = 150 * ((this.usagePercentage ?? 0) / 100);
+            this.indicatorPosition = `${indicatorPositionValue}px`;
+            this.indicatorWidth = `${150 - indicatorPositionValue}px`;
+        }
+
         if (this.instance == null || this.instance.resource_recommendations == null || this.recommendedProfile == null) {
-            this.gradientStyle = 'linear-gradient(90deg, #f79e3a 25%, #31ec5a 65%, #f79e3a 90%)'
+            this.fillGradient = 'linear-gradient(90deg, #f79e3a 25%, #31ec5a 65%, #f79e3a 90%)';
             return;
         }
 
@@ -125,6 +143,6 @@ export class ModelInstanceResourceComponent implements OnInit {
             this.recommendedProfile?.max + 10,
             this.recommendedProfile?.max + 20
         ];
-        this.gradientStyle = `linear-gradient(90deg, #f79e3a ${gradientPercentages[0]}%, #f8f84a ${gradientPercentages[1]}%, #31ec5a ${gradientPercentages[2]}%, #f8f84a ${gradientPercentages[3]}%, #f79e3a ${gradientPercentages[4]}%)`
+        this.fillGradient = `linear-gradient(90deg, #f79e3a ${gradientPercentages[0]}%, #f8f84a ${gradientPercentages[1]}%, #31ec5a ${gradientPercentages[2]}%, #f8f84a ${gradientPercentages[3]}%, #f79e3a ${gradientPercentages[4]}%)`
     }
 }
