@@ -21,6 +21,9 @@ from objects.instance_recommendations import (
 )
 from objects.metrics import InstanceMetrics, PersistedInstanceMetrics, RunningAverages
 from objects.k8s import K8sPodResources
+from controllers.model import ModelController
+from controllers.model_instance_handler import ModelInstanceController
+from objects.model import Model, ModelUpdate
 
 PROFILE_CONFIGS = """
 [
@@ -373,30 +376,149 @@ class RecommendationEngine(Thread):
             ),
         )
 
+    def _acquire_model_recommendation_lock(
+        self, model_id: str, timeout: float = 120.0
+    ) -> bool:
+        if model_id not in self.model_recommendation_locks:
+            lock = Lock()
+            lock.acquire()
+            self.model_recommendation_locks[model_id] = lock
+
+            return True
+        else:
+            return self.model_recommendation_locks[model_id].acquire(timeout=timeout)
+
+    def _release_model_recommendation_lock(self, model_id: str):
+        if model_id not in self.model_recommendation_locks:
+            return
+
+        self.model_recommendation_locks[model_id].release()
+
     def refresh_model_recommendations(self, model_id: str):
-        # TODO: lock model
-        # TODO: load instances using model_id
-        # TODO: load metrics using model_id AND instance_ids in above list
-        # TODO: profile_resources_batch(), but use CURRENT model k8s_resources
-        # TODO: calculate_recommendations() -> update cache
-        pass
+        ContextLogger.info(
+            self._logger_key, f"refreshing recommendations for model [{model_id}]..."
+        )
+
+        if not self._acquire_model_recommendation_lock(model_id):
+            raise Exception("Failed to acquire model recommendation lock")
+
+        try:
+            instances = ModelInstanceController.instance().load_persisted_instances(
+                [model_id]
+            )
+
+            if len(instances) == 0:
+                ContextLogger.warn(
+                    self._logger_key,
+                    f"no persisted instances found for model [{model_id}]",
+                )
+                return
+
+            model = ModelController.instance().get_model(model_id)
+
+            resource_profile = self.profile_resources_batch(
+                list(map(lambda x: x.metrics, instances)), model.details.k8s_resources
+            )
+            resource_recommendations = self.calculate_recommendations(resource_profile)
+            resource_recommendations.model_id = model_id
+            resource_recommendations.profiled_instances = list(
+                map(lambda x: x.k8s_pod.name, instances)
+            )
+
+            self.model_recommendations[model_id] = resource_recommendations
+        except:
+            error_str = f"Failed to refresh model recommendations, model [{model_id}] - error [{repr(exc_info())}]"
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+            raise Exception(error_str)
+        finally:
+            self.model_recommendation_locks[model_id].release()
 
     def refresh_all_recommendations(self):
-        # TODO: load models list
-        # TODO: REMOVE models that don't appear in list anymore
-        # TODO: refresh_model_recommendations() for ones that exist
-        pass
+        models = ModelController.instance().get_models()
 
-    def refresh_missing_models_only(self):
-        # TODO: get list of all models and check if any are missing in current list
-        pass
+        # remove deleted models
+        for model_id in self.model_recommendations.keys():
+            if not any(map(lambda x: x.id == model_id, models)):
+                del self.model_recommendations[model_id]
+
+        for model in models:
+            try:
+                self.refresh_model_recommendations(model.id)
+            except:
+                ContextLogger.error(
+                    self._logger_key,
+                    f"Failed to refresh model [{model.id}] recommendations - error [{repr(exc_info())}]",
+                )
+                traceback.print_exc(file=stdout)
+
+    def refresh_missing_recommendations(self):
+        models = ModelController.instance().get_models()
+
+        for model in models:
+            if model.id not in self.model_recommendations:
+                try:
+                    self.refresh_model_recommendations(model.id)
+                except:
+                    ContextLogger.error(
+                        self._logger_key,
+                        f"Failed to refresh model [{model.id}] recommendations - error [{repr(exc_info())}]",
+                    )
+                    traceback.print_exc(file=stdout)
+
+    def apply_recommendations(
+        self,
+        recommendations: ModelInstanceRecommendations,
+        apply_profiles: List[ResourceProfileId] = None,
+    ):
+        _apply_profiles = (
+            [
+                ResourceProfileId.CPU_MIN,
+                ResourceProfileId.CPU_MAX,
+                ResourceProfileId.MEMORY_MIN,
+                ResourceProfileId.MEMORY_MAX,
+            ]
+            if apply_profiles is None
+            else apply_profiles
+        )
+
+        if recommendations.model_id is None:
+            raise Exception(f"Missing model_id on recommendatons")
+
+        model: Model = ModelController.get_model(recommendations.model_id)
+
+        if model is None:
+            raise Exception(f"Unknown model [{recommendations.model_id}]")
+
+        model_update = ModelUpdate(model.id, model.details.copy(), model.enabled)
+
+        for profile in _apply_profiles:
+            if profile == ResourceProfileId.CPU_MIN:
+                model_update.details.k8s_resources.cpu_request = (
+                    recommendations.cpu_min.recommended_value
+                )
+            elif profile == ResourceProfileId.CPU_MAX:
+                model_update.details.k8s_resources.cpu_limit = (
+                    recommendations.cpu_max.recommended_value
+                )
+            elif profile == ResourceProfileId.MEMORY_MIN:
+                model_update.details.k8s_resources.memory_request = (
+                    recommendations.memory_min.recommended_value
+                )
+            elif profile == ResourceProfileId.MEMORY_MAX:
+                model_update.details.k8s_resources.memory_limit = (
+                    recommendations.memory_max.recommended_value
+                )
+
+        ModelController.instance().update_model(model_update)
 
     def run(self):
-        ContextLogger.info(self._logger_key, "engine started")
+        ContextLogger.info(self._logger_key, "Engine started")
 
         # wait 4 minutes before running first full recommendation
         if self._wait_or_kill(240):
-            ContextLogger.info(self._logger_key, "engine killed before startup")
+            ContextLogger.info(self._logger_key, "Engine killed before startup")
             return
 
         try:
@@ -425,7 +547,9 @@ class RecommendationEngine(Thread):
                     Time.from_utc_timestamp(current_time)
                 )
             ):
-                self.refresh_missing_models_only()
+                self.refresh_missing_recommendations()
                 continue
 
             self.refresh_all_recommendations()
+
+        ContextLogger.info(self._logger_key, "Engine stopped")

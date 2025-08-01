@@ -1,6 +1,6 @@
 from enum import Enum
 from math import ceil, floor
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from pydantic import BaseModel
 from python_framework.time import utc_now
@@ -197,6 +197,14 @@ class ResourceProfileConfigModel(BaseModel):
             max=obj.max,
         )
 
+    def to_object(self) -> ResourceProfileConfig:
+        return ResourceProfileConfig(
+            id=self.id,
+            state=self.id,
+            min=self.min,
+            max=self.max,
+        )
+
 
 class ResourceRecommendation:
 
@@ -208,6 +216,7 @@ class ResourceRecommendation:
     recommended_profile: ResourceProfileConfig
     recommended_min_value: float
     recommended_max_value: float
+    recommended_value: float
 
     def __init__(
         self,
@@ -219,6 +228,7 @@ class ResourceRecommendation:
         recommended_profile: ResourceProfileConfig,
         recommended_min_value: float,
         recommended_max_value: float,
+        recommended_value: float = None,
     ):
         self.profile_id = profile_id
         self.current_usage_value = current_usage_value
@@ -228,6 +238,14 @@ class ResourceRecommendation:
         self.recommended_profile = recommended_profile
         self.recommended_min_value = recommended_min_value
         self.recommended_max_value = recommended_max_value
+
+        if recommended_value is None:
+            recommended_value = (
+                self.recommended_min_value
+                + (self.recommended_max_value - self.recommended_min_value) / 2
+            )
+        else:
+            self.recommended_value = recommended_value
 
 
 class ResourceRecommendationModel(BaseModel):
@@ -240,6 +258,7 @@ class ResourceRecommendationModel(BaseModel):
     recommended_profile: ResourceProfileConfigModel | None
     recommended_min_value: float
     recommended_max_value: float
+    recommended_value: float | None
 
     @staticmethod
     def from_object(obj: ResourceRecommendation) -> "ResourceRecommendationModel":
@@ -256,15 +275,31 @@ class ResourceRecommendationModel(BaseModel):
             ),
             recommended_min_value=obj.recommended_min_value,
             recommended_max_value=obj.recommended_max_value,
+            recommended_value=obj.recommended_value,
+        )
+
+    def to_object(self) -> ResourceRecommendation:
+        return ResourceRecommendation(
+            profile_id=self.profile_id,
+            current_usage_value=self.current_usage_value,
+            current_allocation_value=self.current_allocation_value,
+            current_usage_percentage=self.current_usage_percentage,
+            current_profile_state=self.current_profile_state.to_object(),
+            recommended_profile=self.recommended_profile.to_object(),
+            recommended_min_value=self.recommended_min_value,
+            recommended_max_value=self.recommended_max_value,
+            recommended_value=self.recommended_value,
         )
 
 
 class ModelInstanceRecommendations:
 
+    model_id: str | None
     cpu_min: ResourceRecommendation
     cpu_max: ResourceRecommendation
     memory_min: ResourceRecommendation
     memory_max: ResourceRecommendation
+    profiled_instances: List[str]
     last_updated: str | None
 
     def __init__(
@@ -273,22 +308,30 @@ class ModelInstanceRecommendations:
         cpu_max: ResourceRecommendation,
         memory_min: ResourceRecommendation,
         memory_max: ResourceRecommendation,
+        model_id: str = None,
+        profiled_instances: List[str] = None,
         last_updated: str | None = None,
     ):
+        self.model_id = model_id
         self.cpu_min = cpu_min
         self.cpu_max = cpu_max
         self.memory_min = memory_min
         self.memory_max = memory_max
         self.last_updated = last_updated if last_updated is not None else utc_now()
+        self.profiled_instances = (
+            [] if profiled_instances is None else profiled_instances
+        )
 
 
 class ModelInstanceRecommendationsModel(BaseModel):
 
+    model_id: str | None = None
     cpu_min: ResourceRecommendationModel
     cpu_max: ResourceRecommendationModel
     memory_min: ResourceRecommendationModel
     memory_max: ResourceRecommendationModel
-    last_updated: str | None
+    profiled_instances: List[str]
+    last_updated: str | None = None
 
     @staticmethod
     def from_object(
@@ -298,10 +341,12 @@ class ModelInstanceRecommendationsModel(BaseModel):
             return None
 
         return ModelInstanceRecommendationsModel(
+            model_id=obj.model_id,
             cpu_min=ResourceRecommendationModel.from_object(obj.cpu_min),
             cpu_max=ResourceRecommendationModel.from_object(obj.cpu_max),
             memory_min=ResourceRecommendationModel.from_object(obj.memory_min),
             memory_max=ResourceRecommendationModel.from_object(obj.memory_max),
+            profiled_instances=obj.profiled_instances,
             last_updated=obj.last_updated,
         )
 

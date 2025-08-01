@@ -92,6 +92,14 @@ class K8sPodResourcesModel(BaseModel):
             memory_limit=obj.memory_limit,
         )
 
+    def to_object(self) -> K8sPodResources:
+        return K8sPodResources(
+            cpu_request=self.cpu_request,
+            cpu_limit=self.cpu_limit,
+            memory_request=self.memory_request,
+            memory_limit=self.memory_limit,
+        )
+
 
 class K8sPodModel(BaseModel):
 

@@ -8,6 +8,7 @@ from objects.rbac import Permission
 from controllers.model_instance_handler import ModelInstanceController
 from objects.instance import InstancesLoadFilters, ModelInstance, ModelInstanceModel
 from controllers.recommendation_engine import RecommendationEngine
+from objects.k8s import ErsiliaLabels
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -75,5 +76,11 @@ def load_instances(
                     instance.resource_profile
                 )
             )
+            instance.resource_recommendations.model_id = (
+                instance.k8s_pod.get_annotation(ErsiliaLabels.MODEL_ID)
+            )
+            instance.resource_recommendations.profiled_instances = [
+                instance.k8s_pod.name
+            ]
 
     return {"items": list(map(ModelInstanceModel.from_object, instances))}
