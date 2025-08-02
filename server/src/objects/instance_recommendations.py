@@ -28,6 +28,35 @@ class ResourceProfile:
         self.max_usage = 0.0 if max_usage is None else max_usage
         self.max_allocatable = 0.0 if max_allocatable is None else max_allocatable
 
+        self.calculate()
+
+    def merge(self, other: "ResourceProfile") -> "ResourceProfile":
+        if self.min_allocatable == 0 and self.max_allocatable == 0:
+            # assume nothing is set and use other
+            return ResourceProfile(
+                other.min_usage,
+                other.min_allocatable,
+                other.max_usage,
+                other.max_allocatable,
+            )
+        elif self.min_allocatable != 0:
+            return ResourceProfile(
+                self.min_usage,
+                self.min_allocatable,
+                other.max_usage,
+                other.max_allocatable,
+            )
+        elif self.max_allocatable != 0:
+            return ResourceProfile(
+                other.min_usage,
+                other.min_allocatable,
+                self.max_usage,
+                self.max_allocatable,
+            )
+
+        return ResourceProfile(0, 0, 0, 0)
+
+    def calculate(self):
         self.min_usage_percentage = (
             0
             if self.min_allocatable <= 0.0
@@ -94,6 +123,26 @@ class ModelInstanceResourceProfileModel(BaseModel):
             cpu=ResourceProfileModel.from_object(obj.cpu),
             memory=ResourceProfileModel.from_object(obj.memory),
         )
+
+
+class ResourceId(Enum):
+
+    CPU = "CPU"
+    MEMORY = "MEMORY"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
 
 
 class ResourceProfileId(Enum):
@@ -247,6 +296,34 @@ class ResourceRecommendation:
         else:
             self.recommended_value = recommended_value
 
+    def copy(self) -> "ResourceRecommendation":
+        return ResourceRecommendation(
+            profile_id=self.profile_id,
+            current_usage_value=self.current_usage_value,
+            current_allocation_value=self.current_allocation_value,
+            current_usage_percentage=self.current_usage_percentage,
+            current_profile_state=self.current_profile_state,
+            recommended_profile=self.recommended_profile,
+            recommended_min_value=self.recommended_min_value,
+            recommended_max_value=self.recommended_max_value,
+            recommended_value=self.recommended_value,
+        )
+
+    def extract_resource_profile(self) -> ResourceProfile:
+        if self.profile_id in [ResourceProfileId.CPU_MIN, ResourceProfileId.MEMORY_MIN]:
+            return ResourceProfile(
+                self.current_usage_value, self.current_allocation_value, 0, 0
+            )
+        elif self.profile_id in [
+            ResourceProfileId.CPU_MAX,
+            ResourceProfileId.MEMORY_MAX,
+        ]:
+            return ResourceProfile(
+                0, 0, self.current_usage_value, self.current_allocation_value
+            )
+
+        return ResourceProfile(0, 0, 0, 0)
+
 
 class ResourceRecommendationModel(BaseModel):
 
@@ -322,6 +399,41 @@ class ModelInstanceRecommendations:
             [] if profiled_instances is None else profiled_instances
         )
 
+    def copy(self) -> "ModelInstanceRecommendations":
+        return ModelInstanceRecommendations(
+            cpu_min=ResourceRecommendation.copy(self.cpu_min),
+            cpu_max=ResourceRecommendation.copy(self.cpu_max),
+            memory_min=ResourceRecommendation.copy(self.memory_min),
+            memory_max=ResourceRecommendation.copy(self.memory_max),
+            model_id=self.model_id,
+            profiled_instances=list(self.profiled_instances),
+            last_updated=self.last_updated,
+        )
+
+    def extract_resource_profiles(self) -> Dict[ResourceId, ResourceProfile]:
+        return {
+            ResourceId.CPU: self.cpu_min.extract_resource_profile().merge(
+                self.cpu_max.extract_resource_profile()
+            ),
+            ResourceId.MEMORY: self.memory_min.extract_resource_profile().merge(
+                self.memory_max.extract_resource_profile()
+            ),
+        }
+
+    def get_profile_recommendation(
+        self, profile_id: ResourceProfileId
+    ) -> ResourceRecommendation:
+        if profile_id == ResourceProfileId.CPU_MIN:
+            return self.cpu_min
+        elif profile_id == ResourceProfileId.CPU_MAX:
+            return self.cpu_max
+        elif profile_id == ResourceProfileId.MEMORY_MIN:
+            return self.memory_min
+        elif profile_id == ResourceProfileId.MEMORY_MAX:
+            return self.memory_max
+
+        return None
+
 
 class ModelInstanceRecommendationsModel(BaseModel):
 
@@ -353,5 +465,37 @@ class ModelInstanceRecommendationsModel(BaseModel):
 
 class RecommendationEngineState:
 
-    last_updated: str
+    last_updated: str | None
     model_recommendations: Dict[str, ModelInstanceRecommendations]
+
+    def __init__(
+        self,
+        last_updated: str | None,
+        model_recommendations: Dict[str, ModelInstanceRecommendations],
+    ):
+        self.last_updated = last_updated
+        self.model_recommendations = model_recommendations
+
+
+class RecommendationEngineStateModel:
+
+    last_updated: str | None
+    model_recommendations: List[ModelInstanceRecommendationsModel]
+
+    @staticmethod
+    def from_object(obj: RecommendationEngineState) -> "RecommendationEngineStateModel":
+        return RecommendationEngineStateModel(
+            last_updated=obj.last_updated,
+            model_recommendations=list(obj.model_recommendations.values()),
+        )
+
+
+class RecommendationsLoadFilters(BaseModel):
+
+    model_ids: List[str] | None = None
+
+
+class ApplyRecommendationsModel(BaseModel):
+
+    recommendations: ModelInstanceRecommendationsModel
+    profiles: List[str] | None = None

@@ -13,6 +13,8 @@ from python_framework.config_utils import load_environment_variable
 from objects.instance_recommendations import (
     ModelInstanceRecommendations,
     ModelInstanceResourceProfile,
+    RecommendationEngineState,
+    ResourceId,
     ResourceProfile,
     ResourceProfileConfig,
     ResourceProfileId,
@@ -376,6 +378,60 @@ class RecommendationEngine(Thread):
             ),
         )
 
+    def _update_model_recommendation_resource_profile(
+        self, model_id: str, new_k8s_resources: K8sPodResources
+    ):
+        if not self._acquire_model_recommendation_lock(model_id):
+            raise Exception("Failed to acquire model recommendation lock")
+
+        try:
+            recommendations = self.model_recommendations[model_id].copy()
+            current_profiles = recommendations.extract_resource_profiles()
+
+            #  update profile values
+            current_profiles[ResourceId.CPU].min_allocatable = (
+                new_k8s_resources.cpu_request
+            )
+            current_profiles[ResourceId.CPU].max_allocatable = (
+                new_k8s_resources.cpu_limit
+            )
+            current_profiles[ResourceId.CPU].calculate()
+            current_profiles[ResourceId.MEMORY].min_allocatable = (
+                new_k8s_resources.memory_request
+            )
+            current_profiles[ResourceId.MEMORY].max_allocatable = (
+                new_k8s_resources.memory_limit
+            )
+            current_profiles[ResourceId.CPU].calculate()
+
+            # update current_profile state
+            for profile_id in [
+                ResourceProfileId.CPU_MIN,
+                ResourceProfileId.CPU_MAX,
+                ResourceProfileId.MEMORY_MIN,
+                ResourceProfileId.MEMORY_MAX,
+            ]:
+                recommendation = recommendations.get_profile_recommendation(profile_id)
+
+                for profile_config in self.profile_configs[profile_id]:
+                    if (
+                        recommendation.current_usage_percentage >= profile_config.min
+                        and recommendation.current_usage_percentage < profile_config.max
+                    ):
+                        recommendation.current_profile_state = profile_config
+                        break
+
+            # apply update
+            self.model_recommendations[model_id] = recommendations
+        except:
+            error_str = f"Failed to update model recommendation resource profile, model [{model_id}] - error [{repr(exc_info())}]"
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+            raise Exception(error_str)
+        finally:
+            self.model_recommendation_locks[model_id].release()
+
     def _acquire_model_recommendation_lock(
         self, model_id: str, timeout: float = 120.0
     ) -> bool:
@@ -484,12 +540,21 @@ class RecommendationEngine(Thread):
         )
 
         if recommendations.model_id is None:
-            raise Exception(f"Missing model_id on recommendatons")
+            error_str = f"Missing model_id on recommendatons"
+            ContextLogger.error(self._logger_key, error_str)
+            raise Exception(error_str)
 
         model: Model = ModelController.get_model(recommendations.model_id)
 
         if model is None:
-            raise Exception(f"Unknown model [{recommendations.model_id}]")
+            error_str = f"Unknown model [{recommendations.model_id}]"
+            ContextLogger.error(self._logger_key, error_str)
+            raise Exception(error_str)
+
+        ContextLogger.info(
+            self._logger_key,
+            f"Applying recommendations to model [{recommendations.model_id}], profiles [{_apply_profiles}]...",
+        )
 
         model_update = ModelUpdate(model.id, model.details.copy(), model.enabled)
 
@@ -511,7 +576,42 @@ class RecommendationEngine(Thread):
                     recommendations.memory_max.recommended_value
                 )
 
-        ModelController.instance().update_model(model_update)
+        updated_model = ModelController.instance().update_model(model_update)
+
+        if updated_model is None:
+            error_str = (
+                f"Failed to apply recommendations to model [{recommendations.model_id}]"
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            raise Exception(error_str)
+
+        self._update_model_recommendation_resource_profile(
+            updated_model.id, updated_model.details.k8s_resources
+        )
+
+        ContextLogger.info(
+            self._logger_key,
+            f"Recommendations applied to model [{recommendations.model_id}], profiles [{_apply_profiles}].",
+        )
+
+    def load_recommendations(
+        self, model_ids: List[str] = None
+    ) -> RecommendationEngineState:
+        if model_ids is None:
+            return RecommendationEngineState(
+                last_updated=self.last_updated,
+                model_recommendations=dict(self.model_recommendations.items()),
+            )
+
+        state = RecommendationEngineState(
+            last_updated=self.last_updated, model_recommendations={}
+        )
+
+        for key, value in self.model_recommendations.items():
+            if key in model_ids:
+                state.model_recommendations[key] = value
+
+        return state
 
     def run(self):
         ContextLogger.info(self._logger_key, "Engine started")
