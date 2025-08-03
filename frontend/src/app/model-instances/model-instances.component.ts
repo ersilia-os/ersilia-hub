@@ -74,10 +74,6 @@ export class ModelInstancesComponent implements OnDestroy {
     this.instanceFilters.load_resource_profiles = value;
   }
 
-  /**
-   * TODO: if we change the filters to include non-active instances, STOP auto-refresh
-   */
-
   ngOnDestroy() {
     this.refreshTimer$?.unsubscribe();
   }

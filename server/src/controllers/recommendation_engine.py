@@ -26,6 +26,7 @@ from objects.k8s import K8sPodResources
 from controllers.model import ModelController
 from controllers.model_instance_handler import ModelInstanceController
 from objects.model import Model, ModelUpdate
+from objects.instance import ModelInstance
 
 PROFILE_CONFIGS = """
 [
@@ -45,7 +46,8 @@ PROFILE_CONFIGS = """
         "id": "CPU_MIN",
         "state": "RECOMMENDED",
         "min": 65,
-        "max": 85
+        "max": 85,
+        "minValue": 10
     },
     {
         "id": "CPU_MIN",
@@ -75,7 +77,8 @@ PROFILE_CONFIGS = """
         "id": "CPU_MAX",
         "state": "RECOMMENDED",
         "min": 65,
-        "max": 85
+        "max": 85,
+        "minValue": 200
     },
     {
         "id": "CPU_MAX",
@@ -105,7 +108,8 @@ PROFILE_CONFIGS = """
         "id": "MEMORY_MIN",
         "state": "RECOMMENDED",
         "min": 65,
-        "max": 80
+        "max": 80,
+        "minValue": 100
     },
     {
         "id": "MEMORY_MIN",
@@ -135,7 +139,8 @@ PROFILE_CONFIGS = """
         "id": "MEMORY_MAX",
         "state": "RECOMMENDED",
         "min": 65,
-        "max": 80
+        "max": 80,
+        "minValue": 300
     },
     {
         "id": "MEMORY_MAX",
@@ -229,6 +234,9 @@ class RecommendationEngine(Thread):
         batched_memory_running_averages = RunningAverages()
 
         for metrics in metrics_batch:
+            if metrics is None:
+                continue
+
             if metrics.cpu_running_averages.min >= 0 and (
                 batched_cpu_running_averages.min == -1
                 or metrics.cpu_running_averages.min < batched_cpu_running_averages.min
@@ -292,7 +300,11 @@ class RecommendationEngine(Thread):
         )
 
     def _calculate_profile_values(
-        self, profile_min: int, profile_max: int, resource_value: float
+        self,
+        profile_id: ResourceProfileId,
+        profile_min: int,
+        profile_max: int,
+        resource_value: float,
     ) -> Tuple[int, int]:
         """
         Calculate the min and max values, based on given percentages and value.
@@ -302,12 +314,42 @@ class RecommendationEngine(Thread):
         profile_mid = profile_min + (profile_max - profile_min) / 2
         profile_min_diff = profile_mid - profile_min
         profile_max_diff = profile_max - profile_mid
+        profile_range_diff = profile_max - profile_min
 
         # min and max values is the percentage "diff" from the middle
-        return (
-            int(floor(resource_value - (resource_value * profile_min_diff / 100))),
-            int(ceil(resource_value + (resource_value * profile_max_diff / 100))),
+        recommended_min_value = int(
+            floor(resource_value - (resource_value * profile_min_diff / 100))
         )
+        recommended_max_value = int(
+            ceil(resource_value + (resource_value * profile_max_diff / 100))
+        )
+
+        recommended_profile = list(
+            filter(
+                lambda x: x.state == ResourceProfileState.RECOMMENDED,
+                self.profile_configs[profile_id],
+            )
+        )[0]
+
+        if recommended_min_value < recommended_profile.min_value:
+            recommended_min_value = recommended_profile.min_value
+            adjusted_max_value = recommended_min_value + (
+                recommended_min_value * profile_range_diff / 100
+            )
+
+            if recommended_max_value < adjusted_max_value:
+                recommended_max_value = adjusted_max_value
+
+        recommended_value = int(
+            ceil(
+                recommended_min_value
+                + (recommended_max_value - recommended_min_value) / 2
+            )
+        )
+
+        # apply
+
+        return recommended_min_value, recommended_max_value, recommended_value
 
     def _calculate_profile_recommendations(
         self, profile_id: ResourceProfileId, resource_profile: ResourceProfile
@@ -326,6 +368,8 @@ class RecommendationEngine(Thread):
             )[0],
             recommended_min_value=0.0,
             recommended_max_value=0.0,
+            current_allocation_percentage=0,
+            current_allocation_profile_state=None,
         )
 
         if profile_id in [ResourceProfileId.CPU_MAX, ResourceProfileId.MEMORY_MAX]:
@@ -344,11 +388,33 @@ class RecommendationEngine(Thread):
         (
             recommendation.recommended_min_value,
             recommendation.recommended_max_value,
+            recommendation.recommended_value,
         ) = self._calculate_profile_values(
+            profile_id,
             recommendation.recommended_profile.min,
             recommendation.recommended_profile.max,
             recommendation.current_usage_value,
         )
+
+        if recommendation.current_allocation_value < recommendation.recommended_value:
+            recommendation.current_allocation_percentage = int(
+                -(
+                    recommendation.current_allocation_value
+                    / recommendation.recommended_value
+                    * 100
+                )
+            )
+        elif recommendation.current_allocation_value > recommendation.recommended_value:
+            recommendation.current_allocation_percentage = (
+                int(
+                    recommendation.current_allocation_value
+                    / recommendation.recommended_value
+                    * 100
+                )
+                - 100
+            )
+        else:
+            recommendation.current_allocation_percentage = 0
 
         for profile_config in self.profile_configs[profile_id]:
             if (
@@ -357,6 +423,35 @@ class RecommendationEngine(Thread):
             ):
                 recommendation.current_profile_state = profile_config
                 break
+
+        recommendation.current_allocation_profile_state = ResourceProfileConfig(
+            profile_id, ResourceProfileState.RECOMMENDED, -1, -1, None
+        )
+
+        # hardcoded brackets: (,-35], (-35, 10], (-10, 10), [10, 35), [35,)
+        if recommendation.current_allocation_percentage <= -35:
+            recommendation.current_allocation_profile_state.state = (
+                ResourceProfileState.VERY_UNDER
+            )
+        elif recommendation.current_allocation_percentage <= -10:
+            recommendation.current_allocation_profile_state.state = (
+                ResourceProfileState.UNDER
+            )
+        elif recommendation.current_allocation_percentage >= 35:
+            recommendation.current_allocation_profile_state.state = (
+                ResourceProfileState.VERY_OVER
+            )
+        elif recommendation.current_allocation_percentage >= 10:
+            recommendation.current_allocation_profile_state.state = (
+                ResourceProfileState.OVER
+            )
+        elif (
+            recommendation.current_allocation_percentage > -10
+            and recommendation.current_allocation_percentage < 10
+        ):
+            recommendation.current_allocation_profile_state.state = (
+                ResourceProfileState.RECOMMENDED
+            )
 
         return recommendation
 
@@ -450,6 +545,19 @@ class RecommendationEngine(Thread):
 
         self.model_recommendation_locks[model_id].release()
 
+    def _filter_profilable_instances(
+        self, instances: List[ModelInstance]
+    ) -> List[ModelInstance]:
+        filtered_instances = []
+
+        for instance in instances:
+            if instance.metrics is None:
+                continue
+
+            filtered_instances.append(instance)
+
+        return filtered_instances
+
     def refresh_model_recommendations(self, model_id: str):
         ContextLogger.info(
             self._logger_key, f"refreshing recommendations for model [{model_id}]..."
@@ -459,16 +567,15 @@ class RecommendationEngine(Thread):
             raise Exception("Failed to acquire model recommendation lock")
 
         try:
-            instances = ModelInstanceController.instance().load_persisted_instances(
-                [model_id]
+            instances = self._filter_profilable_instances(
+                ModelInstanceController.instance().load_persisted_instances([model_id])
             )
 
             if len(instances) == 0:
                 ContextLogger.warn(
                     self._logger_key,
-                    f"no persisted instances found for model [{model_id}]",
+                    f"no profilable instances found for model [{model_id}]",
                 )
-                return
 
             model = ModelController.instance().get_model(model_id)
 
@@ -527,7 +634,7 @@ class RecommendationEngine(Thread):
         self,
         recommendations: ModelInstanceRecommendations,
         apply_profiles: List[ResourceProfileId] = None,
-    ):
+    ) -> ModelInstanceRecommendations:
         _apply_profiles = (
             [
                 ResourceProfileId.CPU_MIN,
@@ -594,6 +701,8 @@ class RecommendationEngine(Thread):
             f"Recommendations applied to model [{recommendations.model_id}], profiles [{_apply_profiles}].",
         )
 
+        return self.model_recommendations[recommendations.model_id]
+
     def load_recommendations(
         self, model_ids: List[str] = None
     ) -> RecommendationEngineState:
@@ -616,8 +725,8 @@ class RecommendationEngine(Thread):
     def run(self):
         ContextLogger.info(self._logger_key, "Engine started")
 
-        # wait 4 minutes before running first full recommendation
-        if self._wait_or_kill(240):
+        # wait 45 seconds before running first full recommendation
+        if self._wait_or_kill(45):
             ContextLogger.info(self._logger_key, "Engine killed before startup")
             return
 

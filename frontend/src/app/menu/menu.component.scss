@@ -29,9 +29,9 @@
     justify-content: flex-start;
     align-items: flex-start;
 
-    width: 210px;
+    width: 250px;
     height: 100%;
-    z-index: 50;
+    z-index: 500;
     background-color: #ffffff;
 
     .menu-item {
@@ -41,7 +41,7 @@
         align-items: center;
 
         border-right: 2px solid $ersilia-grey-purple;
-        width: 200px;
+        width: 240px;
         background-color: #ffffff;
         padding: 5px;
         cursor: pointer;

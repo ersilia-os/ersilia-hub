@@ -166,9 +166,6 @@ class InstanceMetricsSelectFilteredQuery(DAOQuery):
             self.limit,
         )
 
-        print("sql:", sql)
-        print("field_map:", field_map)
-
         return sql, field_map
 
 

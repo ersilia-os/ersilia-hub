@@ -7,7 +7,7 @@ from library.fastapi_root import FastAPIRoot
 from library.api_utils import api_handler
 from objects.rbac import Permission
 from controllers.recommendation_engine import RecommendationEngine
-from server.src.objects.instance_recommendations import (
+from objects.instance_recommendations import (
     ApplyRecommendationsModel,
     ModelInstanceRecommendationsModel,
     RecommendationEngineStateModel,
@@ -58,9 +58,11 @@ def apply_recommendations(
     )
 
     try:
-        RecommendationEngine.apply_recommendations(
+        updated_recommendations = RecommendationEngine.apply_recommendations(
             application.recommendations, application.profiles
         )
+
+        return ModelInstanceRecommendationsModel.from_object(updated_recommendations)
     except:
         ContextLogger.sys_log(
             LogLevel.ERROR,

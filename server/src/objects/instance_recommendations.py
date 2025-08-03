@@ -199,6 +199,7 @@ class ResourceProfileConfig:
     state: ResourceProfileState
     min: int
     max: int
+    min_value: int
 
     def __init__(
         self,
@@ -206,11 +207,13 @@ class ResourceProfileConfig:
         state: ResourceProfileState,
         min: int,
         max: int,
+        min_value: int | None = None,
     ):
         self.id = id
         self.state = state
         self.min = min
         self.max = max
+        self.min_value = 0 if min_value is None else min_value
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "ResourceProfileConfig":
@@ -219,10 +222,11 @@ class ResourceProfileConfig:
             obj["state"],
             obj["min"],
             obj["max"],
+            None if "minValue" not in obj else obj["minValue"],
         )
 
     def __str__(self):
-        return f"ResourceProfileConfig[id = {self.id}, state = {self.state}, min = {self.min}, max = {self.max}]"
+        return f"ResourceProfileConfig[id = {self.id}, state = {self.state}, min = {self.min}, max = {self.max}, minValue = {self.minValue}]"
 
     def __repr__(self):
         return str(self)
@@ -233,6 +237,7 @@ class ResourceProfileConfigModel(BaseModel):
     state: str
     min: int
     max: int
+    min_value: int | None
 
     @staticmethod
     def from_object(obj: ResourceProfileConfig) -> "ResourceProfileConfigModel":
@@ -244,6 +249,7 @@ class ResourceProfileConfigModel(BaseModel):
             state=str(obj.state),
             min=obj.min,
             max=obj.max,
+            min_value=obj.min_value,
         )
 
     def to_object(self) -> ResourceProfileConfig:
@@ -252,6 +258,7 @@ class ResourceProfileConfigModel(BaseModel):
             state=self.id,
             min=self.min,
             max=self.max,
+            min_value=self.min_value,
         )
 
 
@@ -266,6 +273,8 @@ class ResourceRecommendation:
     recommended_min_value: float
     recommended_max_value: float
     recommended_value: float
+    current_allocation_percentage: int
+    current_allocation_profile_state: ResourceProfileConfig
 
     def __init__(
         self,
@@ -277,6 +286,8 @@ class ResourceRecommendation:
         recommended_profile: ResourceProfileConfig,
         recommended_min_value: float,
         recommended_max_value: float,
+        current_allocation_percentage: int,
+        current_allocation_profile_state: ResourceProfileConfig,
         recommended_value: float = None,
     ):
         self.profile_id = profile_id
@@ -287,9 +298,11 @@ class ResourceRecommendation:
         self.recommended_profile = recommended_profile
         self.recommended_min_value = recommended_min_value
         self.recommended_max_value = recommended_max_value
+        self.current_allocation_percentage = current_allocation_percentage
+        self.current_allocation_profile_state = current_allocation_profile_state
 
         if recommended_value is None:
-            recommended_value = (
+            self.recommended_value = (
                 self.recommended_min_value
                 + (self.recommended_max_value - self.recommended_min_value) / 2
             )
@@ -306,6 +319,8 @@ class ResourceRecommendation:
             recommended_profile=self.recommended_profile,
             recommended_min_value=self.recommended_min_value,
             recommended_max_value=self.recommended_max_value,
+            current_allocation_percentage=self.current_allocation_percentage,
+            current_allocation_profile_state=self.current_allocation_profile_state,
             recommended_value=self.recommended_value,
         )
 
@@ -335,6 +350,8 @@ class ResourceRecommendationModel(BaseModel):
     recommended_profile: ResourceProfileConfigModel | None
     recommended_min_value: float
     recommended_max_value: float
+    current_allocation_percentage: int
+    current_allocation_profile_state: ResourceProfileConfigModel | None
     recommended_value: float | None
 
     @staticmethod
@@ -352,6 +369,10 @@ class ResourceRecommendationModel(BaseModel):
             ),
             recommended_min_value=obj.recommended_min_value,
             recommended_max_value=obj.recommended_max_value,
+            current_allocation_percentage=obj.current_allocation_percentage,
+            current_allocation_profile_state=ResourceProfileConfigModel.from_object(
+                obj.current_allocation_profile_state
+            ),
             recommended_value=obj.recommended_value,
         )
 
@@ -365,6 +386,8 @@ class ResourceRecommendationModel(BaseModel):
             recommended_profile=self.recommended_profile.to_object(),
             recommended_min_value=self.recommended_min_value,
             recommended_max_value=self.recommended_max_value,
+            current_allocation_percentage=self.current_allocation_percentage,
+            current_allocation_profile_state=self.current_allocation_profile_state,
             recommended_value=self.recommended_value,
         )
 
@@ -477,7 +500,7 @@ class RecommendationEngineState:
         self.model_recommendations = model_recommendations
 
 
-class RecommendationEngineStateModel:
+class RecommendationEngineStateModel(BaseModel):
 
     last_updated: str | None
     model_recommendations: List[ModelInstanceRecommendationsModel]
@@ -486,7 +509,12 @@ class RecommendationEngineStateModel:
     def from_object(obj: RecommendationEngineState) -> "RecommendationEngineStateModel":
         return RecommendationEngineStateModel(
             last_updated=obj.last_updated,
-            model_recommendations=list(obj.model_recommendations.values()),
+            model_recommendations=list(
+                map(
+                    ModelInstanceRecommendationsModel.from_object,
+                    obj.model_recommendations.values(),
+                )
+            ),
         )
 
 

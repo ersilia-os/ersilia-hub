@@ -44,11 +44,39 @@ export interface ResourceRecommendation {
     recommended_profile: ResourceProfileConfig;
     recommended_min_value: number;
     recommended_max_value: number;
+    current_allocation_percentage: number;
+    current_allocation_profile_state: ResourceProfileConfig;
+    recommended_value: number;
 }
 
 export interface ModelInstanceRecommendations {
+    model_id?: string;
     cpu_min: ResourceRecommendation;
     cpu_max: ResourceRecommendation;
     memory_min: ResourceRecommendation;
     memory_max: ResourceRecommendation;
+    profiled_instances: string[];
+    last_updated?: Date;
+}
+
+export function ModelInstanceRecommendationsFromAPI(object: ModelInstanceRecommendations): ModelInstanceRecommendations {
+    return {
+        ...object,
+        last_updated: new Date(object.last_updated ?? 0)
+    }
+}
+
+export interface RecommendationEngineState {
+    last_updated?: Date;
+    model_recommendations: ModelInstanceRecommendations[];
+}
+
+export interface RecommendationsLoadFilters {
+    model_ids?: string[];
+}
+
+
+export interface ApplyRecommendations {
+    recommendations: ModelInstanceRecommendations;
+    profiles?: ResourceProfileId[];
 }

@@ -26,7 +26,10 @@ export class MenuComponent implements OnInit {
     }
 
     activateMenuItem(item: MenuItem) {
-        this.router.navigate([item.link]);
+        this.router.navigate([item.link])
+            .then(success => {
+                this.hideMenu()
+            })
     }
 
     hideMenu() {
@@ -66,6 +69,11 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
             text: 'Instances',
             icon: 'developer_board',
             link: 'instances'
+        });
+        menu.push({
+            text: 'Recommendations',
+            icon: 'rule_settings',
+            link: 'recommendations'
         });
     }
 
