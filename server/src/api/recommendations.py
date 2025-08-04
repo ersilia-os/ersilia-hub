@@ -1,4 +1,5 @@
-from sys import exc_info
+from sys import exc_info, stdout
+import traceback
 from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -48,7 +49,7 @@ def load_recommendations(
     return RecommendationEngineStateModel.from_object(recommendations)
 
 
-@router.post("apply")
+@router.post("/apply")
 def apply_recommendations(
     application: ApplyRecommendationsModel,
     api_request: Request,
@@ -57,8 +58,11 @@ def apply_recommendations(
         api_request, required_permissions=[Permission.ADMIN]
     )
 
+    if application is None:
+        raise HTTPException(status_code=400, detail="Missing request body")
+
     try:
-        updated_recommendations = RecommendationEngine.apply_recommendations(
+        updated_recommendations = RecommendationEngine.instance().apply_recommendations(
             application.recommendations, application.profiles
         )
 
@@ -68,6 +72,7 @@ def apply_recommendations(
             LogLevel.ERROR,
             "Failed to apply model recommendations, error = [%s]" % repr(exc_info()),
         )
+        traceback.print_exc(file=stdout)
         raise HTTPException(
             status_code=500,
             detail="Failed to apply model recommendations",

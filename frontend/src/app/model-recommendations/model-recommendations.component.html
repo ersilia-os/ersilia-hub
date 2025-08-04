@@ -36,7 +36,7 @@
                 </div>
                 <div class="detail">
                     <div class="name">Last Updated</div>
-                    <div class="value">{{ recommendation.last_updated | date }}</div>
+                    <div class="value">{{ recommendation.last_updated | date:'YYYY-MM-dd HH:mm' }}</div>
                 </div>
             </div>
         </div>
@@ -90,6 +90,14 @@
                 Actions
             </div>
             <div class="info-block-details">
+                <div class="detail">
+                    <div class="value">
+                        <div class="ersilia-button icon-only apply" (click)="apply(recommendation)"
+                            [ngClass]="{'disabled': loading()}">
+                            <mat-icon>playlist_add_check</mat-icon>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

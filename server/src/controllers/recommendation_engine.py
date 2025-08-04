@@ -397,8 +397,9 @@ class RecommendationEngine(Thread):
         )
 
         if recommendation.current_allocation_value < recommendation.recommended_value:
-            recommendation.current_allocation_percentage = int(
-                -(
+            recommendation.current_allocation_percentage = -(
+                100
+                - int(
                     recommendation.current_allocation_value
                     / recommendation.recommended_value
                     * 100

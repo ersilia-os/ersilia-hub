@@ -72,9 +72,15 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
         });
         menu.push({
             text: 'Recommendations',
-            icon: 'rule_settings',
+            icon: 'published_with_changes',
             link: 'recommendations'
         });
+        menu.push({
+            text: 'Models',
+            icon: 'settings',
+            link: 'models'
+        })
+        // model management = database_upload
     }
 
     return menu;

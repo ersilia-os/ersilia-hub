@@ -44,7 +44,11 @@ export class ModelRecommendationsComponent {
     return `${item.model_id}_${item.last_updated}`;
   };
 
-  /**
-   * TODO: apply action
-   */
+  apply(item: ModelInstanceRecommendations) {
+    if (this.loading()) {
+      return;
+    }
+
+    this.recommendationsService.applyModelRecommendations(item);
+  }
 }
