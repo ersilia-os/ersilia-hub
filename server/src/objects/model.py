@@ -89,7 +89,11 @@ class ModelDetails:
                 if "executionMode" not in obj or obj["executionMode"] is None
                 else obj["executionMode"]
             ),
-            None if "k8sResources" not in obj else obj["k8sResources"],
+            (
+                None
+                if "k8sResources" not in obj
+                else K8sPodResources.from_object(obj["k8sResources"])
+            ),
         )
 
     def to_object(self) -> Dict[str, Any]:

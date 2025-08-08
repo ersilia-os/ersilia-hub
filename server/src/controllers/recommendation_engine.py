@@ -500,6 +500,19 @@ class RecommendationEngine(Thread):
             )
             current_profiles[ResourceId.CPU].calculate()
 
+            recommendations.cpu_min = self._calculate_profile_recommendations(
+                ResourceProfileId.CPU_MIN, current_profiles[ResourceId.CPU]
+            )
+            recommendations.cpu_max = self._calculate_profile_recommendations(
+                ResourceProfileId.CPU_MAX, current_profiles[ResourceId.CPU]
+            )
+            recommendations.memory_min = self._calculate_profile_recommendations(
+                ResourceProfileId.MEMORY_MIN, current_profiles[ResourceId.MEMORY]
+            )
+            recommendations.memory_max = self._calculate_profile_recommendations(
+                ResourceProfileId.MEMORY_MAX, current_profiles[ResourceId.MEMORY]
+            )
+
             # update current_profile state
             for profile_id in [
                 ResourceProfileId.CPU_MIN,
@@ -517,6 +530,7 @@ class RecommendationEngine(Thread):
                         recommendation.current_profile_state = profile_config
                         break
 
+            recommendations.last_updated = utc_now()
             # apply update
             self.model_recommendations[model_id] = recommendations
         except:
@@ -652,7 +666,7 @@ class RecommendationEngine(Thread):
             ContextLogger.error(self._logger_key, error_str)
             raise Exception(error_str)
 
-        model: Model = ModelController.get_model(recommendations.model_id)
+        model: Model = ModelController.instance().get_model(recommendations.model_id)
 
         if model is None:
             error_str = f"Unknown model [{recommendations.model_id}]"
