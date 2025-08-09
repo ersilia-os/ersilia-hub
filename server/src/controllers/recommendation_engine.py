@@ -311,18 +311,11 @@ class RecommendationEngine(Thread):
         The given resource_value should fall in the center of the bracket.
         """
         # this is the percentage of the "center", i.e. the resource value
-        profile_mid = profile_min + (profile_max - profile_min) / 2
-        profile_min_diff = profile_mid - profile_min
-        profile_max_diff = profile_max - profile_mid
         profile_range_diff = profile_max - profile_min
 
         # min and max values is the percentage "diff" from the middle
-        recommended_min_value = int(
-            floor(resource_value - (resource_value * profile_min_diff / 100))
-        )
-        recommended_max_value = int(
-            ceil(resource_value + (resource_value * profile_max_diff / 100))
-        )
+        recommended_min_value = int(floor(100 * resource_value / profile_min))
+        recommended_max_value = int(ceil(100 * resource_value / profile_max))
 
         recommended_profile = list(
             filter(

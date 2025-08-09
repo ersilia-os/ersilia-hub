@@ -117,7 +117,7 @@ export class ModelInstancesComponent implements OnDestroy {
   }
 
   trackBy: TrackByFunction<ModelInstance> = (index: number, item: ModelInstance) => {
-    return `${item.k8s_pod.name}_${item.resource_profile == null}_${item.resource_recommendations == null}`;
+    return `${item.k8s_pod.name}_${item.resource_profile == null}_${item.resource_recommendations == null ? '' : item.resource_recommendations.last_updated}`;
   };
 
   /**

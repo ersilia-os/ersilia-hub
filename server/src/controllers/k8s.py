@@ -17,6 +17,7 @@ from objects.k8s import (
     ErsiliaAnnotations,
     K8sNode,
     K8sPod,
+    K8sPodResources,
     K8sPodTemplate,
     ErsiliaLabels,
 )
@@ -136,8 +137,8 @@ class K8sController(Thread):
     def create_model_pod(
         self,
         model_id: str,
-        size_megabytes: int,
-        disable_memory_limit: bool,
+        k8s_resources: K8sPodResources,
+        disable_memory_limit: bool = False,
         annotations: Dict[str, str] = None,
         model_template_version: str = "0.0.0",
     ) -> Union[None | K8sPod]:
@@ -160,7 +161,9 @@ class K8sController(Thread):
         template = (
             self._template_cache[template_key]
             .copy()
-            .transform_for_model(model_id, size_megabytes, disable_memory_limit)
+            .transform_for_model(
+                model_id, k8s_resources, disable_memory_limit=disable_memory_limit
+            )
         )
         ContextLogger.trace(
             self._logger_key, "pod template [%s]" % template.to_object()
@@ -445,8 +448,8 @@ class K8sController(Thread):
     def deploy_new_pod(
         self,
         model_id: str,
-        size_megabytes: int,
-        disable_memory_limit: bool,
+        k8s_resources: K8sPodResources,
+        disable_memory_limit: bool = False,
         annotations: Dict[str, str] = None,
         model_template_version: str = "0.0.0",
     ) -> Union[None, K8sPod]:
@@ -465,8 +468,8 @@ class K8sController(Thread):
 
             return self.create_model_pod(
                 model_id,
-                size_megabytes,
-                disable_memory_limit,
+                k8s_resources,
+                disable_memory_limit=disable_memory_limit,
                 annotations=annotations,
                 model_template_version=model_template_version,
             )

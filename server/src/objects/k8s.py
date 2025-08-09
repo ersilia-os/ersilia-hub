@@ -342,6 +342,18 @@ class K8sPodResources:
             ),
         )
 
+    def to_k8s(self, disable_memory_limit: bool = False) -> V1ResourceRequirements:
+        requests = {
+            "cpu": f"{self.cpu_request}m",
+            "memory": f"{self.memory_request}Mi",
+        }
+        limits = {"cpu": f"{self.cpu_limit}m"}
+
+        if not disable_memory_limit:
+            limits["memory"] = f"{self.memory_limit}Mi"
+
+        return V1ResourceRequirements(limits=limits, requests=requests)
+
     def to_object(self) -> Dict[str, Any]:
         return {
             "cpuRequest": self.cpu_request,
@@ -576,30 +588,23 @@ class K8sPodTemplate:
         return pod
 
     def transform_for_model(
-        self, model_id: str, size_megabytes: int, disable_memory_limit: bool
+        self,
+        model_id: str,
+        k8s_resources: K8sPodResources,
+        disable_memory_limit: bool = False,
     ) -> "K8sPodTemplate":
         model_template = self.copy()
 
         model_template.template.metadata.generate_name = f"{model_id}-"
         model_template.template.spec.containers[0].image = generate_image(model_id)
 
-        if model_template.template.spec.containers[0].resources is not None:
-            if disable_memory_limit:
-                if (
-                    "memory"
-                    in model_template.template.spec.containers[0].resources.limits
-                ):
-                    del model_template.template.spec.containers[0].resources.limits[
-                        "memory"
-                    ]
-            else:
-                model_template.template.spec.containers[0].resources.limits[
-                    "memory"
-                ] = generate_memory_limit(size_megabytes, disable_memory_limit)
+        model_template.template.spec.containers[0].resources = k8s_resources.to_k8s(
+            disable_memory_limit=disable_memory_limit
+        )
 
-        additional_labels = generate_labels(model_id, size_megabytes)
-        tolerations = generate_tolerations(size_megabytes)
-        affinity = generate_affinity(size_megabytes)
+        additional_labels = generate_labels(model_id, k8s_resources.memory_limit)
+        tolerations = generate_tolerations(k8s_resources.memory_limit)
+        affinity = generate_affinity(k8s_resources.memory_limit)
 
         if model_template.template.metadata.labels is None:
             model_template.template.metadata.labels = {}
@@ -614,10 +619,6 @@ class K8sPodTemplate:
 
         if model_template.template.spec.affinity is None:
             model_template.template.spec.affinity = V1Affinity()
-
-        print(
-            "current affinity = ", model_template.template.spec.affinity.node_affinity
-        )
 
         if model_template.template.spec.affinity.node_affinity is None:
             model_template.template.spec.affinity.node_affinity = V1NodeAffinity(
