@@ -26,7 +26,10 @@ export class MenuComponent implements OnInit {
     }
 
     activateMenuItem(item: MenuItem) {
-        this.router.navigate([item.link]);
+        this.router.navigate([item.link])
+            .then(success => {
+                this.hideMenu()
+            })
     }
 
     hideMenu() {
@@ -59,6 +62,25 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
             icon: 'analytics',
             link: 'stats'
         });
+    }
+
+    if (permissions.canManageInstances) {
+        menu.push({
+            text: 'Instances',
+            icon: 'developer_board',
+            link: 'instances'
+        });
+        menu.push({
+            text: 'Recommendations',
+            icon: 'published_with_changes',
+            link: 'recommendations'
+        });
+        menu.push({
+            text: 'Models',
+            icon: 'settings',
+            link: 'models'
+        })
+        // model management = database_upload
     }
 
     return menu;

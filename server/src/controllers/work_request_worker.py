@@ -36,6 +36,7 @@ from controllers.model_instance_log import (
 )
 from controllers.model import ModelController
 from objects.model import ModelExecutionMode
+from controllers.model_instance_handler import ModelInstanceController
 
 
 class WorkRequestControllerStub:
@@ -825,6 +826,11 @@ class WorkRequestWorker(Thread):
                 updated_work_request.request_status = WorkRequestStatus.PROCESSING
                 updated_work_request = self._controller.update_request(
                     updated_work_request, retry_count=0
+                )
+
+                # TODO: eventually this will replace the "acquire_instance"
+                ModelInstanceController.instance().request_instance(
+                    work_request.model_id, work_request.id
                 )
 
                 if updated_work_request is None:

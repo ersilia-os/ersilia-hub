@@ -10,6 +10,8 @@ from kubernetes.client import (
     V1ObjectMeta,
     V1Affinity,
     V1NodeAffinity,
+    V1Node,
+    V1ResourceRequirements,
 )
 from python_framework.time import string_from_date
 
@@ -135,6 +137,17 @@ class K8sPodContainerState:
             "lastStateTimes": self.last_state_times,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodContainerState":
+        return K8sPodContainerState(
+            obj["phase"],
+            obj["started"],
+            obj["ready"],
+            obj["restartCount"],
+            obj["stateTimes"],
+            obj["lastStateTimes"],
+        )
+
 
 class K8sPodCondition:
 
@@ -190,6 +203,20 @@ class K8sPodCondition:
             "type": self.type,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodCondition":
+        if obj is None:
+            return None
+
+        return K8sPodCondition(
+            obj["lastProbeTime"],
+            obj["lastTransitionTime"],
+            obj["message"],
+            obj["reason"],
+            obj["status"],
+            obj["type"],
+        )
+
 
 class K8sPodState:
 
@@ -231,16 +258,134 @@ class K8sPodState:
             "startTime": self.start_time,
         }
 
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodState":
+        if obj is None:
+            return None
+
+        return K8sPodState(
+            list(map(K8sPodCondition.from_object, obj["conditions"])),
+            obj["message"],
+            obj["reason"],
+            obj["startTime"],
+        )
+
+
+def parse_k8s_cpu_value(k8s_value: str) -> Union[int, None]:
+    if k8s_value is None or len(k8s_value) == 0:
+        return None
+
+    _k8s_value = k8s_value.strip()
+
+    if _k8s_value.endswith("m"):
+        return int(_k8s_value[:-1])
+    else:
+        # assume integer value for full cores
+        return int(_k8s_value) * 1000
+
+
+def parse_k8s_memory_value(k8s_value: str) -> Union[int, None]:
+    if k8s_value is None or len(k8s_value) == 0:
+        return None
+
+    _k8s_value = k8s_value.strip()
+
+    if _k8s_value.endswith("Mi"):
+        return int(_k8s_value[:-2])
+    elif _k8s_value.endswith("Gi"):
+        return int(_k8s_value[:-2]) * 1024
+
+    return 0
+
+
+class K8sPodResources:
+    cpu_request: int  # in millicores
+    cpu_limit: Union[int, None]  # in millicores
+    memory_request: int  # in megabytes
+    memory_limit: Union[int, None]  # in megabytes
+
+    def __init__(
+        self,
+        cpu_request: int,
+        cpu_limit: Union[int, None],
+        memory_request: int,
+        memory_limit: Union[int, None],
+    ):
+        self.cpu_request = cpu_request
+        self.cpu_limit = cpu_limit
+        self.memory_request = memory_request
+        self.memory_limit = memory_limit
+
+    @staticmethod
+    def from_k8s(k8s_resources: V1ResourceRequirements) -> "K8sPodResources":
+        return K8sPodResources(
+            (
+                None
+                if k8s_resources.requests is None or "cpu" not in k8s_resources.requests
+                else parse_k8s_cpu_value(k8s_resources.requests["cpu"])
+            ),
+            (
+                None
+                if k8s_resources.limits is None or "cpu" not in k8s_resources.limits
+                else parse_k8s_cpu_value(k8s_resources.limits["cpu"])
+            ),
+            (
+                None
+                if k8s_resources.requests is None
+                or "memory" not in k8s_resources.requests
+                else parse_k8s_memory_value(k8s_resources.requests["memory"])
+            ),
+            (
+                None
+                if k8s_resources.limits is None or "memory" not in k8s_resources.limits
+                else parse_k8s_memory_value(k8s_resources.limits["memory"])
+            ),
+        )
+
+    def to_k8s(self, disable_memory_limit: bool = False) -> V1ResourceRequirements:
+        requests = {
+            "cpu": f"{self.cpu_request}m",
+            "memory": f"{self.memory_request}Mi",
+        }
+        limits = {"cpu": f"{self.cpu_limit}m"}
+
+        if not disable_memory_limit:
+            limits["memory"] = f"{self.memory_limit}Mi"
+
+        return V1ResourceRequirements(limits=limits, requests=requests)
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "cpuRequest": self.cpu_request,
+            "cpuLimit": self.cpu_limit,
+            "memoryRequest": self.memory_request,
+            "memoryLimit": self.memory_limit,
+        }
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodResources":
+        if obj is None:
+            return None
+
+        return K8sPodResources(
+            obj["cpuRequest"],
+            obj["cpuLimit"],
+            obj["memoryRequest"],
+            obj["memoryLimit"],
+        )
+
 
 class K8sPod:
 
     name: str
+    namespace: str
     state: K8sPodContainerState
     ip: str
     labels: Dict[str, str]
     annotations: Dict[str, str]
     pod_state: K8sPodState
     node_name: str | None
+    resources: K8sPodResources
 
     def __init__(
         self,
@@ -251,14 +396,18 @@ class K8sPod:
         annotations: Dict[str, str],
         pod_state: K8sPodState,
         node_name: str | None,
+        resources: K8sPodResources | None,
+        namespace: str,
     ):
         self.name = name
+        self.namespace = namespace
         self.state = state
         self.ip = ip
         self.labels = labels
         self.annotations = annotations
         self.pod_state = pod_state
         self.node_name = node_name
+        self.resources = resources
 
     @staticmethod
     def from_k8s(k8s_pod: V1Pod) -> "K8sPod":
@@ -276,6 +425,8 @@ class K8sPod:
             annotations,
             K8sPodState.from_k8s_status(k8s_pod.status),
             k8s_pod.spec.node_name,
+            K8sPodResources.from_k8s(k8s_pod.spec.containers[0].resources),
+            k8s_pod.metadata.namespace,
         )
 
     def get_annotation(self, annotation: str) -> Union[str, None]:
@@ -302,13 +453,33 @@ class K8sPod:
     def to_object(self) -> Dict[str, Any]:
         return {
             "name": self.name,
+            "namespace": self.namespace,
             "state": self.state.to_object(),
             "ip": self.ip,
             "labels": self.labels,
             "annotations": self.annotations,
             "podState": self.pod_state.to_object(),
             "nodeName": self.node_name,
+            "resources": None if self.resources is None else self.resources.to_object(),
         }
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPod":
+        return K8sPod(
+            obj["name"],
+            K8sPodContainerState.from_object(obj["state"]),
+            obj["ip"],
+            obj["labels"],
+            obj["annotations"],
+            None if "podState" not in obj else K8sPodState.from_object(obj["podState"]),
+            None if "nodeName" not in obj else obj["nodeName"],
+            (
+                None
+                if "resources" not in obj
+                else K8sPodResources.from_object(obj["resources"])
+            ),
+            "" if "namespace" not in obj else obj["namespace"],
+        )
 
 
 class K8sPodTemplate:
@@ -417,30 +588,23 @@ class K8sPodTemplate:
         return pod
 
     def transform_for_model(
-        self, model_id: str, size_megabytes: int, disable_memory_limit: bool
+        self,
+        model_id: str,
+        k8s_resources: K8sPodResources,
+        disable_memory_limit: bool = False,
     ) -> "K8sPodTemplate":
         model_template = self.copy()
 
         model_template.template.metadata.generate_name = f"{model_id}-"
         model_template.template.spec.containers[0].image = generate_image(model_id)
 
-        if model_template.template.spec.containers[0].resources is not None:
-            if disable_memory_limit:
-                if (
-                    "memory"
-                    in model_template.template.spec.containers[0].resources.limits
-                ):
-                    del model_template.template.spec.containers[0].resources.limits[
-                        "memory"
-                    ]
-            else:
-                model_template.template.spec.containers[0].resources.limits[
-                    "memory"
-                ] = generate_memory_limit(size_megabytes, disable_memory_limit)
+        model_template.template.spec.containers[0].resources = k8s_resources.to_k8s(
+            disable_memory_limit=disable_memory_limit
+        )
 
-        additional_labels = generate_labels(model_id, size_megabytes)
-        tolerations = generate_tolerations(size_megabytes)
-        affinity = generate_affinity(size_megabytes)
+        additional_labels = generate_labels(model_id, k8s_resources.memory_limit)
+        tolerations = generate_tolerations(k8s_resources.memory_limit)
+        affinity = generate_affinity(k8s_resources.memory_limit)
 
         if model_template.template.metadata.labels is None:
             model_template.template.metadata.labels = {}
@@ -455,10 +619,6 @@ class K8sPodTemplate:
 
         if model_template.template.spec.affinity is None:
             model_template.template.spec.affinity = V1Affinity()
-
-        print(
-            "current affinity = ", model_template.template.spec.affinity.node_affinity
-        )
 
         if model_template.template.spec.affinity.node_affinity is None:
             model_template.template.spec.affinity.node_affinity = V1NodeAffinity(
@@ -477,3 +637,27 @@ class K8sPodTemplate:
             )
 
         return model_template
+
+
+class K8sNode:
+
+    name: str
+    labels: Dict[str, str]
+    # TODO: add status
+
+    def __init__(self, name: str, labels: Dict[str, str]):
+        self.name = name
+        self.labels = labels
+
+    @staticmethod
+    def from_k8s(k8s_node: V1Node) -> "K8sNode":
+        return K8sNode(
+            k8s_node.metadata.name,
+            dict(k8s_node.metadata.labels),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "labels": self.labels,
+        }

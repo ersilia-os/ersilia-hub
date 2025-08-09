@@ -180,8 +180,8 @@ class ScalingManager(Thread):
 
             new_pod = K8sController.instance().deploy_new_pod(
                 model_id,
-                model.details.size_megabytes,
-                model.details.disable_memory_limit,
+                model.details.k8s_resources,
+                disable_memory_limit=model.details.disable_memory_limit,
                 annotations=dict([(ErsiliaAnnotations.REQUEST_ID.value, request_id)]),
                 model_template_version=model.details.template_version,
             )

@@ -1,0 +1,45 @@
+@if (instance != null) {
+<div class="usage" [ngClass]="ngClass">
+    <div class="value">{{ usageValue == null ? 0 : usageValue | number:'.0-1' }}</div>
+    @if (allocationValue != null) {
+    <div class="separator">/</div>
+    <div class="allocation">{{ allocationValue | number:'.0-1' }}</div>
+    }
+</div>
+@if (usagePercentage != null) {
+<div class="gradient-block">
+    <div class="gradient-fill" [ngStyle]="{'background': fillGradient}"></div>
+    <div class="indicator" [ngStyle]="{'left': indicatorPosition, 'width': indicatorWidth}"></div>
+    <div class="percentage" [ngClass]="indicatorPercentageClass">{{ usagePercentage | number }} %</div>
+</div>
+}
+}
+
+@else if (recommendation != null) {
+<div class="usage" [ngClass]="ngClass">
+    @if (allocationValue != null) {
+    <div class="allocation" style="margin-bottom: 8px;">{{ allocationValue | number:'.0-1' }}
+        ({{ (allocationPercentage ?? 0) > 0 ? '+' : '' }}{{ allocationPercentage | number }} %)</div>
+    }
+</div>
+@if (allocationPercentage != null) {
+<div class="gradient-block">
+    <div class="gradient-fill" [ngStyle]="{'background': fillGradient}"></div>
+    <div class="indicator" [ngStyle]="{'left': indicatorPosition, 'width': indicatorWidth}">
+    </div>
+    <div class="allocation-indicator triangle-indicator" [ngClass]="indicatorClass"
+        [ngStyle]="{'left': indicatorPosition}">
+    </div>
+    @if (recommendedIndicatorPosition != null) {
+    <div class="recommended-indicator" [ngStyle]="{'left': recommendedIndicatorPosition}"></div>
+    }
+    @if (recommendedValue != null && recommendedIndicatorPosition != null) {
+    <div class="recommended-value" [ngStyle]="{'left': recommendedIndicatorPosition}">{{
+        recommendedValue | number }}</div>
+    }
+</div>
+@if (recommendedValue != null && recommendedIndicatorPosition != null) {
+<div class="recommended-value-spacer"></div>
+}
+}
+}

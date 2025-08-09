@@ -1,9 +1,3 @@
-[ ] install metrics server
-[ ] investigate metrics server integration (check API)
-[ ] Create model_instance_monitor (thread)
-  [ ] when starting a model, start monitor thread
-  [ ] get metrics from metric server and keep in-mem (limit to 30min, configurable metrics threshold, 4s default)
-  [ ] 
 
 ---
 
@@ -44,8 +38,6 @@
     [ ] model
     [ ] date from (no time)
     [ ] date to (no time)
-
-[ ] release
 
 ---
 
@@ -112,3 +104,6 @@
 
 ---
 
+[ ] compound caching
+
+---

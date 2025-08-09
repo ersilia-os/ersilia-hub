@@ -3,6 +3,8 @@ import { RequestsListComponent } from './requests-list/requests-list.component';
 import { StatsComponent } from './stats/stats.component';
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
+import { ModelInstancesComponent } from './model-instances/model-instances.component';
+import { ModelRecommendationsComponent } from './model-recommendations/model-recommendations.component';
 
 export const routerGuardFunction: CanActivateFn = (
     next: ActivatedRouteSnapshot,
@@ -23,6 +25,16 @@ export const routes: Routes = [
     {
         path: 'stats',
         component: StatsComponent,
+        canActivate: [routerGuardFunction]
+    },
+    {
+        path: 'instances',
+        component: ModelInstancesComponent,
+        canActivate: [routerGuardFunction]
+    },
+    {
+        path: 'recommendations',
+        component: ModelRecommendationsComponent,
         canActivate: [routerGuardFunction]
     },
     {

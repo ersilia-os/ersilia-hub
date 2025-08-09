@@ -4,6 +4,9 @@ from typing import Any, Dict, Union
 from db.daos.model import ModelRecord
 from pydantic import BaseModel
 
+from objects.k8s import K8sPodResources
+from objects.k8s_model import K8sPodResourcesModel
+
 
 class ModelExecutionMode(Enum):
 
@@ -33,6 +36,7 @@ class ModelDetails:
     disable_memory_limit: bool
     max_instances: int
     execution_mode: ModelExecutionMode
+    k8s_resources: K8sPodResources
 
     def __init__(
         self,
@@ -42,6 +46,7 @@ class ModelDetails:
         disable_memory_limit: bool,
         max_instances: int,
         execution_mode: ModelExecutionMode,
+        k8s_resources: K8sPodResources | None = None,
     ):
         self.template_version = template_version
         self.description = description
@@ -49,6 +54,16 @@ class ModelDetails:
         self.disable_memory_limit = disable_memory_limit
         self.max_instances = max_instances
         self.execution_mode = execution_mode
+        self.k8s_resources = (
+            K8sPodResources(
+                cpu_request=10,
+                cpu_limit=500,
+                memory_request=100,
+                memory_limit=size_megabytes,
+            )
+            if k8s_resources is None
+            else k8s_resources
+        )
 
     def copy(self) -> "ModelDetails":
         return ModelDetails(
@@ -58,6 +73,7 @@ class ModelDetails:
             self.disable_memory_limit,
             self.max_instances,
             self.execution_mode,
+            self.k8s_resources,
         )
 
     @staticmethod
@@ -73,6 +89,11 @@ class ModelDetails:
                 if "executionMode" not in obj or obj["executionMode"] is None
                 else obj["executionMode"]
             ),
+            (
+                None
+                if "k8sResources" not in obj
+                else K8sPodResources.from_object(obj["k8sResources"])
+            ),
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -83,6 +104,7 @@ class ModelDetails:
             "disableMemoryLimit": self.disable_memory_limit,
             "maxInstances": self.max_instances,
             "executionMode": str(self.execution_mode),
+            "k8sResources": self.k8s_resources.to_object(),
         }
 
     def __str__(self):
@@ -100,6 +122,7 @@ class ModelDetailsApiModel(BaseModel):
     disable_memory_limit: bool
     max_instances: int
     execution_mode: str
+    k8s_resources: K8sPodResourcesModel | None = None
 
     @staticmethod
     def from_object(model_details: ModelDetails) -> "ModelDetailsApiModel":
@@ -110,6 +133,7 @@ class ModelDetailsApiModel(BaseModel):
             disable_memory_limit=model_details.disable_memory_limit,
             max_instances=model_details.max_instances,
             execution_mode=str(model_details.execution_mode),
+            k8s_resources=K8sPodResourcesModel.from_object(model_details.k8s_resources),
         )
 
     def to_object(self) -> ModelDetails:
@@ -120,6 +144,7 @@ class ModelDetailsApiModel(BaseModel):
             self.disable_memory_limit,
             self.max_instances,
             self.execution_mode,
+            None if self.k8s_resources is None else self.k8s_resources.to_object(),
         )
 
 

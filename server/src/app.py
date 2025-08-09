@@ -32,6 +32,10 @@ from controllers.k8s_proxy import K8sProxyController
 from config.auth_config import AuthConfig
 from controllers.auth import AuthController
 from controllers.model_instance_log import ModelInstanceLogController
+from controllers.model_instance_handler import ModelInstanceController
+from controllers.node_monitor import NodeMonitorController
+from controllers.instance_metrics import InstanceMetricsController
+from controllers.recommendation_engine import RecommendationEngine
 
 
 def init_configs():
@@ -79,10 +83,14 @@ def init():
     ScalingManager.initialize()
     ModelInstanceLogController.initialize()
     ModelIntegrationController.initialize()
+    InstanceMetricsController.initialize()
+    NodeMonitorController.initialize()
+    ModelInstanceController.initialize()
     WorkRequestController.initialize()
     S3IntegrationController.initialize()
     K8sProxyController.initialize()
     AuthController.initialize()
+    RecommendationEngine.initialize()
 
     FastAPIRoot.initialize(
         ApplicationConfig.instance().application_name,
@@ -97,8 +105,10 @@ def run():
         K8sController.instance().start()
         ModelController.instance().start()
         ScalingManager.instance().start()
+        NodeMonitorController.instance().start()
         WorkRequestController.instance().start()
         AuthController.instance().start()
+        RecommendationEngine.instance().start()
 
         # Should be last, just before APIRoot
         AppWatch.instance().start()

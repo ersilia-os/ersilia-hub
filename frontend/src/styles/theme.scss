@@ -16,6 +16,26 @@ $my-theme: mat.define-light-theme((color: (primary: $my-primary,
 
 @include mat.all-component-themes($my-theme);
 
+:root {
+    --mdc-checkbox-state-layer-size: 40px;
+    --mdc-form-field-label-text-size: 40px !important;
+}
+
+.mdc-checkbox__background {
+    height: 30px !important;
+    width: 30px !important;
+}
+
+.mdc-checkbox__ripple {
+    height: 50px !important;
+    width: 50px !important;
+}
+
+.mdc-label {
+    font-size: 16px !important;
+    padding: 5px !important;
+    margin-top: 12px !important;
+}
 
 /**
 * mat-dialog styling overrides 

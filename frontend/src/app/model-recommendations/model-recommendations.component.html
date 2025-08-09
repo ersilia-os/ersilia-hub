@@ -1,0 +1,105 @@
+<div class="component-header">
+    Model Recommendations
+</div>
+
+<div class="component-toolbar">
+
+    <div class="filters">
+        <!-- TODO: add filters - enabled only + models ? -->
+
+        <div class="spacer"></div>
+
+        <div class="filter refresh">
+            <div class="ersilia-button icon-only refresh" (click)="load()" [ngClass]="{'disabled': loading()}">
+                @if(loading()) {
+                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                } @else {
+                <mat-icon>refresh</mat-icon>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="model-recommendations-container">
+    @for (recommendation of recommendations(); track trackBy($index, recommendation)) {
+    <div class="model-recommendations mat-elevation-z8">
+        <div class="info-block">
+            <div class="info-block-title">
+                Details
+            </div>
+            <div class="info-block-details">
+                <div class="detail">
+                    <div class="name">Model</div>
+                    <div class="value">{{ recommendation.model_id }}</div>
+                </div>
+                <div class="detail">
+                    <div class="name">Last Updated</div>
+                    <div class="value">{{ recommendation.last_updated | date:'YYYY-MM-dd HH:mm' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-block">
+            <div class="info-block-title">
+                CPU Recommendations
+            </div>
+            <div class="info-block-details">
+                <div class="detail">
+                    <div class="name">Max</div>
+                    <div class="value">
+                        <model-instance-resource [recommendation]="recommendation"
+                            [resourceProfileId]="'CPU_MAX'"></model-instance-resource>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="name">Min</div>
+                    <div class="value">
+                        <model-instance-resource [recommendation]="recommendation"
+                            [resourceProfileId]="'CPU_MIN'"></model-instance-resource>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-block">
+            <div class="info-block-title">
+                Memory Metrics
+            </div>
+            <div class="info-block-details">
+                <div class="detail">
+                    <div class="name">Max</div>
+                    <div class="value">
+                        <model-instance-resource [recommendation]="recommendation"
+                            [resourceProfileId]="'MEMORY_MAX'"></model-instance-resource>
+                    </div>
+                </div>
+                <div class="detail">
+                    <div class="name">Min</div>
+                    <div class="value">
+                        <model-instance-resource [recommendation]="recommendation"
+                            [resourceProfileId]="'MEMORY_MIN'"></model-instance-resource>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-block">
+            <div class="info-block-title">
+                Actions
+            </div>
+            <div class="info-block-details">
+                <div class="detail">
+                    <div class="value">
+                        <div class="ersilia-button icon-only apply" (click)="apply(recommendation)"
+                            [ngClass]="{'disabled': loading()}">
+                            <mat-icon>playlist_add_check</mat-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+</div>
