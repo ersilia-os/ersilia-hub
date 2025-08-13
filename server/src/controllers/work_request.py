@@ -4,7 +4,7 @@ from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
 import traceback
-from typing import List, Union
+from typing import Dict, List, Tuple, Union
 
 from controllers.model import ModelController
 from controllers.work_request_worker import WorkRequestWorker
@@ -245,7 +245,7 @@ class WorkRequestController(Thread):
 
         return []
 
-    def _load_balance_workers(self):
+    def _initialize_workers(self):
         # TODO: change this to monitor current workers vs config and update worker models
         # TODO: check for disabled models (remove if ALL scaled down)
         # TODO: randomize order of models and round-robin between workers
@@ -277,6 +277,46 @@ class WorkRequestController(Thread):
 
         self._workers = ThreadSafeList(workers)
 
+    def _update_worker_models(self):
+        current_worker_models: List[str] = []
+        models_per_worker: List[Tuple[WorkRequestWorker, List[str], bool]] = []
+
+        for worker in list(self._workers):
+            models_per_worker.append((worker, list(worker.model_ids), False))
+            current_worker_models.extend(list(worker.model_ids))
+
+        models = ModelController.instance().get_models()
+        active_model_ids: List[str] = list(
+            map(lambda m: m.id, filter(lambda fm: fm.enabled, models))
+        )
+
+        for model_id in current_worker_models:
+            if model_id in active_model_ids:
+                continue
+
+            for worker_tuple in models_per_worker:
+                if model_id not in worker_tuple[1]:
+                    continue
+
+                worker_tuple[1].remove(model_id)
+                worker_tuple[2] = True  # mark changed
+
+        for active_model_id in active_model_ids:
+            if model_id in current_worker_models:
+                continue
+
+            best_matched_worker = models_per_worker[0]
+
+            for worker_tuple in models_per_worker[1:]:
+                if worker_tuple[1] < len(best_matched_worker[1]):
+                    best_matched_worker = worker_tuple
+
+            best_matched_worker[1].append(model_id)
+            best_matched_worker[2] = True  # mark changed
+
+        for updated_worker in filter(lambda w: w[2], models_per_worker):
+            updated_worker[0].update_model_ids(updated_worker[1])
+
     def _stop_workers(self):
         for worker in self._workers:
             if worker.is_alive():
@@ -292,14 +332,14 @@ class WorkRequestController(Thread):
         if self._wait_or_kill(20):
             return
 
-        self._load_balance_workers()
+        self._initialize_workers()
 
         while True:
             if self._wait_or_kill(WorkRequestController.WORKER_LOADBALANCE_WAIT_TIME):
                 break
 
             try:
-                self._load_balance_workers()
+                self._update_worker_models()
             except:
                 error_str = "Failed to load balance workers, error = [%s]" % (
                     repr(exc_info()),
