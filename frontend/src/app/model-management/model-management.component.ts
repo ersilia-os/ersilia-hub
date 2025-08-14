@@ -1,155 +1,104 @@
-import { Component, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
-import { Subscription, timer } from 'rxjs';
+import { Component, inject, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
-import { InstancesService } from '../../services/instances.service';
-import { ModelInstance, ModelInstanceFilters } from '../../objects/instance';
-import { ModelInstanceResourceComponent } from '../model-instance-resource/model-instance-resource.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ModelsService } from '../../services/models.service';
+import { Model } from '../../objects/model';
 
 @Component({
   selector: 'app-model-management',
   standalone: true,
   imports: [MatButtonModule, FormsModule, MatFormFieldModule, CommonModule, MatIconModule, MatCheckboxModule,
-    ErsiliaLoaderComponent, ModelInstanceResourceComponent],
+    ErsiliaLoaderComponent],
   templateUrl: './model-management.component.html',
   styleUrl: './model-management.component.scss'
 })
-export class ModelManagementComponent implements OnDestroy {
+export class ModelManagementComponent implements OnInit {
 
-  private instancesService = inject(InstancesService);
-  private refreshTimer$: Subscription | undefined;
-  private instanceFilters: ModelInstanceFilters = {
-    active: true,
-    persisted: false,
-    load_resource_profiles: true,
-    load_recommendations: true
-  };
+  private modelsService = inject(ModelsService);
+  private pageFilters: WritableSignal<PageFilters> = signal({});
 
   readonly dialog = inject(MatDialog);
 
-  instances: Signal<ModelInstance[]>;
+  models: Signal<Model[]>;
   loading: Signal<boolean>;
 
+  displayedColumns: string[] = ['enabled', 'id', 'description', 'resources', 'max_instances', 'exec_mode', 'actions'];
+  columnHeaders: { [column: string]: string } = {
+    enabled: 'Enabled',
+    id: 'Model Id',
+    description: 'Description',
+    resources: 'Resources',
+    max_instances: 'Max Instances',
+    exec_mode: 'Execution Mode',
+    actions: ''
+  };
+
   constructor() {
+    this.loading = this.modelsService.getModelsLoadingSignal();
+    this.models = this.modelsService.computeModelsSignal(models => {
+      const pageFilters = this.pageFilters();
 
-    this.loading = this.instancesService.computeInstancesLoadingSignal<boolean>(
-      _loading => this.instances == null || (this.instances().length == 0 && _loading)
-    );
-
-    this.instances = this.instancesService.getInstancesSignal();
-
-    if (this.autoRefreshEnabled()) {
-      this.startRefreshTimer();
-    }
-  }
-
-  get filtersLoadActive(): boolean {
-    return this.instanceFilters.active ?? false;
-  }
-
-  set filtersLoadActive(value: boolean) {
-    this.instanceFilters.active = value;
-  }
-
-  get filtersLoadPersisted(): boolean {
-    return this.instanceFilters.persisted ?? false;
-  }
-
-  set filtersLoadPersisted(value: boolean) {
-    this.instanceFilters.persisted = value;
-  }
-
-  get filtersLoadMetrics(): boolean {
-    return (this.instanceFilters.load_recommendations ?? false) && (this.instanceFilters.load_resource_profiles ?? false);
-  }
-
-  set filtersLoadMetrics(value: boolean) {
-    this.instanceFilters.load_recommendations = value;
-    this.instanceFilters.load_resource_profiles = value;
-  }
-
-  ngOnDestroy() {
-    this.refreshTimer$?.unsubscribe();
-  }
-
-  startRefreshTimer() {
-    if (this.refreshTimer$ != null) {
-      return;
-    }
-
-    this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
-      if (!this.autoRefreshEnabled()) {
-        this.refreshTimer$?.unsubscribe();
-        this.refreshTimer$ = undefined;
-        return;
-      }
-
-      this.instancesService.loadInstances(this.instanceFilters);
+      return models.filter(model => {
+        return (pageFilters.activeOnly && !model.enabled)
+          && (pageFilters.searchString && !model.id.startsWith(pageFilters.searchString));
+      });
     });
   }
 
-  hasRequests(): boolean {
-    return this.instances != null && this.instances().length > 0;
+  get filtersActiveOnly(): boolean {
+    return this.pageFilters().activeOnly ?? false;
   }
 
-  autoRefreshEnabled(): boolean {
-    // fluffy logic based on filters
-    return !this.instanceFilters.persisted && this.refreshTimer$ != null;
+  set filtersActiveOnly(value: boolean) {
+    this.pageFilters.set({
+      ...this.pageFilters(),
+      activeOnly: value
+    });
+  }
+
+  get filtersSearchString(): string | undefined {
+    return this.pageFilters().searchString;
+  }
+
+  set filtersSearchString(value: string | undefined) {
+    this.pageFilters.set({
+      ...this.pageFilters(),
+      searchString: value
+    });
+  }
+
+  ngOnInit() {
+    this.load();
   }
 
   load() {
-    if (this.loading() || this.autoRefreshEnabled()) {
+    if (this.loading()) {
       return;
     }
 
-    if (!this.instanceFilters.persisted) {
-      this.startRefreshTimer();
-      return;
-    }
-
-    this.instancesService.loadInstances(this.instanceFilters);
+    this.modelsService.loadModels();
   }
 
-  trackBy: TrackByFunction<ModelInstance> = (index: number, item: ModelInstance) => {
-    return `${item.k8s_pod.name}_${item.resource_profile == null}_${item.resource_recommendations == null ? '' : item.resource_recommendations.last_updated}`;
+  trackBy: TrackByFunction<Model> = (index: number, item: Model) => {
+    return `${item.id}_${item.last_updated}`;
   };
 
-  /**
-   * TODO: open dialog for model recommendations ?? -> load for specific model
-   */
+  createModel() {
+    // TODO: open dialog
+  }
 
-  /**
-   * TODO: open model for model management (enable / disable, change request / limits, etc.)
-   */
+  editModel() {
+    // TODO: open dialog
+  }
+}
 
-  // openCreateRequestDialog(): void {
-  //   if (this.dialog != null && this.dialog.openDialogs.length > 0) {
-  //     return;
-  //   }
-
-  //   this.dialog.open(RequestsCreateComponent, {
-  //     enterAnimationDuration: '300ms',
-  //     exitAnimationDuration: '300ms',
-  //     panelClass: 'dialog-panel'
-  //   });
-  // }
-
-  // viewRequest(request: RequestDisplay) {
-  //   this.dialog.open(RequestViewComponent, {
-  //     enterAnimationDuration: '300ms',
-  //     exitAnimationDuration: '300ms',
-  //     panelClass: 'dialog-panel',
-  //     data: request,
-  //   });
-  // }
-
-  /**
-   * TODO: instance actions (remove / logs ??)
-   */
+interface PageFilters {
+  searchString?: string;
+  activeOnly?: boolean;
 }
