@@ -9,11 +9,13 @@ import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { ModelsService } from '../../services/models.service';
 import { Model } from '../../objects/model';
+import { MatTableModule } from '@angular/material/table';
+import { MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-model-management',
   standalone: true,
-  imports: [MatButtonModule, FormsModule, MatFormFieldModule, CommonModule, MatIconModule, MatCheckboxModule,
+  imports: [MatButtonModule, MatTableModule, FormsModule, MatFormFieldModule, MatInputModule, CommonModule, MatIconModule, MatCheckboxModule,
     ErsiliaLoaderComponent],
   templateUrl: './model-management.component.html',
   styleUrl: './model-management.component.scss'
@@ -45,8 +47,8 @@ export class ModelManagementComponent implements OnInit {
       const pageFilters = this.pageFilters();
 
       return models.filter(model => {
-        return (pageFilters.activeOnly && !model.enabled)
-          && (pageFilters.searchString && !model.id.startsWith(pageFilters.searchString));
+        return (!pageFilters.activeOnly || model.enabled)
+          && (!pageFilters.searchString || model.id.includes(pageFilters.searchString));
       });
     });
   }
@@ -86,15 +88,26 @@ export class ModelManagementComponent implements OnInit {
   }
 
   trackBy: TrackByFunction<Model> = (index: number, item: Model) => {
-    return `${item.id}_${item.last_updated}`;
+    return `${item.id}_${item.last_updated}_${item.enabled}`;
   };
 
   createModel() {
-    // TODO: open dialog
+    // TODO: open create dialog
+    // !! keep it simple, 2 separate dialog components
   }
 
-  editModel() {
-    // TODO: open dialog
+  editModel(model: Model) {
+    // TODO: open edit dialog
+    // !! keep it simple, 2 separate dialog components
+  }
+
+  toggleModel(model: Model, newState: boolean) {
+    if (this.loading()) {
+      model.enabled = !newState;
+      return;
+    }
+
+    this.modelsService.updateModel({ ...model, enabled: newState });
   }
 }
 
