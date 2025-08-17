@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
-import { catchError, map, Subscription, throwError } from 'rxjs';
+import { catchError, map, Observable, Subscription, throwError } from 'rxjs';
 import { Model, ModelFromApi, ModelList, ModelUpdate } from '../objects/model';
 import { environment } from '../environments/environment';
 import { mapHttpError } from '../app/utils/api';
@@ -12,6 +12,9 @@ export class ModelsService {
 
   private models: WritableSignal<Model[]> = signal([]);
   private modelsLoading: WritableSignal<boolean> = signal(false);
+
+  private modelSubmitting: WritableSignal<boolean> = signal(false);
+  private modelSubmissionResult: WritableSignal<ModelSubmissionResult | undefined> = signal(undefined);
 
   constructor(private http: HttpClient) { }
 
@@ -44,17 +47,28 @@ export class ModelsService {
     this.models.set(currentModels);
   }
 
-  createModel(model: Model): Subscription {
-    this.modelsLoading.set(true);
+  createModel(model: Model): Observable<ModelSubmissionResult> {
+    if (this.modelSubmitting()) {
+      return throwError(() => new Error("Already submitting"));
+    }
+
+    this.modelSubmitting.set(true);
 
     return this.http.post<Model>(`${environment.apiHost}/api/models`, model)
       .pipe(
         map((updatedModel: Model) => {
           const mapped = ModelFromApi(updatedModel);
           this.updateModels(mapped);
-          this.modelsLoading.set(false);
 
-          return mapped;
+          const submissionResult = {
+            success: true,
+            response: mapped
+          };
+
+          this.modelSubmissionResult.set(submissionResult);
+          this.modelSubmitting.set(false);
+
+          return submissionResult;
         }),
         catchError(error => {
           const errorString = mapHttpError(error);
@@ -63,26 +77,37 @@ export class ModelsService {
             error: errorString
           };
 
-          this.modelsLoading.set(false);
+          this.modelSubmissionResult.set(submissionResult);
+          this.modelSubmitting.set(false);
 
           // Return an observable with a user-facing error message.
           return throwError(() => new Error(errorString));
         })
-      )
-      .subscribe();
+      );
   }
 
-  updateModel(modelUpdate: ModelUpdate): Subscription {
-    this.modelsLoading.set(true);
+  updateModel(modelUpdate: ModelUpdate): Observable<ModelSubmissionResult> {
+    if (this.modelSubmitting()) {
+      return throwError(() => new Error("Already submitting"));
+    }
+
+    this.modelSubmitting.set(true);
 
     return this.http.put<Model>(`${environment.apiHost}/api/models/${modelUpdate.id}`, modelUpdate)
       .pipe(
         map((updatedModel: Model) => {
           const mapped = ModelFromApi(updatedModel);
           this.updateModels(mapped);
-          this.modelsLoading.set(false);
 
-          return mapped;
+          const submissionResult = {
+            success: true,
+            response: mapped
+          };
+
+          this.modelSubmissionResult.set(submissionResult);
+          this.modelSubmitting.set(false);
+
+          return submissionResult;
         }),
         catchError(error => {
           const errorString = mapHttpError(error);
@@ -91,13 +116,13 @@ export class ModelsService {
             error: errorString
           };
 
-          this.modelsLoading.set(false);
+          this.modelSubmissionResult.set(submissionResult);
+          this.modelSubmitting.set(false);
 
           // Return an observable with a user-facing error message.
           return throwError(() => new Error(errorString));
         })
-      )
-      .subscribe();
+      );
   }
 
   getModelsSignal(): Signal<Model[]> {
@@ -115,4 +140,26 @@ export class ModelsService {
   computeModelsLoadingSignal<T>(computation: (loading: boolean) => T): Signal<T> {
     return computed(() => computation(this.modelsLoading()));
   }
+
+  getModelSubmissionResultSignal(): Signal<ModelSubmissionResult | undefined> {
+    return computed(() => this.modelSubmissionResult());
+  }
+
+  computeModelSubmissionResultSignal<T>(computation: (result: ModelSubmissionResult | undefined) => T): Signal<T> {
+    return computed(() => computation(this.modelSubmissionResult()));
+  }
+
+  getModelSubmittingSignal(): Signal<boolean> {
+    return computed(() => this.modelSubmitting());
+  }
+
+  computeModelSubmittingSignal<T>(computation: (loading: boolean) => T): Signal<T> {
+    return computed(() => computation(this.modelSubmitting()));
+  }
+}
+
+export interface ModelSubmissionResult {
+  success: boolean;
+  error?: string;
+  response?: Model;
 }

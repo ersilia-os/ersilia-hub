@@ -1,0 +1,45 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        Create new Model
+    </div>
+
+    <!-- TODO: split into left and right ? -->
+    <div class="model-form">
+        <div class="field id">
+            <mat-form-field>
+                <mat-label>Model Id</mat-label>
+                <input matInput required [formControl]="form.modelId"
+                    [errorStateMatcher]="formControlErrorStateMatcher">
+                @if (form.modelId.hasError('required')) {
+                <mat-error>Model Id is <strong>required</strong></mat-error>
+                } @else if (form.modelId.hasError('validation')) {
+                <mat-error>{{ form.modelId.getError('validation') }}</mat-error>
+                }
+            </mat-form-field>
+        </div>
+
+        <!-- description : text area, default to 3 lines ?? -->
+
+        <!-- enabled : toggle -->
+
+        <!-- executionMode : buttons to select ? -->
+
+        <!-- on right side : maxInstances + resources + disableMemoryLimit -->
+    </div>
+
+    <div class="dialog-actions">
+        <div class="ersilia-button cancel" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Cancel
+        </div>
+
+        <div class="ersilia-button submit" (click)="submit()" [ngClass]="{'disabled': !canSubmit()}">
+            @if (!submitting()) {
+            <mat-icon>science</mat-icon>
+            } @else {
+            <ersilia-loader [colour]="'#ffffff'"></ersilia-loader>
+            }
+            Submit
+        </div>
+    </div>
+</div>

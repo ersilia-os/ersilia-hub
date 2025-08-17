@@ -11,6 +11,7 @@ import { ModelsService } from '../../services/models.service';
 import { Model } from '../../objects/model';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
+import { ModelCreateComponent } from './model-create/model-create.component';
 
 @Component({
   selector: 'app-model-management',
@@ -92,8 +93,15 @@ export class ModelManagementComponent implements OnInit {
   };
 
   createModel() {
-    // TODO: open create dialog
-    // !! keep it simple, 2 separate dialog components
+    if (this.dialog != null && this.dialog.openDialogs.length > 0) {
+      return;
+    }
+
+    this.dialog.open(ModelCreateComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel'
+    });
   }
 
   editModel(model: Model) {
