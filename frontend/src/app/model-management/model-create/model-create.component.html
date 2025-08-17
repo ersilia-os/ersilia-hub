@@ -1,0 +1,152 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        Create new Model
+    </div>
+
+    <div class="model-form-split-panel">
+        <div class="model-form">
+            <div class="field id">
+                <mat-form-field>
+                    <mat-label>Model Id</mat-label>
+                    <input matInput required [formControl]="form.modelId"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.modelId.hasError('required')) {
+                    <mat-error>Model Id is <strong>required</strong></mat-error>
+                    } @else if (form.modelId.hasError('validation')) {
+                    <mat-error>{{ form.modelId.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field description">
+                <mat-form-field>
+                    <mat-label>Description</mat-label>
+                    <textarea matInput required rows=3 [formControl]="form.description"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.description.hasError('required')) {
+                    <mat-error>Description is <strong>required</strong></mat-error>
+                    } @else if (form.description.hasError('validation')) {
+                    <mat-error>{{ form.description.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field enabled">
+                <mat-checkbox [(ngModel)]="formModelEnabled">Enabled</mat-checkbox>
+                @if (form.enabled.hasError('required')) {
+                <mat-error>Enabled is <strong>required</strong></mat-error>
+                } @else if (form.enabled.hasError('validation')) {
+                <mat-error>{{ form.enabled.getError('validation') }}</mat-error>
+                }
+            </div>
+
+            <div class="field execution-mode">
+                <mat-form-field>
+                    <mat-label>Execution Mode</mat-label>
+                    <mat-select [formControl]="form.executionMode" [errorStateMatcher]="formControlErrorStateMatcher">
+                        <mat-option [value]="'ASYNC'">ASYNC</mat-option>
+                        <mat-option [value]="'SYNC'">SYNC</mat-option>
+                    </mat-select>
+                    @if (form.executionMode.hasError('required')) {
+                    <mat-error>Execution Mode is <strong>required</strong></mat-error>
+                    } @else if (form.executionMode.hasError('validation')) {
+                    <mat-error>{{ form.executionMode.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field max-instances">
+                <mat-form-field>
+                    <mat-label>Max Instances (-1 for no limit)</mat-label>
+                    <input type="number" matInput required [formControl]="form.maxInstances"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.maxInstances.hasError('required')) {
+                    <mat-error>Max Instances is <strong>required</strong></mat-error>
+                    } @else if (form.maxInstances.hasError('validation')) {
+                    <mat-error>{{ form.maxInstances.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+        </div>
+
+        <div class="model-form">
+            <div class="field cpu-request">
+                <mat-form-field>
+                    <mat-label>CPU Request</mat-label>
+                    <input type="number" matInput required [formControl]="form.cpuRequest"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.cpuRequest.hasError('required')) {
+                    <mat-error>CPU Request is <strong>required</strong></mat-error>
+                    } @else if (form.cpuRequest.hasError('validation')) {
+                    <mat-error>{{ form.cpuRequest.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field cpu-limit">
+                <mat-form-field>
+                    <mat-label>CPU Limit</mat-label>
+                    <input type="number" matInput required [formControl]="form.cpuLimit"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.cpuLimit.hasError('required')) {
+                    <mat-error>CPU Limit is <strong>required</strong></mat-error>
+                    } @else if (form.cpuLimit.hasError('validation')) {
+                    <mat-error>{{ form.cpuLimit.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field memory-request">
+                <mat-form-field>
+                    <mat-label>Memory Request</mat-label>
+                    <input type="number" matInput required [formControl]="form.memoryRequest"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.memoryRequest.hasError('required')) {
+                    <mat-error>Memory Request is <strong>required</strong></mat-error>
+                    } @else if (form.memoryRequest.hasError('validation')) {
+                    <mat-error>{{ form.memoryRequest.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field memory-limit">
+                <mat-form-field>
+                    <mat-label>Memory Limit</mat-label>
+                    <input type="number" matInput required [formControl]="form.memoryLimit"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.memoryLimit.hasError('required')) {
+                    <mat-error>Memory Limit is <strong>required</strong></mat-error>
+                    } @else if (form.memoryLimit.hasError('validation')) {
+                    <mat-error>{{ form.memoryLimit.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field disable-memory-limit">
+                <mat-checkbox [(ngModel)]="formDisableMemoryLimit">Disable Memory Limit</mat-checkbox>
+                @if (form.disableMemoryLimit.hasError('required')) {
+                <mat-error>Disable Memory Limit is <strong>required</strong></mat-error>
+                } @else if (form.disableMemoryLimit.hasError('validation')) {
+                <mat-error>{{ form.disableMemoryLimit.getError('validation') }}</mat-error>
+                }
+            </div>
+        </div>
+    </div>
+
+
+    <div class="dialog-actions">
+        <div class="ersilia-button cancel" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Cancel
+        </div>
+
+        <div class="ersilia-button submit" (click)="submit()" [ngClass]="{'disabled': !canSubmit()}">
+            @if (!submitting()) {
+            <mat-icon>science</mat-icon>
+            } @else {
+            <ersilia-loader [colour]="'#ffffff'"></ersilia-loader>
+            }
+            Submit
+        </div>
+    </div>
+</div>

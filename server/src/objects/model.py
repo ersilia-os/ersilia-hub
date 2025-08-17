@@ -118,7 +118,6 @@ class ModelDetailsApiModel(BaseModel):
 
     template_version: str
     description: str
-    size_megabytes: int
     disable_memory_limit: bool
     max_instances: int
     execution_mode: str
@@ -129,7 +128,6 @@ class ModelDetailsApiModel(BaseModel):
         return ModelDetailsApiModel(
             template_version=model_details.template_version,
             description=model_details.description,
-            size_megabytes=model_details.size_megabytes,
             disable_memory_limit=model_details.disable_memory_limit,
             max_instances=model_details.max_instances,
             execution_mode=str(model_details.execution_mode),
@@ -140,7 +138,7 @@ class ModelDetailsApiModel(BaseModel):
         return ModelDetails(
             self.template_version,
             self.description,
-            self.size_megabytes,
+            self.k8s_resources.memory_limit,
             self.disable_memory_limit,
             self.max_instances,
             self.execution_mode,

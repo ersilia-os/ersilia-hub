@@ -1,0 +1,175 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+    width: 100%;
+    height: calc(100% - 80px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.component-header {
+    font-size: 26px;
+    margin-bottom: 20px;
+    width: calc(100% - 30px);
+    color: $ersilia-purple;
+}
+
+.component-toolbar {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    width: calc(100% - 50px);
+    margin-bottom: 20px;
+
+
+    .filters {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+
+        width: 100%;
+        flex: 1;
+
+        .filter {
+            margin-right: 10px;
+
+            &.refresh {
+                margin-right: 0px;
+            }
+
+            ::ng-deep .search-string-filter {
+                .mat-mdc-form-field-subscript-wrapper {
+                    display: none !important;
+                }
+            }
+        }
+
+        .spacer {
+            width: 100%;
+            flex: 1;
+        }
+    }
+
+    .actions {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+
+        width: 100%;
+        flex: 1;
+
+        margin-top: 10px;
+
+        .spacer {
+            width: 100%;
+            flex: 1;
+        }
+
+        .action {
+            margin-left: 10px;
+        }
+    }
+}
+
+.models-container {
+    width: 80%;
+    height: 100%;
+}
+
+.mat-column-enabled {
+    width: 48px;
+}
+
+.mat-column-id {
+    width: 40px;
+}
+
+.mat-column-description {
+    width: 200px;
+}
+
+.mat-column-resources {
+    width: 250px;
+
+    .resources {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+
+        .resources-line {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: flex-start;
+
+            .resource {
+                padding: 5px;
+                border-radius: 5px;
+                width: fit-content;
+                background-color: #ccc;
+                border: 1px solid #727272;
+                margin: 2px;
+
+                &.warn {
+                    background-color: $pastel-orange;
+                    border-color: $alert-orange;
+                }
+            }
+        }
+    }
+}
+
+.mat-column-max_instances {
+    width: 55px;
+}
+
+.mat-column-exec_mode {
+    width: 60px;
+
+    .mode {
+        padding: 5px;
+        border-radius: 5px;
+        width: fit-content;
+        background-color: #ccc;
+        border: 1px solid #727272;
+
+        &.sync {
+            background-color: $pastel-red;
+        }
+
+        &.async {
+            background-color: $pastel-green;
+        }
+    }
+}
+
+.mat-column-actions {
+    width: 60px;
+}
+
+.mat-mdc-table {
+    background-color: #727272;
+}
+
+.action-button {
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 5px;
+    padding: 4px;
+    background-color: $ersilia-purple;
+
+    .mat-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 32px;
+        color: #ffffffcc;
+    }
+}

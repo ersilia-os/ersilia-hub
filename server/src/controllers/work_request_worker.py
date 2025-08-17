@@ -418,6 +418,9 @@ class WorkRequestWorker(Thread):
         self._kill_event.set()
 
     def update_model_ids(self, model_ids: List[str]):
+        ContextLogger.info(
+            self._logger_key, f"Updating model_ids list with: {model_ids}"
+        )
         self.model_ids = ThreadSafeList(model_ids)
 
     def has_job_submission_task(self, work_request: WorkRequest) -> bool:

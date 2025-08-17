@@ -5,6 +5,7 @@ import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { ModelInstancesComponent } from './model-instances/model-instances.component';
 import { ModelRecommendationsComponent } from './model-recommendations/model-recommendations.component';
+import { ModelManagementComponent } from './model-management/model-management.component';
 
 export const routerGuardFunction: CanActivateFn = (
     next: ActivatedRouteSnapshot,
@@ -37,6 +38,12 @@ export const routes: Routes = [
         component: ModelRecommendationsComponent,
         canActivate: [routerGuardFunction]
     },
+    {
+        path: 'models',
+        component: ModelManagementComponent,
+        canActivate: [routerGuardFunction]
+    },
+
     {
         path: '*',
         redirectTo: '',
