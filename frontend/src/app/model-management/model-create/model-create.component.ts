@@ -22,7 +22,8 @@ import { NotificationsService, Notification } from '../../notifications/notifica
 import { AbstractControl, FormControl, FormGroupDirective, FormsModule, NgForm, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ErrorStateMatcher } from '@angular/material/core';
-
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonToggleChange, MatButtonToggleModule } from '@angular/material/button-toggle';
 
 @Component({
     standalone: true,
@@ -30,7 +31,7 @@ import { ErrorStateMatcher } from '@angular/material/core';
         MatButtonModule, CommonModule, MatIconModule, MatProgressBarModule,
         MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent,
         MatFormFieldModule, MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent,
-        ReactiveFormsModule, MatTooltipModule
+        ReactiveFormsModule, MatTooltipModule, MatCheckboxModule, MatButtonToggleModule
     ],
     templateUrl: './model-create.component.html',
     styleUrl: './model-create.component.scss'
@@ -193,11 +194,30 @@ export class ModelCreateComponent implements OnInit {
             ])
         };
 
+    get formModelEnabled(): boolean {
+        const val = this.form.enabled.getRawValue();
+        return typeof val === 'boolean' ? val : false;
+    }
+
+    set formModelEnabled(value: boolean) {
+        this.form.enabled.setValue(value);
+    }
+
+    get formDisableMemoryLimit(): boolean {
+        const val = this.form.disableMemoryLimit.getRawValue();
+        return typeof val === 'boolean' ? val : false;
+    }
+
+    set formDisableMemoryLimit(value: boolean) {
+        this.form.disableMemoryLimit.setValue(value);
+    }
+
     constructor() {
         this.submitting = this.modelsService.getModelSubmittingSignal();
     }
 
     ngOnInit() {
+
     }
 
     isSignUpFormValid(): boolean {
@@ -244,7 +264,7 @@ export class ModelCreateComponent implements OnInit {
                     this.close();
                 },
                 error: (err: Error) => {
-                    if (err.message == 'Model already exists') {
+                    if (err.message.includes('already exists')) {
                         this.form.modelId.setErrors({ 'validation': err.message });
                     }
 
