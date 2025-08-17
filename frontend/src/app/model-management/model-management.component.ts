@@ -12,6 +12,8 @@ import { Model } from '../../objects/model';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
 import { ModelCreateComponent } from './model-create/model-create.component';
+import { ModelUpdateComponent } from './model-update/model-update.component';
+import { NotificationsService, Notification } from '../notifications/notifications.service';
 
 @Component({
   selector: 'app-model-management',
@@ -25,6 +27,7 @@ export class ModelManagementComponent implements OnInit {
 
   private modelsService = inject(ModelsService);
   private pageFilters: WritableSignal<PageFilters> = signal({});
+  private notificationsService = inject(NotificationsService);
 
   readonly dialog = inject(MatDialog);
 
@@ -105,8 +108,18 @@ export class ModelManagementComponent implements OnInit {
   }
 
   editModel(model: Model) {
-    // TODO: open edit dialog
-    // !! keep it simple, 2 separate dialog components
+    if (this.dialog != null && this.dialog.openDialogs.length > 0) {
+      return;
+    }
+
+    this.dialog.open(ModelUpdateComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: {
+        model: model
+      }
+    });
   }
 
   toggleModel(model: Model, newState: boolean) {
@@ -115,7 +128,15 @@ export class ModelManagementComponent implements OnInit {
       return;
     }
 
-    this.modelsService.updateModel({ ...model, enabled: newState });
+    this.modelsService.updateModel({ ...model, enabled: newState })
+      .subscribe({
+        next: result => {
+          this.notificationsService.pushNotification(Notification('SUCCESS', 'Successfully Updated Model!'));
+        },
+        error: (err: Error) => {
+          this.notificationsService.pushNotification(Notification('ERROR', 'Model Update Failed'));
+        }
+      });
   }
 }
 

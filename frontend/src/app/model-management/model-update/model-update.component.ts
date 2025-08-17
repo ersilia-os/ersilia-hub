@@ -4,13 +4,14 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
+    MAT_DIALOG_DATA,
     MatDialogActions,
     MatDialogClose,
     MatDialogContent,
     MatDialogRef,
     MatDialogTitle,
 } from '@angular/material/dialog';
-import { Model, ModelExecutionMode } from '../../../objects/model';
+import { Model, ModelExecutionMode, ModelUpdate } from '../../../objects/model';
 import { ModelsService, ModelSubmissionResult } from '../../../services/models.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -30,11 +31,12 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
         MatFormFieldModule, MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent,
         ReactiveFormsModule, MatTooltipModule, MatCheckboxModule
     ],
-    templateUrl: './model-create.component.html',
-    styleUrl: './model-create.component.scss'
+    templateUrl: './model-update.component.html',
+    styleUrl: './model-update.component.scss'
 })
-export class ModelCreateComponent implements OnInit {
-    readonly dialogRef = inject(MatDialogRef<ModelCreateComponent>);
+export class ModelUpdateComponent implements OnInit {
+    readonly dialogRef = inject(MatDialogRef<ModelUpdateComponent>);
+    readonly dialogData = inject(MAT_DIALOG_DATA);
 
     busy: WritableSignal<boolean> = signal(false);
 
@@ -212,7 +214,19 @@ export class ModelCreateComponent implements OnInit {
     }
 
     ngOnInit() {
+        // load existing model and set form
+        const existingModel: Model = this.dialogData.model;
 
+        this.form.modelId.setValue(existingModel.id);
+        this.form.description.setValue(existingModel.details.description);
+        this.form.enabled.setValue(existingModel.enabled);
+        this.form.executionMode.setValue(existingModel.details.execution_mode);
+        this.form.maxInstances.setValue(existingModel.details.max_instances);
+        this.form.cpuRequest.setValue(existingModel.details.k8s_resources?.cpu_request);
+        this.form.cpuLimit.setValue(existingModel.details.k8s_resources?.cpu_limit);
+        this.form.memoryRequest.setValue(existingModel.details.k8s_resources?.memory_request);
+        this.form.memoryLimit.setValue(existingModel.details.k8s_resources?.memory_limit);
+        this.form.disableMemoryLimit.setValue(existingModel.details.disable_memory_limit);
     }
 
     isSignUpFormValid(): boolean {
@@ -234,7 +248,7 @@ export class ModelCreateComponent implements OnInit {
 
         this.busy.set(true);
 
-        let model: Model = {
+        let modelUpdate: ModelUpdate = {
             id: this.form.modelId.getRawValue()!,
             enabled: this.form.enabled.getRawValue(),
             details: {
@@ -252,10 +266,10 @@ export class ModelCreateComponent implements OnInit {
             }
         };
 
-        this.modelsService.createModel(model)
+        this.modelsService.updateModel(modelUpdate)
             .subscribe({
                 next: result => {
-                    this.notificationsService.pushNotification(Notification('SUCCESS', 'Successfully Created Model!'));
+                    this.notificationsService.pushNotification(Notification('SUCCESS', 'Successfully Updated Model!'));
                     this.close();
                 },
                 error: (err: Error) => {
@@ -263,7 +277,7 @@ export class ModelCreateComponent implements OnInit {
                         this.form.modelId.setErrors({ 'validation': err.message });
                     }
 
-                    this.notificationsService.pushNotification(Notification('ERROR', 'Model Creation Failed'));
+                    this.notificationsService.pushNotification(Notification('ERROR', 'Model Update Failed'));
                     this.busy.set(false);
                 }
             });

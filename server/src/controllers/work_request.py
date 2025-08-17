@@ -4,7 +4,7 @@ from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
 import traceback
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from controllers.model import ModelController
 from controllers.work_request_worker import WorkRequestWorker
@@ -279,10 +279,10 @@ class WorkRequestController(Thread):
 
     def _update_worker_models(self):
         current_worker_models: List[str] = []
-        models_per_worker: List[Tuple[WorkRequestWorker, List[str], bool]] = []
+        models_per_worker: List[List[Any]] = []
 
         for worker in list(self._workers):
-            models_per_worker.append((worker, list(worker.model_ids), False))
+            models_per_worker.append([worker, list(worker.model_ids), False])
             current_worker_models.extend(list(worker.model_ids))
 
         models = ModelController.instance().get_models()
@@ -300,15 +300,16 @@ class WorkRequestController(Thread):
 
                 worker_tuple[1].remove(model_id)
                 worker_tuple[2] = True  # mark changed
+                break
 
-        for active_model_id in active_model_ids:
+        for model_id in active_model_ids:
             if model_id in current_worker_models:
                 continue
 
             best_matched_worker = models_per_worker[0]
 
             for worker_tuple in models_per_worker[1:]:
-                if worker_tuple[1] < len(best_matched_worker[1]):
+                if len(worker_tuple[1]) < len(best_matched_worker[1]):
                     best_matched_worker = worker_tuple
 
             best_matched_worker[1].append(model_id)
