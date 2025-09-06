@@ -6,6 +6,7 @@ import traceback
 from typing import Dict, List, Union
 
 from controllers.k8s import K8sController
+from controllers.s3_integration import S3IntegrationController
 from controllers.instance_metrics import InstanceMetricsController
 from objects.k8s import K8sPod
 from python_framework.logger import ContextLogger, LogLevel
@@ -56,15 +57,15 @@ class ModelInstanceControllerStub:
 
 class ModelInstanceHandler(Thread):
 
-    _logger_key: str = None
+    _logger_key: str
     _kill_event: Event
 
     _controller: ModelInstanceControllerStub
 
     model_id: str
     work_request_id: str
-    pod_name: Union[str, None]
-    k8s_pod: K8sPod
+    pod_name: str | None
+    k8s_pod: K8sPod | None
 
     state: ModelInstanceState
     pod_exists: bool
@@ -103,6 +104,7 @@ class ModelInstanceHandler(Thread):
 
     def kill(self):
         self._kill_event.set()
+        self.state = ModelInstanceState.SHOULD_TERMINATE
 
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
@@ -117,6 +119,14 @@ class ModelInstanceHandler(Thread):
         )
 
         if self.pod_exists:
+            try:
+                logs = K8sController.instance().download_pod_logs(self.model_id, target_pod_name=self.pod_name)
+
+                if logs is not None:
+                    S3IntegrationController.instance().upload_instance_logs(self.model_id, self.work_request_id, logs)
+            except:
+                pass
+
             try:
                 K8sController.instance().delete_pod(
                     self.model_id, target_pod_name=self.pod_name

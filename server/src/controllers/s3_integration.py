@@ -93,7 +93,7 @@ class S3IntegrationController:
 
             return False
 
-    def download_result(self, model_id: str, request_id: str) -> S3ResultObject:
+    def download_result(self, model_id: str, request_id: str) -> S3ResultObject | None:
         bucket_path = f"{self.model_data_path}/{model_id}/{request_id}/result.json"
 
         ContextLogger.debug(
@@ -120,6 +120,88 @@ class S3IntegrationController:
             ContextLogger.error(
                 self._logger_key,
                 "Failed to download result [%s - %s] from S3 URI [%s/%s], error = [%s]"
+                % (
+                    model_id,
+                    request_id,
+                    self.bucket_name,
+                    bucket_path,
+                    repr(exc_info()),
+                ),
+            )
+            traceback.print_exc(file=stdout)
+
+            return None
+
+    def upload_instance_logs(self, model_id: str, request_id: str, logs: str) -> bool:
+        bucket_path = f"{self.model_data_path}/{model_id}/{request_id}/logs.txt"
+
+
+        ContextLogger.debug(
+            self._logger_key,
+            "Uploading logs for [%s - %s] to S3 URI [%s/%s]..."
+            % (
+                model_id,
+                request_id,
+                self.bucket_name,
+                bucket_path,
+            ),
+        )
+
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                ContentType="text/plain",
+                Key=bucket_path,
+                Metadata={
+                    "modelId": model_id,
+                    "requestId": request_id,
+                },
+                Body=logs.encode(),
+            )
+
+            return True
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to upload logs [%s - %s] to S3 URI [%s/%s], error = [%s]"
+                % (
+                    model_id,
+                    request_id,
+                    self.bucket_name,
+                    bucket_path,
+                    repr(exc_info()),
+                ),
+            )
+            traceback.print_exc(file=stdout)
+
+            return False
+
+
+    def download_instance_logs(self, model_id: str, request_id: str) -> str | None:
+        bucket_path = f"{self.model_data_path}/{model_id}/{request_id}/logs.txt"
+
+        ContextLogger.debug(
+            self._logger_key,
+            "Downloading logs for [%s - %s] from S3 URI [%s/%s]..."
+            % (
+                model_id,
+                request_id,
+                self.bucket_name,
+                bucket_path,
+            ),
+        )
+
+        try:
+            result = self.s3_client.get_object(
+                Bucket=self.bucket_name,
+                Key=bucket_path,
+            )
+
+            return result["Body"].read().decode("utf-8")
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to download logs [%s - %s] from S3 URI [%s/%s], error = [%s]"
                 % (
                     model_id,
                     request_id,

@@ -508,6 +508,62 @@ class K8sController(Thread):
 
         return self._delete_pod(target_pod_name, model_id)
 
+
+    def _download_pod_logs(self, pod_name: str, model_id: str = None) -> str | None:
+        try:
+            logs = self._api_core.read_namespaced_pod_log(
+                pod_name, self._namespace
+            )
+
+            if logs is None:
+                raise Exception("Failed to download pod logs")
+
+            return logs
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to load instance logs [%s]%s, error = [%s]"
+                % (
+                    pod_name,
+                    "" if model_id is None else " for model [%s]" % model_id,
+                    repr(exc_info()),
+                ),
+            )
+            traceback.print_exc(file=stdout)
+
+            return None
+
+    def download_pod_logs(
+        self,
+        model_id: str,
+        annotations_filter: Dict[str, str] = None,
+        target_pod_name: str = None,
+    ) -> str | None:
+        if target_pod_name is not None:
+            return self._download_pod_logs(target_pod_name, model_id)
+
+        if annotations_filter is None or len(annotations_filter) == 0:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to download pod logs, missing 'target_pod_name' or 'annotations_filter' argument",
+            )
+            return None
+
+        current_pods: List[K8sPod] = self.load_model_pods(model_id)
+        target_pod_name: str = None
+
+        for pod in current_pods:
+            for key, value in annotations_filter.items():
+                if not pod.annotation_equals(key, value):
+                    continue
+
+            target_pod_name = pod.name
+
+        if target_pod_name is None:
+            return True  # could not find pod, so we assume it's already scaled down
+
+        return self._download_pod_logs(target_pod_name, model_id)
+
     def scale_pods(
         self,
         model_id: str,
