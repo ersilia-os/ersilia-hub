@@ -37,6 +37,7 @@ from controllers.model_instance_log import (
 from controllers.model import ModelController
 from objects.model import ModelExecutionMode
 from controllers.model_instance_handler import ModelInstanceController
+from src.controllers import model_instance_handler
 
 
 class WorkRequestControllerStub:
@@ -559,35 +560,18 @@ class WorkRequestWorker(Thread):
                         % (work_request.id, sync_job_status),
                     )
 
+            model_instance_handler = ModelInstanceController.instance().get_instance(work_request.model_id, str(work_request.id))
 
-            # TODO: call modelinstancehandler.terminate() and remove below
-
-            try:
-                if (
-                    K8sController.instance().clear_work_request(
-                        work_request.model_id, pod.name
-                    )
-                    is None
-                ):
-                    sleep(10)
-
-                    if (
-                        K8sController.instance().clear_work_request(
-                            work_request.model_id, pod.name
-                        )
-                        is None
-                    ):
-                        ContextLogger.error(
-                            self._logger_key,
-                            "Failed to clear workrequest [%d] from pod [%s]"
-                            % (work_request.id, pod.name),
-                        )
-            except:
-                ContextLogger.error(
+            if model_instance_handler is None:
+                ContextLogger.warn(
                     self._logger_key,
-                    "Failed to clear workrequest [%d] from pod [%s], error = [%s]"
-                    % (work_request.id, pod.name, repr(exc_info())),
+                    "Failed to terminate ModelInstanceHandler for workrequest [%d], model [%s] - reason = [Missing instance]"
+                    % (work_request.id, work_request.model_id),
                 )
+
+                return updated_work_request
+
+            model_instance_handler.kill()
 
             return updated_work_request
         except:
