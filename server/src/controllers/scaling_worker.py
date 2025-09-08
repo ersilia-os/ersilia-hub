@@ -164,6 +164,10 @@ class ScalingWorker(Thread):
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")
 
+        ContextLogger.warn(self._logger_key, "Auto-scaling disabled - needs work")
+
+        return
+
         while True:
             if self._wait_or_kill(ScalingWorker.SCALE_DOWN_WAIT_TIME):
                 break

@@ -536,8 +536,8 @@ class K8sController(Thread):
     def download_pod_logs(
         self,
         model_id: str,
-        annotations_filter: Dict[str, str] = None,
-        target_pod_name: str = None,
+        annotations_filter: Dict[str, str] | None = None,
+        target_pod_name: str | None = None,
     ) -> str | None:
         if target_pod_name is not None:
             return self._download_pod_logs(target_pod_name, model_id)
@@ -549,8 +549,8 @@ class K8sController(Thread):
             )
             return None
 
-        current_pods: List[K8sPod] = self.load_model_pods(model_id)
-        target_pod_name: str = None
+        current_pods: list[K8sPod] = self.load_model_pods(model_id)
+        target_pod_name: str | None = None
 
         for pod in current_pods:
             for key, value in annotations_filter.items():

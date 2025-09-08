@@ -156,14 +156,16 @@ class ModelInstanceHandler(Thread):
         )
 
     def _check_pod_state(self):
-        k8s_pod: Union[K8sPod, None] = None
+        k8s_pod: K8sPod | None = None
 
         try:
             if self.pod_name is None:
+                ContextLogger.debug(self._logger_key, f"Loading pod by request model_id = [{self.model_id}], request_id = [{self.work_request_id}]...")
                 k8s_pod = K8sController.instance().get_pod_by_request(
                     self.model_id, self.work_request_id
                 )
             else:
+                ContextLogger.debug(self._logger_key, f"Loading pod by name = [{self.pod_name}]...")
                 k8s_pod = K8sController.instance().get_pod(self.pod_name)
 
             if k8s_pod is None:
@@ -192,7 +194,7 @@ class ModelInstanceHandler(Thread):
             ContextLogger.error(
                 self._logger_key, f"Failed to find pod, error = [{repr(exc_info())}]"
             )
-            # traceback.print_exc(file=stdout)
+            traceback.print_exc(file=stdout)
 
             self.state = ModelInstanceState.SHOULD_TERMINATE
             self.pod_exists = False

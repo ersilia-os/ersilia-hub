@@ -559,6 +559,9 @@ class WorkRequestWorker(Thread):
                         % (work_request.id, sync_job_status),
                     )
 
+
+            # TODO: call modelinstancehandler.terminate() and remove below
+
             try:
                 if (
                     K8sController.instance().clear_work_request(
