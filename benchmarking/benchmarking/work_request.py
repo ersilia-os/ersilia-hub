@@ -1,14 +1,13 @@
 from base64 import b64encode
 from json import dumps
 from os.path import exists
-from sys import exc_info
+from sys import argv, exc_info
 from time import sleep, time
 from uuid import uuid4
 from requests import get, post
 
 API_BASE_URL = "https://hub.ersilia.io"
 REQUEST_TIMEOUT = 900  # 15 minutes, in seconds
-BENCHMARK_INPUTS_PATH = "./inputs"
 
 def get_auth_header(session_id: str):
     print("Starting anonymous session...")
@@ -90,24 +89,13 @@ def load_smiles_from_file(file_path: str) -> list[str] | None:
     with open(file_path, "r") as file:
         return file.readlines()
 
-def load_smiles_by_model_and_size(model_id: str, input_size: int) -> list[str] | None:
-    return load_smiles_from_file(f"{BENCHMARK_INPUTS_PATH}/{model_id}/{input_size}.csv")
-
-def submit_job(model_id: str, smiles: list[str] | None = None, input_size: int | None = None, input_file_path: str | None = None) -> tuple(bool, str | None, str):
+def submit_job(model_id: str, input_file_path: str) -> tuple[bool, str | None, str | None]:
     _smiles: list[str] | None = None
 
-    if smiles is not None:
-        _smiles = smiles
-    elif input_file_path is not None:
-        try:
-            _smiles = load_smiles_from_file(input_file_path)
-        except:
-            return False, None, "Failed to load smiles file: %s" % repr(exc_info())
-    elif input_size is not None:
-        try:
-            _smiles = load_smiles_by_model_and_size(model_id, input_size)
-        except:
-            return False, None, "Failed to load smiles by id + input: %s" % repr(exc_info())
+    try:
+        _smiles = load_smiles_from_file(input_file_path)
+    except:
+        return False, None, "Failed to load smiles file: %s" % repr(exc_info())
 
     if _smiles is None or len(_smiles) == 0:
         return False, None, "Smiles is empty"
@@ -124,4 +112,9 @@ def submit_job(model_id: str, smiles: list[str] | None = None, input_size: int |
         return True, _request_id, None
     except:
         return False, _request_id, "Job failed: %s" % repr(exc_info())
+
+if __name__ == '__main__':
+    result = submit_job(argv[1], argv[2])
+
+    print(f"{result[0]}##{'' if result[1] is None else result[1]}##{'' if result[2] is None else result[2]}")
 

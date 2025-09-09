@@ -7,6 +7,8 @@
 # The "main" process orchestrates the model submission processes by round-robin execution by model, until each model's submission count is reached
 ##
 
+from subprocess import PIPE, Popen
+from sys import exc_info
 from benchmarking.benchmarking.config import BenchmarkConfig, BenchmarkModelConfig
 
         
@@ -18,20 +20,64 @@ class ModelJobProcess:
     # TODO: extend process / Popen, or something
 
     config: BenchmarkModelConfig
-    result: tuple[bool, str|None, str] # success, work_request_id, reason
+    result: tuple[bool, str|None, str|None] # success, work_request_id, reason
+    process: Popen[bytes] | None
 
     def __init__(self, config: BenchmarkModelConfig) -> None:
         self.config = config
         self.result = (False, None, "Not started")
+        self.process = None
+
+    def stop(self) -> bool:
+        if self.process is None:
+            return False
+
+        self.process.kill()
+
+        return True
+
+    def check_running(self):
+        return self.process is not None and self.process.poll() is None
+
+    def get_result(self) -> tuple[bool, str|None, str|None]:
+        if self.process is None:
+            return False, None, "Process not started"
+        elif self.process.poll() is None:
+            return False, None, "Process still busy"
+        elif self.process.returncode != 0:
+            return False, None, f"Process exited with non-zero code: [{self.process.returncode}]"
+
+        process_stdout: list[str] | None = None
+
+        try:
+            process_stdout = self.process.stdout.readlines()
+        except:
+            return True, None, f"Failed to read process result from stdout: [{repr(exc_info())}]"
+
+        if process_stdout is None or len(process_stdout) == 0:
+            return True, None, "Process succeeded, but missing result output"
+
+        result = process_stdout[-1].strip().split("##")
+
+        return bool(result[0]), None if len(result[1]) == 0 else result[1], None if len(result[2]) == 0 else result[2]
 
     def run(self):
-        pass
+        if self.process is not None:
+            return
+
+        self.process = Popen([
+            "python3",
+            "./benchmarking/work_request.py",
+            self.config.model_id,
+            self.config.file_path
+        ], stdout=PIPE)
+        
 
 class ModelProcessHandler:
 
     config: BenchmarkModelConfig
     job_count: int
-    results: list[tuple[bool, str|None, str]]
+    results: list[tuple[bool, str|None, str|None]]
 
     def __init__(self, config: BenchmarkModelConfig) -> None:
         self.config = config

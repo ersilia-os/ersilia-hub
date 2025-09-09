@@ -1,13 +1,13 @@
 from typing import Any, override
 
+BENCHMARK_INPUTS_PATH = "./inputs"
 
 class BenchmarkModelConfig:
 
     id: str
     model_id: str
     total_jobs: int
-    input_size: int | None
-    input_file_path: str | None
+    file_path: str
 
     def __init__(self, model_id: str, total_jobs: int,
         input_size: int | None = None,
@@ -15,15 +15,15 @@ class BenchmarkModelConfig:
     ) -> None:
         self.model_id = model_id
         self.total_jobs = total_jobs
-        self.input_size = input_size
-        self.input_file_path = input_file_path
 
         if input_size is not None:
             self.id = f"{model_id}_{input_size}"
+            self.file_path = f"{BENCHMARK_INPUTS_PATH}/{model_id}/{input_size}.csv"
         elif input_file_path is not None:
             self.id = f"{model_id}_{input_file_path}"
+            self.file_path = input_file_path
         else:
-            self.id = model_id
+            raise Exception("Required one of 'input_size' or 'input_file_path'")
 
     @staticmethod
     def from_json(obj: dict[str, Any]) -> "BenchmarkModelConfig":
@@ -36,15 +36,7 @@ class BenchmarkModelConfig:
 
     @override
     def __str__(self) -> str:
-        out = f"(model_id = '{self.model_id}', total_jobs = {self.total_jobs}"
-
-        if self.input_size is not None:
-            out += f", input_size = {self.input_size}"
-
-        if self.input_file_path is not None:
-            out += f", input_file_path = '{self.input_file_path}"
-
-        out += ")"
+        out = f"(model_id = '{self.model_id}', total_jobs = {self.total_jobs}, file_path = '{self.file_path}')"
 
         return out
 
