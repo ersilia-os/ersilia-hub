@@ -37,7 +37,7 @@ from controllers.model_instance_log import (
 from controllers.model import ModelController
 from objects.model import ModelExecutionMode
 from controllers.model_instance_handler import ModelInstanceController
-from src.controllers import model_instance_handler
+from controllers import model_instance_handler
 
 
 class WorkRequestControllerStub:

@@ -83,7 +83,7 @@ class ModelInstanceHandler(Thread):
         self._controller = controller
 
         self.model_id = model_id
-        self.work_request_id = work_request_id
+        self.work_request_id = str(work_request_id)
         self.pod_name = None
         self.k8s_pod = None
 
@@ -141,6 +141,7 @@ class ModelInstanceHandler(Thread):
         self.state = ModelInstanceState.TERMINATED
 
     def _finalize(self):
+        ContextLogger.info(self._logger_key, "Handler terminated")
         del ContextLogger.instance().context_logger_map[self._logger_key]
 
     def _on_start(self):
@@ -216,7 +217,6 @@ class ModelInstanceHandler(Thread):
         self._on_terminated()
         self._finalize()
 
-        ContextLogger.info(self._logger_key, "Handler terminated")
 
 
 class ModelInstanceControllerKillInstance(KillInstance):
