@@ -1,13 +1,14 @@
 from base64 import b64encode
 from json import dumps
+from os.path import exists
 from sys import exc_info
 from time import sleep, time
 from uuid import uuid4
 from requests import get, post
 
 API_BASE_URL = "https://hub.ersilia.io"
-REQUEST_TIMEOUT = 600  # 10 minutes, in seconds
-
+REQUEST_TIMEOUT = 900  # 15 minutes, in seconds
+BENCHMARK_INPUTS_PATH = "./inputs"
 
 def get_auth_header(session_id: str):
     print("Starting anonymous session...")
@@ -83,17 +84,16 @@ def wait_for_result(auth_header: str, request_id: str) -> None:
             raise Exception(f"Failed to submit Job: [{repr(exc_info())}]")
 
 def load_smiles_from_file(file_path: str) -> list[str] | None:
-    # TODO
-    pass
+    if not exists(file_path):
+        raise Exception(f"Filepath [{file_path}] not found")
+    
+    with open(file_path, "r") as file:
+        return file.readlines()
 
 def load_smiles_by_model_and_size(model_id: str, input_size: int) -> list[str] | None:
-    # TODO
-    pass
+    return load_smiles_from_file(f"{BENCHMARK_INPUTS_PATH}/{model_id}/{input_size}.csv")
 
 def submit_job(model_id: str, smiles: list[str] | None = None, input_size: int | None = None, input_file_path: str | None = None) -> tuple(bool, str | None, str):
-    if model_id is None:
-        return False, None, "Missing model_id input"
-
     _smiles: list[str] | None = None
 
     if smiles is not None:
@@ -103,7 +103,7 @@ def submit_job(model_id: str, smiles: list[str] | None = None, input_size: int |
             _smiles = load_smiles_from_file(input_file_path)
         except:
             return False, None, "Failed to load smiles file: %s" % repr(exc_info())
-    elif model_id is not None and input_size is not None:
+    elif input_size is not None:
         try:
             _smiles = load_smiles_by_model_and_size(model_id, input_size)
         except:
