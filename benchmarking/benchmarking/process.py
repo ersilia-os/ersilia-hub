@@ -9,6 +9,7 @@
 
 from subprocess import PIPE, Popen
 from sys import exc_info
+from typing import IO
 from benchmarking.benchmarking.config import BenchmarkConfig, BenchmarkModelConfig
 
         
@@ -17,15 +18,13 @@ class ModelJobProcess:
     Subprocess for submitting a model job and waiting for the result
     """
 
-    # TODO: extend process / Popen, or something
-
     config: BenchmarkModelConfig
-    result: tuple[bool, str|None, str|None] # success, work_request_id, reason
+    result: tuple[bool, str|None, str|None] | None # success, work_request_id, reason
     process: Popen[bytes] | None
 
     def __init__(self, config: BenchmarkModelConfig) -> None:
         self.config = config
-        self.result = (False, None, "Not started")
+        self.result = None
         self.process = None
 
     def stop(self) -> bool:
@@ -36,10 +35,13 @@ class ModelJobProcess:
 
         return True
 
-    def check_running(self):
+    def check_running(self) -> bool:
         return self.process is not None and self.process.poll() is None
 
     def get_result(self) -> tuple[bool, str|None, str|None]:
+        if self.result is not None:
+            return self.result
+
         if self.process is None:
             return False, None, "Process not started"
         elif self.process.poll() is None:
@@ -48,18 +50,28 @@ class ModelJobProcess:
             return False, None, f"Process exited with non-zero code: [{self.process.returncode}]"
 
         process_stdout: list[str] | None = None
+        p_stdout: IO[bytes] | None = self.process.stdout
 
         try:
-            process_stdout = self.process.stdout.readlines()
+            if p_stdout is not None:
+                process_stdout = list(map(lambda b: b.decode(), p_stdout.readlines()))
         except:
             return True, None, f"Failed to read process result from stdout: [{repr(exc_info())}]"
 
         if process_stdout is None or len(process_stdout) == 0:
             return True, None, "Process succeeded, but missing result output"
 
-        result = process_stdout[-1].strip().split("##")
+        _result = process_stdout[-1].strip().split("##")
 
-        return bool(result[0]), None if len(result[1]) == 0 else result[1], None if len(result[2]) == 0 else result[2]
+        self.result = bool(_result[0]), None if len(_result[1]) == 0 else _result[1], None if len(_result[2]) == 0 else _result[2]
+
+        try:
+            if p_stdout is not None:
+                p_stdout.close()
+        except:
+            pass
+
+        return self.result
 
     def run(self):
         if self.process is not None:
@@ -92,14 +104,26 @@ class ModelProcessHandler:
             return None
 
         process = ModelJobProcess(self.config)
-        # TODO: run the process here
+        process.run()
 
         return process
 
-    def job_completed(self, process: ModelJobProcess):
+    def check_process(self, process: ModelJobProcess) -> bool: # completed
         # NOTE: we should add a lock here if we make the "main" thread concurrent
+
+        if process.check_running():
+            return False
+
         self.job_count += 1
-        self.results.append(process.result)
+        self.results.append(process.get_result())
+
+        return True
+
+    def stop_process(self, process: ModelJobProcess):
+        try:
+            _ = process.stop()
+        except:
+            pass
 
 class BenchmarkProcess:
     """
