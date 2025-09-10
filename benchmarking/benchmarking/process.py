@@ -7,11 +7,14 @@
 # The "main" process orchestrates the model submission processes by round-robin execution by model, until each model's submission count is reached
 ##
 
+from datetime import datetime
 from subprocess import PIPE, Popen
 from sys import exc_info
+from time import sleep
 from typing import IO
 from benchmarking.benchmarking.config import BenchmarkConfig, BenchmarkModelConfig
 
+RESULTS_PATH = "./results"
         
 class ModelJobProcess:
     """
@@ -105,6 +108,7 @@ class ModelProcessHandler:
 
         process = ModelJobProcess(self.config)
         process.run()
+        self.job_count += 1
 
         return process
 
@@ -114,7 +118,6 @@ class ModelProcessHandler:
         if process.check_running():
             return False
 
-        self.job_count += 1
         self.results.append(process.get_result())
 
         return True
@@ -152,8 +155,69 @@ class BenchmarkProcess:
         self._current_round_robin_index = 0
 
     def submit_next_job(self) -> tuple[bool, bool, str]: # success, should_exit, reason
-        pass
+        if len(self.active_job_processes) >= self.config.max_processes:
+            return False, False, "Max processes reached"
+
+        for index in range(len(self.ordered_handlers)):
+            rr_index = (index + self._current_round_robin_index) % len(self.ordered_handlers)
+
+            next_process: ModelJobProcess | None = self.model_process_handlers[self.ordered_handlers[rr_index]].new_process()
+
+            if next_process is None:
+                continue
+
+            self._current_round_robin_index = rr_index + 1 # start next iteration at NEXT handler
+            self.active_job_processes.append(next_process)
+            return True, False, "New process started"
+
+        return False, True, "All processes completed"
+
+    def check_active_processes(self) -> bool: # has_active_processes
+        non_completed_processes: list[ModelJobProcess] = []
+
+        for process in self.active_job_processes:
+            if self.model_process_handlers[process.config.id].check_process(process):
+                continue
+
+            non_completed_processes.append(process)
+
+        self.active_job_processes = non_completed_processes[:]
+
+        return len(self.active_job_processes) > 0
+
+    def handle_benchmark_completion(self):
+        benchmark_timestamp = datetime.now().strftime("%Y-%M-%dT%H:%m")
+        
+        with open(f"{RESULTS_PATH}/{benchmark_timestamp}.txt") as file:
+            for handler in self.model_process_handlers.values():
+                result_line_prefix = f"{handler.config.id} :"
+
+                for result in handler.results:
+                    result_line = f"{result_line_prefix} {result[0]} {result[1]} {result[2]}\n"
+                    _ = file.write(result_line)
 
     def run(self):
-        pass
+        complete = False
+
+        while not complete:
+            for new_process_count in range(10): # submit batch of 10
+                success, should_exit, reason = self.submit_next_job()
+
+                if should_exit:
+                    complete = True
+                    break
+
+                if not success and not should_exit: # max processes reached
+                    break
+
+            if complete:
+                break
+
+            self.check_active_processes()
+            sleep(5)
+
+        while self.check_active_processes():
+            sleep(5)
+
+        self.handle_benchmark_completion()
 
