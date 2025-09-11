@@ -3,8 +3,8 @@
 from json import load
 from sys import argv
 
-from benchmarking.benchmarking.config import BenchmarkConfig
-from benchmarking.benchmarking.process import BenchmarkProcess
+from benchmarking.config import BenchmarkConfig
+from benchmarking.process import BenchmarkProcess
 
 
 if __name__ == '__main__':

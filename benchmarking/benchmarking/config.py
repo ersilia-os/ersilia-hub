@@ -47,25 +47,22 @@ class BenchmarkModelConfig:
 class BenchmarkConfig:
 
     model_configs: list[BenchmarkModelConfig]
-    results_file_path: str
     max_processes: int = 50
 
-    def __init__(self, model_configs: list[BenchmarkModelConfig], results_file_path: str, max_processes: int = 50) -> None:
+    def __init__(self, model_configs: list[BenchmarkModelConfig], max_processes: int = 50) -> None:
         self.model_configs = model_configs
-        self.results_file_path = results_file_path
         self.max_processes = max_processes
 
     @staticmethod
     def from_json(obj: dict[str, Any]) -> "BenchmarkConfig":
         return BenchmarkConfig(
             list(map(BenchmarkModelConfig.from_json, obj["modelConfigs"])),
-            obj["resultsFilePath"],
             50 if "maxProcesses" not in obj else int(obj["maxProcesses"])
         )
 
     @override
     def __str__(self) -> str:
-        out = f"(results_file_path = '{self.results_file_path}', max_processes = {self.max_processes}, model_configs = ["
+        out = f"(max_processes = {self.max_processes}, model_configs = ["
         out += ", ".join(list(map(lambda x: str(x), self.model_configs)))
         out += "])"
 

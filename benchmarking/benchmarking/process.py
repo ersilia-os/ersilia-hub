@@ -12,9 +12,9 @@ from subprocess import PIPE, Popen
 from sys import exc_info
 from time import sleep
 from typing import IO
-from benchmarking.benchmarking.config import BenchmarkConfig, BenchmarkModelConfig
+from benchmarking.config import BenchmarkConfig, BenchmarkModelConfig
 
-RESULTS_PATH = "./results"
+RESULTS_PATH = "results"
         
 class ModelJobProcess:
     """
@@ -186,9 +186,9 @@ class BenchmarkProcess:
         return len(self.active_job_processes) > 0
 
     def handle_benchmark_completion(self):
-        benchmark_timestamp = datetime.now().strftime("%Y-%M-%dT%H:%m")
+        benchmark_timestamp = datetime.now().strftime("%Y-%M-%dT%H-%m")
         
-        with open(f"{RESULTS_PATH}/{benchmark_timestamp}.txt") as file:
+        with open(f"{RESULTS_PATH}/{benchmark_timestamp}.txt", 'w+') as file:
             for handler in self.model_process_handlers.values():
                 result_line_prefix = f"{handler.config.id} :"
 
