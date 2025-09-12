@@ -1,9 +1,12 @@
+from enum import Enum
 from typing import Dict, Union
 
 import python_framework.db.dao.dao as BaseDAO
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
 
+class ServerQuery(Enum):
+    SELECT_UNHEALTHY = "SELECT_UNHEALTHY"
 
 class ServerRecord(DAORecord):
     server_id: str
@@ -26,7 +29,7 @@ class ServerRecord(DAORecord):
         )
         self.startup_time = (
             None
-            if result["startuptime"] is None
+            if "startuptime" not in result or result["startuptime"] is None
             else timestamp_to_utc_timestamp(result["startuptime"])
         )
         self.last_check_in = (
@@ -78,6 +81,26 @@ class ServerSelectAllQuery(DAOQuery):
 
         return sql, field_map
 
+class ServerSelectUnhealthyQuery(DAOQuery):
+    def __init__(self):
+        super().__init__(ServerRecord)
+
+    def to_sql(self):
+        field_map = {}
+
+        sql = """
+            SELECT
+                ServerId,
+                IsHealthy,
+                StartupTime::text,
+                LastCheckIn::text
+            FROM Server
+            WHERE IsHealthy != 1
+            AND LastCheckIn < CURRENT_TIMESTAMP - INTERVAL '5 MIN'
+            ORDER BY StartupTime ASC
+        """
+
+        return sql, field_map
 
 class ServerInsertQuery(DAOQuery):
     def __init__(
@@ -192,4 +215,5 @@ class ServerDAO(BaseDAO.DAO):
         BaseDAO.INSERT_QUERY_KEY: ServerInsertQuery,
         BaseDAO.UPDATE_QUERY_KEY: ServerUpdateQuery,
         BaseDAO.DELETE_QUERY_KEY: ServerDeleteQuery,
+        ServerQuery.SELECT_UNHEALTHY: ServerSelectUnhealthyQuery,
     }

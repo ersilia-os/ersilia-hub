@@ -1,11 +1,19 @@
 
 
 
+from platform import node
+from sys import exc_info, stdout
 from threading import Event, Thread
+import traceback
+from typing import List
 
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
+from python_framework.time import utc_now
+
+from src.config.application_config import ApplicationConfig
+from src.db.daos.server import ServerDAO, ServerQuery, ServerRecord
 
 class ServerControllerKillInstance(KillInstance):
     def kill(self):
@@ -23,7 +31,7 @@ class ServerController(Thread):
     def __init__(self):
         Thread.__init__(self)
 
-        server_id = "" # TODO: get hostname
+        server_id = node()
 
         self._kill_event = Event()
         self._logger_key = f"Server"
@@ -60,16 +68,107 @@ class ServerController(Thread):
         self._kill_event.set()
 
     def on_startup(self):
-        pass
-        # TODO: insert new server record
+        server_record = ServerRecord.init(
+            serverid=self.server_id,
+            ishealthy=1,
+            startuptime=utc_now(),
+            lastcheckin=utc_now()
+        )
+
+
+        try:
+            results: List[ServerRecord] = ServerDAO.execute_insert(
+                ApplicationConfig.instance().database_config,
+                **server_record.generate_insert_query_args(),
+            )
+
+            if results is None or len(results) == 0:
+                raise Exception("Insert returned zero records")
+
+            
+            ContextLogger.debug(
+                self._logger_key,
+                "ServerRecord inserted"
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to insert ServerRecord, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
 
     def on_termination(self):
-        pass
-        # TODO: drop record ?? - we have no need of keeping servers around, so drop seems good
+        server_record = ServerRecord.init(
+            serverid=self.server_id,
+            ishealthy=1,
+            lastcheckin=None
+        )
+
+        try:
+            results: List[ServerRecord] = ServerDAO.execute_delete(
+                ApplicationConfig.instance().database_config,
+                **server_record.generate_delete_query_args(),
+            )
+
+            if results is None or len(results) == 0:
+                raise Exception("Delete returned zero records")
+
+            
+            ContextLogger.debug(
+                self._logger_key,
+                "Server termination successful"
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Server termination failed to delete ServerRecord, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
 
     def check_in(self):
-        pass
-        # TODO: update last-check-in
+        server_record = ServerRecord.init(
+            serverid=self.server_id,
+            ishealthy=1,
+            lastcheckin=utc_now()
+        )
+
+        try:
+            results: List[ServerRecord] = ServerDAO.execute_update(
+                ApplicationConfig.instance().database_config,
+                **server_record.generate_update_query_args(),
+            )
+
+            if results is None or len(results) == 0:
+                raise Exception("Update returned zero records")
+
+            
+            ContextLogger.debug(
+                self._logger_key,
+                "Server check-in successful"
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Server check-in failed to update ServerRecord, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
+
+    def load_unhealthy_servers(self) -> List[ServerRecord]:
+        try:
+            results: List[ServerRecord] = ServerDAO.execute_query(
+                ServerQuery.SELECT_UNHEALTHY,
+                ApplicationConfig.instance().database_config,
+            )
+
+            return results
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to load unhealthy servers, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
+
+            return []
 
     def run(self):
         ContextLogger.info(self._logger_key, "controller started")

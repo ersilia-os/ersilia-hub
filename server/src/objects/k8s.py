@@ -345,7 +345,7 @@ class K8sPodResources:
     def to_k8s(self, disable_memory_limit: bool = False) -> V1ResourceRequirements:
         requests = {
             "cpu": f"{self.cpu_request}m",
-            "memory": f"{self.memory_request}Mi",
+            "memory": f"{self.memory_limit}Mi", # NOTE: temporary hack to ensure pods scheduled correctly
         }
         limits = {"cpu": f"{self.cpu_limit}m"}
 

@@ -765,10 +765,15 @@ class WorkRequestWorker(Thread):
     def _handle_queued_requests(self, work_requests: List[WorkRequest]):
         ContextLogger.debug(self._logger_key, "Handling [QUEUED] requests...")
 
+        if ModelInstanceController.instance().max_instances_limit_reached():
+            ContextLogger.warn(self._logger_key, "Max Concurrent Model Instances reached, skipping queued WorkRequests")
+            return
+
         # skip list based on failed pod scaling, NOT due to job submit failures
         skipped_model_ids: Set[str] = set()
 
         for work_request in work_requests:
+
             if work_request.model_id in skipped_model_ids:
                 ContextLogger.warn(
                     self._logger_key,
