@@ -1,0 +1,10 @@
+{
+  "modelConfigs": [
+    {
+      "modelId": "eos3804",
+      "totalJobs": 100,
+      "inputSize": 100
+    }
+  ],
+  "maxProcesses": 50
+}
