@@ -36,6 +36,7 @@ class ErsiliaLabels(Enum):
 class ErsiliaAnnotations(Enum):
 
     REQUEST_ID = "ersilia.requestid"
+    SERVER_ID = "ersilia.serverid"
 
 
 class K8sPodContainerState:

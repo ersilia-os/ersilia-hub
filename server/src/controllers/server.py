@@ -1,6 +1,3 @@
-
-
-
 from platform import node
 from sys import exc_info, stdout
 from threading import Event, Thread
@@ -12,8 +9,8 @@ from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
 from python_framework.time import utc_now
 
-from src.config.application_config import ApplicationConfig
-from src.db.daos.server import ServerDAO, ServerQuery, ServerRecord
+from config.application_config import ApplicationConfig
+from db.daos.server import ServerDAO, ServerQuery, ServerRecord
 
 class ServerControllerKillInstance(KillInstance):
     def kill(self):
@@ -31,7 +28,7 @@ class ServerController(Thread):
     def __init__(self):
         Thread.__init__(self)
 
-        server_id = node()
+        self.server_id = load_environment_variable("SERVER_ID", default=node())
 
         self._kill_event = Event()
         self._logger_key = f"Server"
@@ -75,7 +72,6 @@ class ServerController(Thread):
             lastcheckin=utc_now()
         )
 
-
         try:
             results: List[ServerRecord] = ServerDAO.execute_insert(
                 ApplicationConfig.instance().database_config,
@@ -97,9 +93,9 @@ class ServerController(Thread):
             )
             traceback.print_exc(file=stdout)
 
-    def on_termination(self):
+    def delete_server(self, server_id: str) -> ServerRecord | None:
         server_record = ServerRecord.init(
-            serverid=self.server_id,
+            serverid=server_id,
             ishealthy=1,
             lastcheckin=None
         )
@@ -111,8 +107,22 @@ class ServerController(Thread):
             )
 
             if results is None or len(results) == 0:
-                raise Exception("Delete returned zero records")
+                return None
+            
+            return results[0]
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to delete ServerRecord, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
 
+            return None
+
+    def on_termination(self):
+        try:
+            if self.delete_server(self.server_id) is None:
+                raise Exception("Delete returned zero records")
             
             ContextLogger.debug(
                 self._logger_key,
@@ -160,7 +170,7 @@ class ServerController(Thread):
                 ApplicationConfig.instance().database_config,
             )
 
-            return results
+            return list(filter(lambda s: s.server_id != self.server_id, results))
         except:
             ContextLogger.error(
                 self._logger_key,
@@ -185,4 +195,3 @@ class ServerController(Thread):
         
         ContextLogger.info(self._logger_key, "controller stopped")
 
-         

@@ -25,6 +25,7 @@ class WorkRequestRecord(DAORecord):
     job_submission_timestamp: Union[str, None]
     processed_timestamp: Union[str, None]
     input_size: int | None
+    server_id: str | None
 
     def __init__(self, result: dict):
         super().__init__(result)
@@ -61,6 +62,7 @@ class WorkRequestRecord(DAORecord):
             else timestamp_to_utc_timestamp(result["processedtimestamp"])
         )
         self.input_size = result["inputsize"]
+        self.server_id = result["serverid"]
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return {
@@ -75,6 +77,7 @@ class WorkRequestRecord(DAORecord):
             "job_submission_timestamp": self.job_submission_timestamp,
             "processed_timestamp": self.processed_timestamp,
             "input_size": self.input_size,
+            "server_id": self.server_id,
         }
 
     def generate_update_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -87,6 +90,7 @@ class WorkRequestRecord(DAORecord):
             "pod_ready_timestamp": self.pod_ready_timestamp,
             "job_submission_timestamp": self.job_submission_timestamp,
             "processed_timestamp": self.processed_timestamp,
+            "server_id": self.server_id,
         }
 
     def generate_upsert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
@@ -118,7 +122,8 @@ class WorkRequestSelectAllQuery(DAOQuery):
                 WorkRequest.PodReadyTimestamp::text,
                 WorkRequest.JobSubmissionTimestamp::text,
                 WorkRequest.ProcessedTimestamp::text,
-                WorkRequest.InputSize
+                WorkRequest.InputSize,
+                WorkRequest.ServerId
             FROM WorkRequest
             LEFT JOIN WorkRequestData
                 ON WorkRequest.Id = WorkRequestData.RequestId
@@ -139,6 +144,7 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
         request_date_to: str = None,
         request_statuses: List[str] = None,
         session_id: str = None,
+        server_ids: List[str] = None,
         limit: int = 200,
     ):
         super().__init__(WorkRequestRecord)
@@ -150,6 +156,7 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
         self.request_date_to = request_date_to
         self.request_statuses = request_statuses
         self.session_id = session_id
+        self.server_ids = server_ids
         self.limit = limit
 
     def to_sql(self):
@@ -194,6 +201,16 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
                 'WorkRequest.Metadata @> \'{"sessionId": "%s"}\'' % self.session_id
             )
 
+         
+        if self.server_ids is not None:
+            has_null_server = any(lambda s: s == 'NULL', self.server_ids)
+            other_server_ids = list(map(lambda sm: f"'{sm}'", filter(lambda s: s != 'NULL', self.server_ids)))
+
+            if has_null_server:
+                custom_filters.append("(WorkRequest.ServerId IS NULL OR WorkRequest.ServerId IN (%s))" % ",".join(other_server_ids))
+            else:
+                custom_filters.append("WorkRequest.ServerId IN (%s)" % ",".join(other_server_ids))
+
         sql = """
             SELECT
                 WorkRequest.Id,
@@ -209,7 +226,8 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
                 WorkRequest.PodReadyTimestamp::text,
                 WorkRequest.JobSubmissionTimestamp::text,
                 WorkRequest.ProcessedTimestamp::text,
-                WorkRequest.InputSize
+                WorkRequest.InputSize,
+                WorkRequest.ServerId
             FROM WorkRequest
             LEFT JOIN WorkRequestData
                 ON WorkRequest.Id = WorkRequestData.RequestId
@@ -238,6 +256,7 @@ class WorkRequestInsertQuery(DAOQuery):
         job_submission_timestamp: str,
         processed_timestamp: str,
         input_size: int,
+        server_id: str,
     ):
         super().__init__(WorkRequestRecord)
 
@@ -252,6 +271,7 @@ class WorkRequestInsertQuery(DAOQuery):
         self.job_submission_timestamp = job_submission_timestamp
         self.processed_timestamp = processed_timestamp
         self.input_size = input_size
+        self.server_id = server_id
 
     def to_sql(self):
         field_map = {
@@ -266,6 +286,7 @@ class WorkRequestInsertQuery(DAOQuery):
             "query_JobSubmissionTimestamp": self.job_submission_timestamp,
             "query_ProcessedTimestamp": self.processed_timestamp,
             "query_InputSize": self.input_size,
+            "query_ServerId": self.server_id,
         }
 
         sql = """
@@ -281,7 +302,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     PodReadyTimestamp,
                     JobSubmissionTimestamp,
                     ProcessedTimestamp,
-                    InputSize
+                    InputSize,
+                    ServerId
                 )
                 VALUES (
                     :query_ModelId,
@@ -294,7 +316,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     :query_PodReadyTimestamp,
                     :query_JobSubmissionTimestamp,
                     :query_ProcessedTimestamp,
-                    :query_InputSize
+                    :query_InputSize,
+                    :query_ServerId
                 )
                 RETURNING
                     Id,
@@ -309,7 +332,8 @@ class WorkRequestInsertQuery(DAOQuery):
                     PodReadyTimestamp::text,
                     JobSubmissionTimestamp::text,
                     ProcessedTimestamp::text,
-                    InputSize
+                    InputSize,
+                    ServerId
             ),
 
             WorkRequestDataInsert AS (
@@ -343,7 +367,8 @@ class WorkRequestInsertQuery(DAOQuery):
                 WorkRequestInsert.PodReadyTimestamp::text,
                 WorkRequestInsert.JobSubmissionTimestamp::text,
                 WorkRequestInsert.ProcessedTimestamp::text,
-                WorkRequestInsert.InputSize
+                WorkRequestInsert.InputSize,
+                WorkRequestInsert.ServerId
             FROM WorkRequestInsert
             INNER JOIN WorkRequestDataInsert
                 ON WorkRequestInsert.Id = WorkRequestDataInsert.RequestId
@@ -363,6 +388,8 @@ class WorkRequestUpdateQuery(DAOQuery):
         pod_ready_timestamp: str,
         job_submission_timestamp: str,
         processed_timestamp: str,
+        server_id: str,
+        expected_server_id: str | None = None
     ):
         super().__init__(WorkRequestRecord)
 
@@ -374,6 +401,8 @@ class WorkRequestUpdateQuery(DAOQuery):
         self.pod_ready_timestamp = pod_ready_timestamp
         self.job_submission_timestamp = job_submission_timestamp
         self.processed_timestamp = processed_timestamp
+        self.server_id = server_id
+        self.expected_server_id = expected_server_id
 
     def to_sql(self):
         field_map = {
@@ -385,7 +414,16 @@ class WorkRequestUpdateQuery(DAOQuery):
             "query_PodReadyTimestamp": self.pod_ready_timestamp,
             "query_JobSubmissionTimestamp": self.job_submission_timestamp,
             "query_ProcessedTimestamp": self.processed_timestamp,
+            "query_ServerId": self.server_id,
         }
+
+        custom_filters = []
+
+        if self.expected_server_id is not None:
+            if self.expected_server_id == 'NULL':
+                custom_filters.append("ServerId IS NULL")
+            else:
+                custom_filters.append(f"ServerId = '{self.expected_server_id}'")
 
         sql = """
             WITH WorkRequestUpdate AS (
@@ -397,9 +435,11 @@ class WorkRequestUpdateQuery(DAOQuery):
                     LastUpdated = CURRENT_TIMESTAMP,
                     PodReadyTimestamp = :query_PodReadyTimestamp,
                     JobSubmissionTimestamp = :query_JobSubmissionTimestamp,
-                    ProcessedTimestamp = :query_ProcessedTimestamp
+                    ProcessedTimestamp = :query_ProcessedTimestamp,
+                    ServerId = :query_ServerId
                 WHERE Id = :query_Id
                 AND LastUpdated = :query_ExpectedLastUpdated
+                %s
                 RETURNING
                     Id,
                     ModelId,
@@ -413,7 +453,8 @@ class WorkRequestUpdateQuery(DAOQuery):
                     PodReadyTimestamp::text,
                     JobSubmissionTimestamp::text,
                     ProcessedTimestamp::text,
-                    InputSize
+                    InputSize,
+                    ServerId
             )
 
             SELECT 
@@ -430,11 +471,14 @@ class WorkRequestUpdateQuery(DAOQuery):
                 WorkRequestUpdate.PodReadyTimestamp::text,
                 WorkRequestUpdate.JobSubmissionTimestamp::text,
                 WorkRequestUpdate.ProcessedTimestamp::text,
-                WorkRequestUpdate.InputSize
+                WorkRequestUpdate.InputSize,
+                WorkRequestUpdate.ServerId
             FROM WorkRequestUpdate
             LEFT JOIN WorkRequestData
                 ON WorkRequestUpdate.Id = WorkRequestData.RequestId
-        """
+        """ % (
+                "" if len(custom_filters) == 0 else "AND " + " AND ".join(custom_filters)
+            )
 
         return sql, field_map
 

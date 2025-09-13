@@ -508,7 +508,6 @@ class K8sController(Thread):
 
         return self._delete_pod(target_pod_name, model_id)
 
-
     def _download_pod_logs(self, pod_name: str, model_id: str = None) -> str | None:
         try:
             logs = self._api_core.read_namespaced_pod_log(

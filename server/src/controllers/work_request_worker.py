@@ -38,6 +38,7 @@ from controllers.model import ModelController
 from objects.model import ModelExecutionMode
 from controllers.model_instance_handler import ModelInstanceController
 from controllers import model_instance_handler
+from controllers.server import ServerController
 
 
 class WorkRequestControllerStub:
@@ -47,7 +48,10 @@ class WorkRequestControllerStub:
         pass
 
     def update_request(
-        self, work_request: WorkRequest, retry_count: int = 0
+        self, work_request: WorkRequest,
+        enforce_same_server_id: bool = True,
+        expect_null_server_id: bool = False, # for first time update
+        retry_count: int = 0
     ) -> Union[WorkRequest, None]:
         pass
 
@@ -64,6 +68,7 @@ class WorkRequestControllerStub:
         request_date_from: str = None,
         request_date_to: str = None,
         request_statuses: List[str] = None,
+        server_ids: List[str] | None = None,
         limit: int = 200,
     ) -> List[WorkRequest]:
         pass
@@ -773,7 +778,6 @@ class WorkRequestWorker(Thread):
         skipped_model_ids: Set[str] = set()
 
         for work_request in work_requests:
-
             if work_request.model_id in skipped_model_ids:
                 ContextLogger.warn(
                     self._logger_key,
@@ -787,7 +791,7 @@ class WorkRequestWorker(Thread):
             try:
                 work_request.request_status = WorkRequestStatus.SCHEDULING
                 updated_work_request = self._controller.update_request(
-                    work_request, retry_count=0
+                    work_request, expect_null_server_id=True, retry_count=0
                 )
 
                 if updated_work_request is None:
@@ -870,6 +874,10 @@ class WorkRequestWorker(Thread):
                 WorkRequestStatus.SCHEDULING.value,
                 WorkRequestStatus.PROCESSING.value,
             ],
+            server_ids=[
+                'NULL',
+                ServerController.instance().server_id,
+            ]
         )
         ContextLogger.debug(self._logger_key, "WorkRequests loaded from DB.")
 
@@ -902,6 +910,7 @@ class WorkRequestWorker(Thread):
             ],
             request_date_from=start_time,
             request_date_to=end_time,
+            server_ids=[ServerController.instance().server_id],
         )
 
         ContextLogger.debug(self._logger_key, "Failed WorkRequests loaded from DB.")
