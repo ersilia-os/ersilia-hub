@@ -275,9 +275,9 @@ class ModelInstanceController:
         return len(self.model_instance_handlers) >= self.max_instances_limit
 
     def request_instance(
-        self, model_id: str, work_request_id: str
+        self, model_id: str, work_request_id: str, ignore_max_concurrent_limit: bool = False
     ) -> ModelInstanceHandler:
-        if self.max_instances_limit_reached():
+        if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
             raise Exception("Max Concurrent Model Instances reached")
 
         key = f"{model_id}_{work_request_id}"

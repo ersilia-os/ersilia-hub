@@ -6,7 +6,8 @@ from time import sleep, time
 from uuid import uuid4
 from requests import get, post
 
-API_BASE_URL = "https://hub.ersilia.io"
+#API_BASE_URL = "https://hub.ersilia.io"
+API_BASE_URL = "http://localhost:8080"
 REQUEST_TIMEOUT = 900  # 15 minutes, in seconds
 
 def get_auth_header(session_id: str):

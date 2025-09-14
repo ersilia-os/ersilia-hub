@@ -790,6 +790,7 @@ class WorkRequestWorker(Thread):
 
             try:
                 work_request.request_status = WorkRequestStatus.SCHEDULING
+                work_request.server_id = ServerController.instance().server_id
                 updated_work_request = self._controller.update_request(
                     work_request, expect_null_server_id=True, retry_count=0
                 )
@@ -829,7 +830,7 @@ class WorkRequestWorker(Thread):
 
                 # TODO: eventually this will replace the "acquire_instance"
                 ModelInstanceController.instance().request_instance(
-                    work_request.model_id, work_request.id
+                    work_request.model_id, work_request.id, ignore_max_concurrent_limit=True
                 )
 
                 if updated_work_request is None:

@@ -172,7 +172,7 @@ class ServerUpdateQuery(DAOQuery):
             UPDATE Server 
             SET
                 IsHealthy = :query_IsHealthy,
-                LastCheckIn = :query_LastCheckIn,
+                LastCheckIn = :query_LastCheckIn
             WHERE ServerId = :query_ServerId
             RETURNING
                 ServerId,

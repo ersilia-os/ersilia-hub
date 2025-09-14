@@ -203,7 +203,7 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
 
          
         if self.server_ids is not None:
-            has_null_server = any(lambda s: s == 'NULL', self.server_ids)
+            has_null_server = any(map(lambda s: s == 'NULL', self.server_ids))
             other_server_ids = list(map(lambda sm: f"'{sm}'", filter(lambda s: s != 'NULL', self.server_ids)))
 
             if has_null_server:
