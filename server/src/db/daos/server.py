@@ -54,7 +54,12 @@ class ServerRecord(DAORecord):
         }
 
     def generate_upsert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
-        return super().generate_upsert_query_args()
+        return {
+            "server_id": self.server_id,
+            "is_healthy": self.is_healthy,
+            "startup_time": self.startup_time,
+            "last_check_in": self.last_check_in,
+        }
 
     def generate_delete_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return {
@@ -96,7 +101,7 @@ class ServerSelectUnhealthyQuery(DAOQuery):
                 LastCheckIn::text
             FROM Server
             WHERE IsHealthy != 1
-            AND LastCheckIn < CURRENT_TIMESTAMP - INTERVAL '5 MIN'
+            OR LastCheckIn < CURRENT_TIMESTAMP - INTERVAL '5 MINUTES'
             ORDER BY StartupTime ASC
         """
 
@@ -183,6 +188,58 @@ class ServerUpdateQuery(DAOQuery):
 
         return sql, field_map
 
+
+class ServerUpsertQuery(DAOQuery):
+    def __init__(
+        self,
+        server_id: str,
+        is_healthy: bool,
+        startup_time: str,
+        last_check_in: str
+    ):
+        super().__init__(ServerRecord)
+
+        self.server_id = server_id
+        self.is_healthy = is_healthy
+        self.startup_time = startup_time
+        self.last_check_in = last_check_in
+
+    def to_sql(self):
+        field_map = {
+            "query_ServerId": self.server_id,
+            "query_IsHealthy": 1 if self.is_healthy else 0,
+            "query_StartupTime": self.startup_time,
+            "query_LastCheckIn": self.last_check_in,
+        }
+
+        sql = """
+            INSERT INTO Server (
+                ServerId,
+                IsHealthy,
+                StartupTime,
+                LastCheckIn
+            )
+            VALUES (
+                :query_ServerId,
+                :query_IsHealthy,
+                :query_StartupTime,
+                :query_LastCheckIn
+            )
+            ON CONFLICT (ServerId)
+            DO UPDATE
+            SET IsHealthy = excluded.IsHealthy,
+                StartupTime = excluded.StartupTime,
+                LastCheckIn = excluded.LastCheckIn
+            RETURNING
+                ServerId,
+                IsHealthy,
+                StartupTime::text,
+                LastCheckIn::text
+        """
+
+        return sql, field_map
+
+
 class ServerDeleteQuery(DAOQuery):
     def __init__(
         self,
@@ -213,6 +270,7 @@ class ServerDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: ServerSelectAllQuery,
         BaseDAO.INSERT_QUERY_KEY: ServerInsertQuery,
+        BaseDAO.UPSERT_QUERY_KEY: ServerUpsertQuery,
         BaseDAO.UPDATE_QUERY_KEY: ServerUpdateQuery,
         BaseDAO.DELETE_QUERY_KEY: ServerDeleteQuery,
         ServerQuery.SELECT_UNHEALTHY: ServerSelectUnhealthyQuery,

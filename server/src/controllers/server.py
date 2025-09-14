@@ -73,9 +73,9 @@ class ServerController(Thread):
         )
 
         try:
-            results: List[ServerRecord] = ServerDAO.execute_insert(
+            results: List[ServerRecord] = ServerDAO.execute_upsert(
                 ApplicationConfig.instance().database_config,
-                **server_record.generate_insert_query_args(),
+                **server_record.generate_upsert_query_args(),
             )
 
             if results is None or len(results) == 0:
@@ -120,20 +120,12 @@ class ServerController(Thread):
             return None
 
     def on_termination(self):
-        try:
-            if self.delete_server(self.server_id) is None:
-                raise Exception("Delete returned zero records")
-            
-            ContextLogger.debug(
-                self._logger_key,
-                "Server termination successful"
-            )
-        except:
-            ContextLogger.error(
-                self._logger_key,
-                "Server termination failed to delete ServerRecord, error = [%s]" % (repr(exc_info()),),
-            )
-            traceback.print_exc(file=stdout)
+        # NOTE: we do not want to delete the server, in case there are hanging processes / requests
+        #       if we delete, we cannot do cleanup from other servers
+        ContextLogger.debug(
+            self._logger_key,
+            "Server termination successful"
+        )
 
     def check_in(self):
         server_record = ServerRecord.init(

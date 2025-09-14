@@ -770,10 +770,6 @@ class WorkRequestWorker(Thread):
     def _handle_queued_requests(self, work_requests: List[WorkRequest]):
         ContextLogger.debug(self._logger_key, "Handling [QUEUED] requests...")
 
-        if ModelInstanceController.instance().max_instances_limit_reached():
-            ContextLogger.warn(self._logger_key, "Max Concurrent Model Instances reached, skipping queued WorkRequests")
-            return
-
         # skip list based on failed pod scaling, NOT due to job submit failures
         skipped_model_ids: Set[str] = set()
 
@@ -785,6 +781,10 @@ class WorkRequestWorker(Thread):
                     % (work_request.id, work_request.model_id),
                 )
                 continue
+
+            if ModelInstanceController.instance().max_instances_limit_reached():
+                ContextLogger.warn(self._logger_key, "Max Concurrent Model Instances reached, skipping queued WorkRequests")
+                return
 
             updated_work_request: WorkRequest = None
 
@@ -830,7 +830,7 @@ class WorkRequestWorker(Thread):
 
                 # TODO: eventually this will replace the "acquire_instance"
                 ModelInstanceController.instance().request_instance(
-                    work_request.model_id, work_request.id, ignore_max_concurrent_limit=True
+                    work_request.model_id, str(work_request.id), ignore_max_concurrent_limit=True
                 )
 
                 if updated_work_request is None:

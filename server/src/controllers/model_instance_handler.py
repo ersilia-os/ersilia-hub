@@ -231,7 +231,7 @@ class ModelInstanceController:
 
     model_instance_handlers: ThreadSafeCache[str, ModelInstanceHandler]
 
-    max_instances_limit: int = 25
+    max_instances_limit: int
 
     def __init__(self):
         self._logger_key = "ModelInstanceController"
@@ -272,6 +272,7 @@ class ModelInstanceController:
             handler.join()
 
     def max_instances_limit_reached(self) -> bool:
+        ContextLogger.debug(self._logger_key, f"curr instance = [{len(self.model_instance_handlers)}], max = [{self.max_instances_limit}]")
         return len(self.model_instance_handlers) >= self.max_instances_limit
 
     def request_instance(

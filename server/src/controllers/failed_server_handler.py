@@ -85,7 +85,11 @@ class FailedServerHandler(Thread):
         return not has_error
 
     def _requeue_work_requests(self, server_id: str) -> tuple[bool, List[WorkRequest]]:
-        work_requests = WorkRequestController.instance().get_requests(server_ids=[server_id])
+        work_requests = WorkRequestController.instance().get_requests(
+            server_ids=[server_id], 
+            request_statuses=[WorkRequestStatus.QUEUED.value, WorkRequestStatus.SCHEDULING.value, WorkRequestStatus.PROCESSING.value]
+        )
+        
         has_error = False
 
         if len(work_requests) == 0:
@@ -94,6 +98,10 @@ class FailedServerHandler(Thread):
         for work_request in work_requests:
             work_request.server_id = None
             work_request.request_status = WorkRequestStatus.QUEUED
+            work_request.request_status_reason = "REQUEUED"
+            work_request.job_submission_timestamp = None
+            work_request.pod_ready_timestamp = None
+            work_request.processed_timestamp = None
             
             if WorkRequestController.instance().update_request(work_request, enforce_same_server_id=False) is None:
                 has_error = True
@@ -113,6 +121,8 @@ class FailedServerHandler(Thread):
         failed_servers = ServerController.instance().load_unhealthy_servers()
 
         for server in failed_servers:
+            ContextLogger.debug(self._logger_key, f"Found failed server [{server.server_id}]")
+
             requeue_success, requests = self._requeue_work_requests(server.server_id)
             delete_pod_success = self._terminate_active_pods(server.server_id, requests)
             
