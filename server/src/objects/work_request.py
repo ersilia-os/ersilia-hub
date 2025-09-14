@@ -110,6 +110,7 @@ class WorkRequest:
     job_submission_timestamp: Union[str, None]
     processed_timestamp: Union[str, None]
     input_size: int | None
+    server_id: str | None
 
     def __init__(
         self,
@@ -127,6 +128,7 @@ class WorkRequest:
         job_submission_timestamp: Union[str, None] = None,
         processed_timestamp: Union[str, None] = None,
         input_size: int | None = None,
+        server_id: str | None = None,
     ):
         self.id = id
         self.model_id = model_id
@@ -142,6 +144,7 @@ class WorkRequest:
         self.job_submission_timestamp = job_submission_timestamp
         self.processed_timestamp = processed_timestamp
         self.input_size = input_size
+        self.server_id = server_id
 
     @staticmethod
     def init_from_record(record: WorkRequestRecord) -> "WorkRequest":
@@ -164,6 +167,7 @@ class WorkRequest:
             record.job_submission_timestamp,
             record.processed_timestamp,
             record.input_size,
+            record.server_id,
         )
 
     def copy(self) -> "WorkRequest":
@@ -182,6 +186,7 @@ class WorkRequest:
             self.job_submission_timestamp,
             self.processed_timestamp,
             self.input_size,
+            self.server_id,
         )
 
     def to_record(self) -> WorkRequestRecord:
@@ -204,6 +209,7 @@ class WorkRequest:
             jobsubmissiontimestamp=self.job_submission_timestamp,
             processedtimestamp=self.processed_timestamp,
             inputsize=self.input_size,
+            serverid=self.server_id,
         )
 
     @staticmethod
@@ -242,6 +248,7 @@ class WorkRequest:
             ),
             None if "processedTimestamp" not in obj else obj["processedTimestamp"],
             input_size,
+            None if "serverId" not in obj else obj["serverId"],
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -264,6 +271,7 @@ class WorkRequest:
             "jobSubmissionTimestamp": self.job_submission_timestamp,
             "processedTimestamp": self.processed_timestamp,
             "inputSize": self.input_size,
+            "serverId": self.server_id,
         }
 
 
@@ -299,6 +307,7 @@ class WorkRequestModel(BaseModel):
     job_submission_timestamp: str | None = None
     processed_timestamp: str | None = None
     input_size: int | None = None
+    server_id: str | None = None
 
     def to_object(self) -> Dict[str, Any]:
         return {
@@ -320,6 +329,7 @@ class WorkRequestModel(BaseModel):
             "jobSubmissionTimestamp": self.job_submission_timestamp,
             "processedTimestamp": self.processed_timestamp,
             "inputSize": self.input_size,
+            "serverId": self.server_id,
         }
 
     @staticmethod
@@ -345,6 +355,7 @@ class WorkRequestModel(BaseModel):
             job_submission_timestamp=workrequest.job_submission_timestamp,
             processed_timestamp=workrequest.processed_timestamp,
             input_size=workrequest.input_size,
+            server_id=workrequest.server_id,
         )
 
     def map_result_to_csv(self):

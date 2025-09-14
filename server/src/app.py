@@ -36,7 +36,8 @@ from controllers.model_instance_handler import ModelInstanceController
 from controllers.node_monitor import NodeMonitorController
 from controllers.instance_metrics import InstanceMetricsController
 from controllers.recommendation_engine import RecommendationEngine
-
+from controllers.server import ServerController
+from controllers.failed_server_handler import FailedServerHandler
 
 def init_configs():
     ApplicationConfig.initialize()
@@ -86,6 +87,8 @@ def init():
     InstanceMetricsController.initialize()
     NodeMonitorController.initialize()
     ModelInstanceController.initialize()
+    ServerController.initialize()
+    FailedServerHandler.initialize()
     WorkRequestController.initialize()
     S3IntegrationController.initialize()
     K8sProxyController.initialize()
@@ -106,6 +109,8 @@ def run():
         ModelController.instance().start()
         ScalingManager.instance().start()
         NodeMonitorController.instance().start()
+        ServerController.instance().start()
+        FailedServerHandler.instance().start()
         WorkRequestController.instance().start()
         AuthController.instance().start()
         RecommendationEngine.instance().start()

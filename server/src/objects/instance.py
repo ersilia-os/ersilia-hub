@@ -1,3 +1,4 @@
+from enum import Enum
 from pydantic import BaseModel
 from objects.k8s import K8sPod
 from objects.k8s_model import K8sPodModel
@@ -61,3 +62,13 @@ class InstancesLoadFilters(BaseModel):
     instance_id: str | None = None
     load_resource_profiles: bool | None = False
     load_recommendations: bool | None = False
+
+class InstanceAction(Enum):
+
+    STOP_INSTANCE = "STOP_INSTANCE"
+
+class InstanceActionModel(BaseModel):
+    model_id: str | None = None
+    instance_id: str | None = None
+    action: str
+

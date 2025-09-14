@@ -13,6 +13,7 @@ from controllers.k8s import K8sController
 from controllers.model import ModelController
 
 from controllers.scaling_worker import ScalingWorker
+from controllers.server import ServerController
 
 
 class ScalingManagerKillInstance(KillInstance):
@@ -182,7 +183,8 @@ class ScalingManager(Thread):
                 model_id,
                 model.details.k8s_resources,
                 disable_memory_limit=model.details.disable_memory_limit,
-                annotations=dict([(ErsiliaAnnotations.REQUEST_ID.value, request_id)]),
+                annotations=dict([(ErsiliaAnnotations.REQUEST_ID.value, request_id), 
+                                  (ErsiliaAnnotations.SERVER_ID.value, ServerController.instance().server_id)]),
                 model_template_version=model.details.template_version,
             )
 

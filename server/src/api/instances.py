@@ -1,3 +1,4 @@
+from sys import stdout
 from typing import Annotated, List
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -6,9 +7,12 @@ from library.fastapi_root import FastAPIRoot
 from library.api_utils import api_handler
 from objects.rbac import Permission
 from controllers.model_instance_handler import ModelInstanceController
-from objects.instance import InstancesLoadFilters, ModelInstance, ModelInstanceModel
+from objects.instance import InstanceAction, InstanceActionModel, InstancesLoadFilters, ModelInstance, ModelInstanceModel
 from controllers.recommendation_engine import RecommendationEngine
-from objects.k8s import ErsiliaLabels
+from objects.k8s import ErsiliaLabels, ErsiliaAnnotations
+from controllers.k8s import K8sController
+from controllers.s3_integration import S3IntegrationController
+import traceback
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -84,3 +88,57 @@ def load_instances(
             ]
 
     return {"items": list(map(ModelInstanceModel.from_object, instances))}
+
+@router.get("logs")
+def load_instance_logs(
+    filters: Annotated[InstancesLoadFilters, Query()],
+    api_request: Request,
+):
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
+
+    if filters.instance_id is None or filters.model_id is None:
+        raise HTTPException(400, detail="Missing instance_id or model_id filter")
+
+    logs: str | None = None
+
+    try:
+        # check if instance is active, load via k8s controller
+        if ModelInstanceController.instance().get_instance(filters.model_id, filters.instance_id) is not None:
+            logs = K8sController.instance().download_pod_logs(filters.model_id, annotations_filter={ErsiliaAnnotations.REQUEST_ID.name: filters.instance_id})
+        else:
+            logs = S3IntegrationController.instance().download_instance_logs(filters.model_id, filters.instance_id)
+        # else if not active, load via s3
+    except:
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(500, detail="Failed to load logs for instance")
+
+    return {"logs": logs}
+
+@router.post("actions")
+def instance_actions(
+    action: InstanceActionModel,
+    api_request: Request,
+):
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
+
+    if action.instance_id is None or action.model_id is None:
+        raise HTTPException(400, detail="Missing instance_id or model_id filter")
+
+    
+    instance = ModelInstanceController.instance().get_instance(action.model_id, action.instance_id)
+
+    if instance is None:
+        raise HTTPException(404, detail="Instance not found")
+
+    if action.action == InstanceAction.STOP_INSTANCE.name:
+        instance.kill()
+
+        return {"result": "Instance termination requested"}
+
+    raise HTTPException(400, detail=f"Unknown action {action.action}")
+

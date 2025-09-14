@@ -101,6 +101,7 @@ def update_request(
     persisted_request = WorkRequestController.instance().update_request(
         update_work_request,
         enforce_same_session_id=auth_details.auth_type == AuthType.ErsiliaAnonymous,
+        enforce_same_server_id=False,
     )
 
     if persisted_request is None:

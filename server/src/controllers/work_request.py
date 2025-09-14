@@ -29,6 +29,7 @@ from objects.work_request_stats import (
     WorkRequestStatsFilterData,
     WorkRequestStatsModel,
 )
+from controllers.server import ServerController
 
 
 class WorkRequestControllerKillInstance(KillInstance):
@@ -121,7 +122,7 @@ class WorkRequestController(Thread):
 
         return None
 
-    def _update_request(self, work_request: WorkRequest) -> Union[WorkRequest, None]:
+    def _update_request(self, work_request: WorkRequest, expected_server_id: str | None = None) -> Union[WorkRequest, None]:
         ContextLogger.debug(
             self._logger_key,
             "Persisting WorkRequest update with id [%s]..." % work_request.id,
@@ -130,6 +131,7 @@ class WorkRequestController(Thread):
         results: List[WorkRequestRecord] = WorkRequestDAO.execute_update(
             ApplicationConfig.instance().database_config,
             **work_request.to_record().generate_update_query_args(),
+            expected_server_id=expected_server_id
         )
 
         if results is None or len(results) == 0:
@@ -148,6 +150,8 @@ class WorkRequestController(Thread):
         self,
         work_request: WorkRequest,
         enforce_same_session_id: bool = False,
+        enforce_same_server_id: bool = True,
+        expect_null_server_id: bool = False, # for first time update
         retry_count: int = 0,
     ) -> Union[WorkRequest, None]:
         _attempts = 0
@@ -183,7 +187,14 @@ class WorkRequestController(Thread):
             _attempts += 1
 
             try:
-                new_work_request = self._update_request(work_request)
+                expected_server_id = None
+
+                if expect_null_server_id:
+                    expected_server_id = 'NULL'
+                elif enforce_same_server_id:
+                    expected_server_id = ServerController.instance().server_id
+
+                new_work_request = self._update_request(work_request, expected_server_id=expected_server_id)
 
                 return new_work_request
             except:
@@ -214,6 +225,7 @@ class WorkRequestController(Thread):
         request_date_from: str = None,
         request_date_to: str = None,
         request_statuses: List[str] = None,
+        server_ids: List[str] | None = None,
         limit: int = 200,
     ) -> List[WorkRequest]:
         try:
@@ -228,6 +240,7 @@ class WorkRequestController(Thread):
                     "request_date_to": request_date_to,
                     "request_statuses": request_statuses,
                     "session_id": session_id,
+                    "server_ids": server_ids,
                     "limit": limit,
                 },
             )
@@ -353,11 +366,11 @@ class WorkRequestController(Thread):
         ContextLogger.info(self._logger_key, "Controller stopped")
 
     def mark_workrequest_failed(
-        self, work_request: WorkRequest, reason: Union[str, None] = None
+        self, work_request: WorkRequest, enforce_same_server_id: bool = True, reason: Union[str, None] = None
     ) -> WorkRequest:
         work_request.request_status = WorkRequestStatus.FAILED
         work_request.request_status_reason = reason if reason is not None else "ERROR"
-        updated_work_request = self.update_request(work_request, retry_count=1)
+        updated_work_request = self.update_request(work_request, enforce_same_server_id=enforce_same_server_id, retry_count=1)
 
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%s]" % work_request.id)

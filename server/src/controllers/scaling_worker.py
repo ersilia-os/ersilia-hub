@@ -16,7 +16,7 @@ from objects.k8s import ErsiliaAnnotations, K8sPod
 
 class ScalingWorker(Thread):
 
-    SCALE_DOWN_WAIT_TIME = 20  # TODO: make config + increase default
+    SCALE_DOWN_WAIT_TIME = 300  # TODO: make config + increase default
     LOCK_TIMEOUT = 10
 
     _logger_key: str = None
@@ -163,6 +163,10 @@ class ScalingWorker(Thread):
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")
+
+        ContextLogger.warn(self._logger_key, "Auto-scaling disabled - needs work")
+
+        return
 
         while True:
             if self._wait_or_kill(ScalingWorker.SCALE_DOWN_WAIT_TIME):

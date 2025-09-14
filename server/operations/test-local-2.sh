@@ -11,6 +11,8 @@ fi
 
 export APPLICATION_NAME="ersilia-model-manager"
 
+export API_PORT="8081"
+
 export DATABASE_HOST="localhost" # TODO: check this
 export DATABASE_PORT="5432"
 export DATABASE_NAME="postgres"
@@ -49,7 +51,7 @@ export MODEL_INTEGRATION_PROXY_IDS="eos5axz,eos7d58,eos42ez,eos3804,eos2db3,eos1
 
 export AWS_PROFILE="h3d"
 
-export SERVER_ID="server-0"
+export SERVER_ID="server-1"
 export MAX_CONCURRENT_MODEL_INSTANCES="2"
 
 # TODO: add to SECRET

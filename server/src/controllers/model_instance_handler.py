@@ -6,6 +6,7 @@ import traceback
 from typing import Dict, List, Union
 
 from controllers.k8s import K8sController
+from controllers.s3_integration import S3IntegrationController
 from controllers.instance_metrics import InstanceMetricsController
 from objects.k8s import K8sPod
 from python_framework.logger import ContextLogger, LogLevel
@@ -56,15 +57,15 @@ class ModelInstanceControllerStub:
 
 class ModelInstanceHandler(Thread):
 
-    _logger_key: str = None
+    _logger_key: str
     _kill_event: Event
 
     _controller: ModelInstanceControllerStub
 
     model_id: str
     work_request_id: str
-    pod_name: Union[str, None]
-    k8s_pod: K8sPod
+    pod_name: str | None
+    k8s_pod: K8sPod | None
 
     state: ModelInstanceState
     pod_exists: bool
@@ -82,7 +83,7 @@ class ModelInstanceHandler(Thread):
         self._controller = controller
 
         self.model_id = model_id
-        self.work_request_id = work_request_id
+        self.work_request_id = str(work_request_id)
         self.pod_name = None
         self.k8s_pod = None
 
@@ -103,6 +104,7 @@ class ModelInstanceHandler(Thread):
 
     def kill(self):
         self._kill_event.set()
+        self.state = ModelInstanceState.SHOULD_TERMINATE
 
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
@@ -118,6 +120,14 @@ class ModelInstanceHandler(Thread):
 
         if self.pod_exists:
             try:
+                logs = K8sController.instance().download_pod_logs(self.model_id, target_pod_name=self.pod_name)
+
+                if logs is not None:
+                    S3IntegrationController.instance().upload_instance_logs(self.model_id, self.work_request_id, logs)
+            except:
+                pass
+
+            try:
                 K8sController.instance().delete_pod(
                     self.model_id, target_pod_name=self.pod_name
                 )
@@ -131,6 +141,7 @@ class ModelInstanceHandler(Thread):
         self.state = ModelInstanceState.TERMINATED
 
     def _finalize(self):
+        ContextLogger.info(self._logger_key, "Handler terminated")
         del ContextLogger.instance().context_logger_map[self._logger_key]
 
     def _on_start(self):
@@ -146,14 +157,16 @@ class ModelInstanceHandler(Thread):
         )
 
     def _check_pod_state(self):
-        k8s_pod: Union[K8sPod, None] = None
+        k8s_pod: K8sPod | None = None
 
         try:
             if self.pod_name is None:
+                ContextLogger.debug(self._logger_key, f"Loading pod by request model_id = [{self.model_id}], request_id = [{self.work_request_id}]...")
                 k8s_pod = K8sController.instance().get_pod_by_request(
                     self.model_id, self.work_request_id
                 )
             else:
+                ContextLogger.debug(self._logger_key, f"Loading pod by name = [{self.pod_name}]...")
                 k8s_pod = K8sController.instance().get_pod(self.pod_name)
 
             if k8s_pod is None:
@@ -182,7 +195,7 @@ class ModelInstanceHandler(Thread):
             ContextLogger.error(
                 self._logger_key, f"Failed to find pod, error = [{repr(exc_info())}]"
             )
-            # traceback.print_exc(file=stdout)
+            traceback.print_exc(file=stdout)
 
             self.state = ModelInstanceState.SHOULD_TERMINATE
             self.pod_exists = False
@@ -204,7 +217,6 @@ class ModelInstanceHandler(Thread):
         self._on_terminated()
         self._finalize()
 
-        ContextLogger.info(self._logger_key, "Handler terminated")
 
 
 class ModelInstanceControllerKillInstance(KillInstance):
@@ -219,10 +231,13 @@ class ModelInstanceController:
 
     model_instance_handlers: ThreadSafeCache[str, ModelInstanceHandler]
 
+    max_instances_limit: int
+
     def __init__(self):
         self._logger_key = "ModelInstanceController"
 
         self.model_instance_handlers = ThreadSafeCache()
+        self.max_instances_limit = int(load_environment_variable("MAX_CONCURRENT_MODEL_INSTANCES", default="25"))
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -256,9 +271,16 @@ class ModelInstanceController:
         for handler in self.model_instance_handlers.values():
             handler.join()
 
+    def max_instances_limit_reached(self) -> bool:
+        ContextLogger.debug(self._logger_key, f"curr instance = [{len(self.model_instance_handlers)}], max = [{self.max_instances_limit}]")
+        return len(self.model_instance_handlers) >= self.max_instances_limit
+
     def request_instance(
-        self, model_id: str, work_request_id: str
+        self, model_id: str, work_request_id: str, ignore_max_concurrent_limit: bool = False
     ) -> ModelInstanceHandler:
+        if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
+            raise Exception("Max Concurrent Model Instances reached")
+
         key = f"{model_id}_{work_request_id}"
 
         if key in self.model_instance_handlers:

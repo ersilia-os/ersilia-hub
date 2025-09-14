@@ -1,0 +1,3 @@
+ALTER TABLE WorkRequest
+  ADD COLUMN ServerId TEXT;
+
