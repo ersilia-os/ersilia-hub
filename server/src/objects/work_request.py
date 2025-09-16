@@ -26,7 +26,7 @@ class WorkRequestPayload:
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestPayload":
         if obj is None or "entries" not in obj or len(obj["entries"]) <= 0:
-            raise Exception("Invalid request payload")
+            raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
             obj["entries"],

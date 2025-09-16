@@ -759,7 +759,7 @@ class RecommendationEngine(Thread):
             # - only refresh within time window
             if (
                 self.last_updated is not None
-                and not is_date_in_range_from_now(current_time, "-2h")
+                and not is_date_in_range_from_now(self.last_updated, "-2h")
                 and not self.refresh_window.is_time_in_window(
                     Time.from_utc_timestamp(current_time)
                 )
