@@ -624,6 +624,8 @@ class RecommendationEngine(Thread):
                 )
                 traceback.print_exc(file=stdout)
 
+        self.last_updated = utc_now()
+
     def refresh_missing_recommendations(self):
         models = ModelController.instance().get_models()
 
@@ -751,22 +753,19 @@ class RecommendationEngine(Thread):
             if self._wait_or_kill(600):
                 break
 
-            # refresh all recommendations nightly
-            current_time = utc_now()
-
+            # refresh all recommendations nightly:
             # - always refresh if not refreshed previously
             # - don't refresh if refreshed in the last 2 hours
             # - only refresh within time window
             if (
-                self.last_updated is not None
-                and not is_date_in_range_from_now(self.last_updated, "-2h")
-                and not self.refresh_window.is_time_in_window(
-                    Time.from_utc_timestamp(current_time)
+                self.last_updated is None or (
+                    not is_date_in_range_from_now(self.last_updated, "-2h")
+                    and self.refresh_window.is_time_in_window(Time.from_utc_timestamp(utc_now()))
                 )
             ):
-                self.refresh_missing_recommendations()
+                self.refresh_all_recommendations()
                 continue
 
-            self.refresh_all_recommendations()
+            self.refresh_missing_recommendations()
 
         ContextLogger.info(self._logger_key, "Engine stopped")
