@@ -77,9 +77,10 @@ def wait_for_result(auth_header: str, request_id: str) -> None:
 
             if response_json["request_status"] == "FAILED":
                 raise Exception(f"Job failed: {response_json["request_status_reason"]}")
-            elif response_json["request_status"] != "COMPLETED":
-                sleep(10)
-                continue
+            elif response_json["request_status"] == "COMPLETED":
+                break
+
+            sleep(10)
         except:
             raise Exception(f"Failed to submit Job: [{repr(exc_info())}]")
 
@@ -110,7 +111,7 @@ def submit_job(model_id: str, input_file_path: str) -> tuple[bool, str | None, s
         wait_for_result(auth_header, _request_id)
 
         # TODO: add timings, eventually - we can use stats in backend for now
-        return True, _request_id, None
+        return True, _request_id, "Completed"
     except:
         return False, _request_id, "Job failed: %s" % repr(exc_info())
 

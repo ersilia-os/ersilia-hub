@@ -54,20 +54,23 @@ def create_request(
     if work_request is None:
         raise HTTPException(status_code=400, detail="Missing request body")
 
-    models = ModelController.instance().get_models()
+    new_work_request: WorkRequest | None = None
+    
 
-    if not any(map(lambda x: x.id == work_request.model_id, models)):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid request body - No model with id [%s]"
-            % work_request.model_id,
-        )
+    try:
+        new_work_request = WorkRequest.from_object(work_request.to_object())
+    except:
+        raise HTTPException(status_code=400, detail=repr(exc_info()))
 
-    new_work_request = WorkRequest.from_object(work_request.to_object())
     new_work_request.user_id = auth_details.user_session.userid
     new_work_request.metadata.session_id = auth_details.user_session.session_id
     new_work_request.metadata.user_agent = tracking_details.user_agent
     new_work_request.metadata.host = tracking_details.host
+
+    valid, reason = WorkRequestController.instance().validate_request(new_work_request)
+
+    if not valid:
+        raise HTTPException(status_code=400, detail=reason)
 
     persisted_request = WorkRequestController.instance().create_request(
         new_work_request

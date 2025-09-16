@@ -24,11 +24,13 @@ class ModelJobProcess:
     config: BenchmarkModelConfig
     result: tuple[bool, str|None, str|None] | None # success, work_request_id, reason
     process: Popen[bytes] | None
+    job_count: int
 
     def __init__(self, config: BenchmarkModelConfig) -> None:
         self.config = config
         self.result = None
         self.process = None
+        self.job_count = -1
 
     def stop(self) -> bool:
         if self.process is None:
@@ -86,6 +88,7 @@ class ModelJobProcess:
             self.config.model_id,
             self.config.file_path
         ], stdout=PIPE)
+
         
 
 class ModelProcessHandler:
@@ -109,6 +112,9 @@ class ModelProcessHandler:
         process = ModelJobProcess(self.config)
         process.run()
         self.job_count += 1
+        process.job_count = self.job_count
+        
+        print(f"Process started - model_id = [{self.config.model_id}], job_count = [{self.job_count}], pid = [{process.process.pid}]")
 
         return process
 
@@ -118,7 +124,10 @@ class ModelProcessHandler:
         if process.check_running():
             return False
 
-        self.results.append(process.get_result())
+        result = process.get_result()
+        self.results.append(result)
+
+        print(f"Process completed - model_id = [{self.config.model_id}], job_count = [{process.job_count}], result = [{result}]")
 
         return True
 

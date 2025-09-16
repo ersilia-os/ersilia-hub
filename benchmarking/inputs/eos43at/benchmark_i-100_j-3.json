@@ -1,0 +1,10 @@
+{
+  "modelConfigs": [
+    {
+      "modelId": "eos43at",
+      "totalJobs": 3,
+      "inputSize": 100
+    }
+  ],
+  "maxProcesses": 50
+}

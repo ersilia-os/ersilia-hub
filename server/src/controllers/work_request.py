@@ -42,6 +42,8 @@ class WorkRequestController(Thread):
     WORKER_LOADBALANCE_WAIT_TIME = 20
     NUM_WORKERS = 4
 
+    max_work_request_input_size: int
+
     _instance: "WorkRequestController" = None
 
     _logger_key: str = None
@@ -51,6 +53,7 @@ class WorkRequestController(Thread):
 
     _workers: ThreadSafeList[WorkRequestWorker]
 
+
     def __init__(self):
         Thread.__init__(self)
 
@@ -59,6 +62,7 @@ class WorkRequestController(Thread):
 
         self._process_lock = ProcessLock()
         self._workers = ThreadSafeList()
+        self.max_work_request_input_size = int(load_environment_variable("MAX_WORK_REQUEST_INPUT_SIZE", default="1000"))
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -90,6 +94,20 @@ class WorkRequestController(Thread):
 
     def kill(self):
         self._kill_event.set()
+
+    def validate_request(self, work_request: WorkRequest) -> tuple[bool, str | None]:
+        models = ModelController.instance().get_models()
+
+        if not any(map(lambda x: x.id == work_request.model_id, models)):
+            return False, "Invalid request body - No model with id [%s]" % work_request.model_id
+
+        if work_request.request_payload is None or work_request.request_payload.entries is None or len(work_request.request_payload.entries) == 0:
+            return False, "Invalid request body - Empty molecules payload"
+        
+        if work_request.input_size > self.max_work_request_input_size:
+            return False, "Invalid request body - Input Size Too Large"
+
+        return True, None
 
     def create_request(self, work_request: WorkRequest) -> Union[WorkRequest, None]:
         ContextLogger.debug(self._logger_key, "Inserting new WorkRequest...")

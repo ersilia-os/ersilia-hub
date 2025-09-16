@@ -1,0 +1,10 @@
+{
+  "modelConfigs": [
+    {
+      "modelId": "eos9ei3",
+      "totalJobs": 3,
+      "inputSize": 100
+    }
+  ],
+  "maxProcesses": 50
+}
