@@ -15,6 +15,10 @@ class WorkRequestPayloadModel(BaseModel):
             "entries": self.entries,
         }
 
+# simple check if line contains a comma
+# NOTE: we might improve this later, once we have a regex for SMILES
+def check_payload_line_is_header(line: str) -> bool:
+    return line.index(",") > 0
 
 class WorkRequestPayload:
 
@@ -29,7 +33,7 @@ class WorkRequestPayload:
             raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
-            obj["entries"],
+            list(filter(lambda line: not check_payload_line_is_header(line), obj["entries"])),
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -377,15 +381,16 @@ class WorkRequestModel(BaseModel):
             return
 
         # we will map the json to a header line and multiple value lines
-        csv_column_names = []
+        csv_column_names = ["input"]
         csv_value_lines: List[List[str]] = []
 
+        result_index = 0
+
         for result in self.result:
-            is_first_result = len(csv_column_names) == 0
-            csv_value_line = []
+            csv_value_line = [self.request_payload.entries[result_index]]
 
             for key, value in result.items():
-                if is_first_result:
+                if result_index == 0:
                     csv_column_names.append(key)
 
                 if isinstance(value, str):
@@ -394,6 +399,7 @@ class WorkRequestModel(BaseModel):
                     csv_value_line.append(str(value))
 
             csv_value_lines.append(csv_value_line)
+            result_index += 1
 
         self.result = [
             ",".join(csv_column_names),

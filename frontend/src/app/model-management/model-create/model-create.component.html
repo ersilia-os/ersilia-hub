@@ -31,6 +31,19 @@
                 </mat-form-field>
             </div>
 
+            <div class="field image-tag">
+                <mat-form-field>
+                    <mat-label>Image Tag</mat-label>
+                    <input matInput required [formControl]="form.imageTag"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.imageTag.hasError('required')) {
+                    <mat-error>Image Tag is <strong>required</strong></mat-error>
+                    } @else if (form.imageTag.hasError('validation')) {
+                    <mat-error>{{ form.imageTag.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
             <div class="field enabled">
                 <mat-checkbox [(ngModel)]="formModelEnabled">Enabled</mat-checkbox>
                 @if (form.enabled.hasError('required')) {
@@ -128,6 +141,15 @@
                 <mat-error>Disable Memory Limit is <strong>required</strong></mat-error>
                 } @else if (form.disableMemoryLimit.hasError('validation')) {
                 <mat-error>{{ form.disableMemoryLimit.getError('validation') }}</mat-error>
+                }
+            </div>
+
+            <div class="field cache-enabled">
+                <mat-checkbox [(ngModel)]="formCacheEnabled">Cache Enabled</mat-checkbox>
+                @if (form.cacheEnabled.hasError('required')) {
+                <mat-error>Cache Enabled is <strong>required</strong></mat-error>
+                } @else if (form.cacheEnabled.hasError('validation')) {
+                <mat-error>{{ form.cacheEnabled.getError('validation') }}</mat-error>
                 }
             </div>
         </div>

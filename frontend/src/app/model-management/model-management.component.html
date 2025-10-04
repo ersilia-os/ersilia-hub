@@ -98,6 +98,10 @@
                     [ngClass]="{'sync': element.details.execution_mode === 'SYNC', 'async': element.details.execution_mode === 'ASYNC' }">
                     {{ element.details.execution_mode }}
                 </div>
+                } @else if (column == 'image_tag') {
+                {{ element.details.image_tag }}
+                } @else if (column == 'cache_enabled') {
+                <mat-checkbox [checked]="element.details.cache_enabled" [disabled]="true"></mat-checkbox>
                 } @else if (column == 'actions') {
                 <div class="action-button" (click)="editModel(element)">
                     <mat-icon>create</mat-icon>

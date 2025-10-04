@@ -34,7 +34,7 @@ export class ModelManagementComponent implements OnInit {
   models: Signal<Model[]>;
   loading: Signal<boolean>;
 
-  displayedColumns: string[] = ['enabled', 'id', 'description', 'resources', 'max_instances', 'exec_mode', 'actions'];
+  displayedColumns: string[] = ['enabled', 'id', 'description', 'image_tag', 'resources', 'max_instances', 'exec_mode', 'cache_enabled', 'actions'];
   columnHeaders: { [column: string]: string } = {
     enabled: 'Enabled',
     id: 'Model Id',
@@ -42,6 +42,8 @@ export class ModelManagementComponent implements OnInit {
     resources: 'Resources',
     max_instances: 'Max Instances',
     exec_mode: 'Execution Mode',
+    image_tag: 'Image Tag',
+    cache_enabled: 'Cache Enabled',
     actions: ''
   };
 

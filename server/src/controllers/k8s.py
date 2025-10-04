@@ -11,7 +11,6 @@ from kubernetes.client import (
     V1Pod,
     V1PodTemplateList,
     V1NodeList,
-    V1Node,
 )
 from objects.k8s import (
     ErsiliaAnnotations,
@@ -141,6 +140,7 @@ class K8sController(Thread):
         disable_memory_limit: bool = False,
         annotations: Dict[str, str] = None,
         model_template_version: str = "0.0.0",
+        image_tag: str = "latest"
     ) -> Union[None | K8sPod]:
         ContextLogger.debug(
             self._logger_key,
@@ -162,7 +162,7 @@ class K8sController(Thread):
             self._template_cache[template_key]
             .copy()
             .transform_for_model(
-                model_id, k8s_resources, disable_memory_limit=disable_memory_limit
+                model_id, k8s_resources, image_tag, disable_memory_limit=disable_memory_limit
             )
         )
         ContextLogger.trace(
@@ -374,7 +374,7 @@ class K8sController(Thread):
             if not pod.annotation_is_null(ErsiliaAnnotations.REQUEST_ID.value):
                 continue
             # TODO: also check time within 60s
-            if not pod.state.state_times["running"] is None:
+            if pod.state.state_times["running"] is not None:
                 continue
 
             candidate_pods.append(pod)
