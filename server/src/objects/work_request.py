@@ -18,7 +18,7 @@ class WorkRequestPayloadModel(BaseModel):
 # simple check if line contains a comma
 # NOTE: we might improve this later, once we have a regex for SMILES
 def check_payload_line_is_header(line: str) -> bool:
-    return line.index(",") > 0
+    return "," in line
 
 class WorkRequestPayload:
 
