@@ -37,6 +37,8 @@ class ModelDetails:
     max_instances: int
     execution_mode: ModelExecutionMode
     k8s_resources: K8sPodResources
+    image_tag: str
+    cache_enabled: bool
 
     def __init__(
         self,
@@ -47,6 +49,8 @@ class ModelDetails:
         max_instances: int,
         execution_mode: ModelExecutionMode,
         k8s_resources: K8sPodResources | None = None,
+        image_tag: str = "latest",
+        cache_enabled: bool = False,
     ):
         self.template_version = template_version
         self.description = description
@@ -64,6 +68,8 @@ class ModelDetails:
             if k8s_resources is None
             else k8s_resources
         )
+        self.image_tag = image_tag
+        self.cache_enabled = cache_enabled
 
     def copy(self) -> "ModelDetails":
         return ModelDetails(
@@ -74,6 +80,8 @@ class ModelDetails:
             self.max_instances,
             self.execution_mode,
             self.k8s_resources,
+            self.image_tag,
+            self.cache_enabled
         )
 
     @staticmethod
@@ -94,6 +102,8 @@ class ModelDetails:
                 if "k8sResources" not in obj
                 else K8sPodResources.from_object(obj["k8sResources"])
             ),
+            "latest" if "imageTag" not in obj or obj["imageTag"] is None else obj["imageTag"],
+            False if "cacheEnabled" not in obj or obj["cacheEnabled"] is None else obj["cacheEnabled"],
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -105,6 +115,8 @@ class ModelDetails:
             "maxInstances": self.max_instances,
             "executionMode": str(self.execution_mode),
             "k8sResources": self.k8s_resources.to_object(),
+            "imageTag": self.image_tag,
+            "cacheEnabled": self.cache_enabled,
         }
 
     def __str__(self):
@@ -122,6 +134,8 @@ class ModelDetailsApiModel(BaseModel):
     max_instances: int
     execution_mode: str
     k8s_resources: K8sPodResourcesModel | None = None
+    image_tag: str
+    cache_enabled: bool
 
     @staticmethod
     def from_object(model_details: ModelDetails) -> "ModelDetailsApiModel":
@@ -132,6 +146,8 @@ class ModelDetailsApiModel(BaseModel):
             max_instances=model_details.max_instances,
             execution_mode=str(model_details.execution_mode),
             k8s_resources=K8sPodResourcesModel.from_object(model_details.k8s_resources),
+            image_tag=model_details.image_tag,
+            cache_enabled=model_details.cache_enabled,
         )
 
     def to_object(self) -> ModelDetails:
@@ -143,6 +159,8 @@ class ModelDetailsApiModel(BaseModel):
             self.max_instances,
             self.execution_mode,
             None if self.k8s_resources is None else self.k8s_resources.to_object(),
+            self.image_tag,
+            self.cache_enabled,
         )
 
 
