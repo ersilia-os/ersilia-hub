@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS ModelInputCache (
+    ModelId text NOT NULL,
+    InputHash text NOT NULL,
+    Input text NOT NULL,
+    Result text NOt NULL,
+    LastUpdated timestamp NOT NULL
+);
+
+ALTER TABLE ModelInputCache
+  ADD CONSTRAINT MODELINPUTCACHE_PK_MODELID_INPUTHASH PRIMARY KEY (ModelId, InputHash);
+
+ALTER TABLE ModelInputCache
+  ADD CONSTRAINT MODELINPUTCACHE_FK_MODELID FOREIGN KEY (ModelId)
+  REFERENCES Model (Id);
