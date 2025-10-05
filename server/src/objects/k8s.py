@@ -20,7 +20,6 @@ from objects.k8s_generator import (
     generate_image,
     generate_affinity,
     generate_tolerations,
-    generate_memory_limit,
 )
 from copy import deepcopy
 
@@ -592,12 +591,13 @@ class K8sPodTemplate:
         self,
         model_id: str,
         k8s_resources: K8sPodResources,
+        image_tag: str,
         disable_memory_limit: bool = False,
     ) -> "K8sPodTemplate":
         model_template = self.copy()
 
         model_template.template.metadata.generate_name = f"{model_id}-"
-        model_template.template.spec.containers[0].image = generate_image(model_id)
+        model_template.template.spec.containers[0].image = generate_image(model_id, image_tag)
 
         model_template.template.spec.containers[0].resources = k8s_resources.to_k8s(
             disable_memory_limit=disable_memory_limit

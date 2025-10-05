@@ -12,7 +12,10 @@
                 <mat-label>Select a Model</mat-label>
                 <mat-select [(value)]="selectedModel">
                     @for (model of models(); track model) {
-                    <mat-option [value]="model.id">{{ model.id }}</mat-option>
+                    <mat-option [value]="model.id">
+                      <div class="model-selection-id">{{ model.id }}</div>
+                      <div class="model-selection-description">{{ model.details.description }}</div>
+                    </mat-option>
                     }
                 </mat-select>
             </mat-form-field>

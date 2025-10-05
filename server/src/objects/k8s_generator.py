@@ -32,8 +32,8 @@ def generate_labels(model_name: str, model_size_megabytes: int) -> Dict[str, str
     }
 
 
-def generate_image(model_name: str) -> str:
-    return f"ersiliaos/{model_name}:latest"
+def generate_image(model_name: str, image_tag: str) -> str:
+    return f"ersiliaos/{model_name}:{image_tag}"
 
 
 def generate_memory_limit(
