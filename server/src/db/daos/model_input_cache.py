@@ -10,6 +10,7 @@ class ModelInputCacheRecord(DAORecord):
     input_hash: str
     input: str | None
     result: str
+    user_id: str | None
     last_updated: str
 
     def __init__(self, result: dict):
@@ -19,6 +20,7 @@ class ModelInputCacheRecord(DAORecord):
         self.input_hash = result["inputhash"]
         self.input = None if "input" not in result else result["input"]
         self.result = result["result"]
+        self.user_id = None if "userid" not in result else result["userid"]
         self.last_updated = (
             None
             if result["lastupdated"] is None
@@ -31,6 +33,7 @@ class ModelInputCacheRecord(DAORecord):
             "input_hash": self.input_hash,
             "input": self.input,
             "result": self.result,
+            "user_id": self.user_id,
             "last_updated": self.last_updated,
         }
 
@@ -69,7 +72,7 @@ class ModelInputCacheSelectBatchQuery(DAOQuery):
             WHERE ModelId = :query_ModelId
             AND InputHash IN (%s)
         """ % (
-                "" if self.result_only else ", Input, LastUpdated",
+                "" if self.result_only else ", Input, UserId, LastUpdated",
                 ",".join(list(map(lambda input_hash: f"'{input_hash}'", self.input_hashes)))
             )
 
@@ -83,6 +86,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
         input_hash: str,
         input: str,
         result: str,
+        user_id: str,
     ):
         super().__init__(ModelInputCacheRecord)
 
@@ -90,6 +94,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
         self.input_hash = input_hash
         self.input = input
         self.result = result
+        self.user_id = user_id
 
     def to_sql(self):
         field_map = {
@@ -97,6 +102,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
             "query_InputHash": self.input_hash,
             "query_Input": self.input,
             "query_Result": self.result,
+            "query_UserId": self.user_id,
         }
 
         sql = """
@@ -105,6 +111,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 InputHash,
                 Input,
                 Result,
+                UserId,
                 LastUpdated
             )
             VALUES (
@@ -112,6 +119,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 :query_InputHash,
                 :query_Input,
                 :query_Result,
+                :query_UserId,
                 CURRENT_TIMESTAMP
             )
             ON CONFLICT
@@ -121,6 +129,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 InputHash,
                 Input,
                 Result,
+                UserId,
                 LastUpdated::text
         """
 

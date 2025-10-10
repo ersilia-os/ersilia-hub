@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS ModelInputCache (
     InputHash text NOT NULL,
     Input text NOT NULL,
     Result text NOt NULL,
+    UserId text,
     LastUpdated timestamp NOT NULL
 );
 
@@ -12,3 +13,6 @@ ALTER TABLE ModelInputCache
 ALTER TABLE ModelInputCache
   ADD CONSTRAINT MODELINPUTCACHE_FK_MODELID FOREIGN KEY (ModelId)
   REFERENCES Model (Id);
+
+CREATE INDEX MODELINPUTCACHE_USERID_INDEX ON ModelInputCache (UserId);
+

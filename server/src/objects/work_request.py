@@ -2,9 +2,8 @@ from enum import Enum
 from json import dumps, loads
 from typing import Any, Dict, List, Union
 
-from pydantic import BaseModel, Field
-
 from db.daos.work_request import WorkRequestRecord
+from pydantic import BaseModel, Field
 
 
 class WorkRequestPayloadModel(BaseModel):
@@ -15,13 +14,14 @@ class WorkRequestPayloadModel(BaseModel):
             "entries": self.entries,
         }
 
+
 # simple check if line contains a comma
 # NOTE: we might improve this later, once we have a regex for SMILES
 def check_payload_line_is_header(line: str) -> bool:
     return "," in line
 
-class WorkRequestPayload:
 
+class WorkRequestPayload:
     entries: List[str]
 
     def __init__(self, entries: List[str]):
@@ -33,7 +33,12 @@ class WorkRequestPayload:
             raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
-            list(filter(lambda line: not check_payload_line_is_header(line), obj["entries"])),
+            list(
+                filter(
+                    lambda line: not check_payload_line_is_header(line),
+                    map(lambda e: e.strip(), obj["entries"]),
+                )
+            ),
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -43,7 +48,6 @@ class WorkRequestPayload:
 
 
 class WorkRequestStatus(Enum):
-
     QUEUED = "QUEUED"
     SCHEDULING = "SCHEDULING"
     PROCESSING = "PROCESSING"
@@ -67,7 +71,6 @@ class WorkRequestStatus(Enum):
 
 # NOT RETURNED VIA API
 class WorkRequestMetadata:
-
     user_agent: str
     session_id: str
     host: str
@@ -99,7 +102,6 @@ class WorkRequestMetadata:
 
 
 class WorkRequest:
-
     id: int
     model_id: str
     user_id: str
@@ -280,7 +282,6 @@ class WorkRequest:
 
 
 class WorkRequestCreateModel(BaseModel):
-
     model_id: str
     request_payload: WorkRequestPayloadModel
 
@@ -296,7 +297,6 @@ WorkRequestResult = List[Union[str, Dict[str, Any]]]
 
 
 class WorkRequestModel(BaseModel):
-
     id: int | None = None
     model_id: str
     user_id: str
@@ -407,12 +407,10 @@ class WorkRequestModel(BaseModel):
 
 
 class WorkRequestListModel(BaseModel):
-
     items: List[WorkRequestModel]
 
 
 class WorkRequestUpdateModel(BaseModel):
-
     id: int
     request_status: WorkRequestStatus
     request_status_reason: str | None = None
