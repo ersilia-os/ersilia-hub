@@ -1,5 +1,6 @@
+import traceback
 from hashlib import md5
-from sys import exc_info
+from sys import exc_info, stdout
 
 from python_framework.config_utils import load_environment_variable
 from python_framework.db.transaction_manager import TransactionManager
@@ -7,6 +8,10 @@ from python_framework.logger import ContextLogger, LogLevel
 
 from src.config.application_config import ApplicationConfig
 from src.db.daos.model_input_cache import ModelInputCacheDAO, ModelInputCacheRecord
+from src.db.daos.work_request_result_cache_temp import (
+    WorkRequestResultCacheTempDAO,
+    WorkRequestResultCacheTempRecord,
+)
 
 
 class ModelInputCache:
@@ -78,22 +83,114 @@ class ModelInputCache:
         return True
 
     def lookup_model_results(
-        self, model_id: str, inputs: list[str], result_only: bool = True
+        self,
+        model_id: str,
+        inputs: list[str],
+        result_only: bool = True,
+        max_batch_size: int = 1000,
     ) -> list[ModelInputCacheRecord]:
-        inputs_map: dict[str, str] = dict(
-            list(map(lambda input: (md5(input.encode()).hexdigest(), input), inputs))
-        )
+        records: list[ModelInputCacheRecord] = []
+        batch_count = 0
+        current_batch_index = 0
 
-        records: list[ModelInputCacheRecord] = ModelInputCacheDAO.execute_select_all(
-            ApplicationConfig.instance().database_config,
-            model_id=model_id,
-            input_hashes=list(inputs_map.keys()),
-            result_only=result_only,
-        )
+        while True:
+            batch_size = min(
+                (batch_count + 1) * max_batch_size, len(inputs) - current_batch_index
+            )
+            inputs_map: dict[str, str] = dict(
+                list(
+                    map(
+                        lambda input: (md5(input.encode()).hexdigest(), input),
+                        inputs[current_batch_index : current_batch_index + batch_size],
+                    )
+                )
+            )
 
-        if result_only:
-            # hydrate the "input" field, using the matching hash
-            for record in records:
-                record.input = inputs_map.get(record.input_hash)
+            batch_records: list[ModelInputCacheRecord] = (
+                ModelInputCacheDAO.execute_select_all(
+                    ApplicationConfig.instance().database_config,
+                    model_id=model_id,
+                    input_hashes=list(inputs_map.keys()),
+                    result_only=result_only,
+                )
+            )
+
+            if result_only:
+                # hydrate the "input" field, using the matching hash
+                for record in batch_records:
+                    record.input = inputs_map.get(record.input_hash)
+
+            records.extend(batch_records)
+
+            if batch_size < max_batch_size:
+                break
+
+            batch_count += 1
+            current_batch_index += batch_size
 
         return records
+
+    def persist_cached_workrequest_results(
+        self,
+        work_request_id: int,
+        cached_results: list[ModelInputCacheRecord],
+    ) -> bool:
+        try:
+            with TransactionManager(
+                ApplicationConfig.instance().database_config
+            ) as conn:
+                for record in cached_results:
+                    try:
+                        _ = WorkRequestResultCacheTempDAO.execute_insert(
+                            connection=conn,
+                            workrequestid=work_request_id,
+                            inputhash=record.input_hash,
+                            result=record.result,
+                            input=record.input,
+                        )
+                    except:
+                        raise Exception(
+                            f"Failed to persist WorkRequestResultCacheTemp record for request_id = [{work_request_id}], reason = {exc_info()!r}"
+                        )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                f"Failed to persist WorkRequestResultCacheTemp record for request_id = [{work_request_id}], reason = {exc_info()!r}",
+            )
+            traceback.print_exc(file=stdout)
+
+            return False
+
+        return True
+
+    def load_work_request_cached_results(
+        self, work_request_id: int
+    ) -> list[WorkRequestResultCacheTempRecord]:
+        try:
+            records: list[WorkRequestResultCacheTempRecord] = []
+            batch_size = 1000
+            offset = 0
+
+            while True:
+                batch_records = WorkRequestResultCacheTempDAO.execute_select_all(
+                    ApplicationConfig.instance().database_config,
+                    work_request_id=work_request_id,
+                    batch_size=batch_size,
+                    offset=offset,
+                )
+
+                if batch_records is None or len(batch_records) == 0:
+                    break
+
+                records.extend(batch_records)
+
+                if len(batch_records) < batch_size:
+                    break
+
+                offset += batch_size
+
+            return records
+        except:
+            raise Exception(
+                f"Failed to load persisted workrequest results cache for [{work_request_id}], error = [{exc_info()!r}]"
+            )

@@ -1,57 +1,54 @@
+import traceback
 from json import dumps
+from random import choices
+from string import ascii_lowercase
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep, time
-import traceback
 from typing import Dict, List, Set, Tuple, Union
-from python_framework.thread_safe_list import ThreadSafeList
-from python_framework.thread_safe_cache import ThreadSafeCache
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
-from string import ascii_lowercase
-from random import choices
-from python_framework.time import (
-    utc_now_datetime,
-    datetime_delta,
-    string_from_date,
-    utc_now,
-)
 
 from controllers.k8s import K8sController
-
-from threading import Thread
-
-from objects.work_request import WorkRequest, WorkRequestStatus
-from python_framework.time import is_date_in_range_from_now
-
-from controllers.scaling_manager import ScalingManager
-from controllers.model_integration import ModelIntegrationController
-from objects.k8s import K8sPod
-from objects.model_integration import JobResult, JobStatus
-from controllers.s3_integration import S3IntegrationController
-from objects.s3_integration import S3ResultObject
+from controllers.model import ModelController
+from controllers.model_instance_handler import ModelInstanceController
 from controllers.model_instance_log import (
     ModelInstanceLogController,
     ModelInstanceLogEvent,
 )
-from controllers.model import ModelController
-from objects.model import ModelExecutionMode
-from controllers.model_instance_handler import ModelInstanceController
-from controllers import model_instance_handler
+from controllers.model_integration import ModelIntegrationController
+from controllers.s3_integration import S3IntegrationController
+from controllers.scaling_manager import ScalingManager
 from controllers.server import ServerController
+from objects.k8s import K8sPod
+from objects.model import ModelExecutionMode
+from objects.model_integration import JobResult, JobStatus
+from objects.s3_integration import S3ResultObject
+from objects.work_request import WorkRequest, WorkRequestStatus
+from python_framework.config_utils import load_environment_variable
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_cache import ThreadSafeCache
+from python_framework.thread_safe_list import ThreadSafeList
+from python_framework.time import (
+    datetime_delta,
+    is_date_in_range_from_now,
+    string_from_date,
+    utc_now,
+    utc_now_datetime,
+)
+
+from src.controllers.model_input_cache import ModelInputCache
 
 
 class WorkRequestControllerStub:
-
     @staticmethod
     def instance() -> "WorkRequestControllerStub":
         pass
 
     def update_request(
-        self, work_request: WorkRequest,
+        self,
+        work_request: WorkRequest,
         enforce_same_server_id: bool = True,
-        expect_null_server_id: bool = False, # for first time update
-        retry_count: int = 0
+        expect_null_server_id: bool = False,  # for first time update
+        retry_count: int = 0,
     ) -> Union[WorkRequest, None]:
         pass
 
@@ -75,7 +72,6 @@ class WorkRequestControllerStub:
 
 
 class JobSubmissionTask(Thread):
-
     _logger_key: str
     _kill_event: Event
 
@@ -368,7 +364,6 @@ class JobSubmissionTask(Thread):
 
 
 class WorkRequestWorker(Thread):
-
     DEFAULT_PROCESSING_WAIT_TIME = 10
     DEFAULT_POD_READY_TIMEOUT = 600
 
@@ -565,7 +560,9 @@ class WorkRequestWorker(Thread):
                         % (work_request.id, sync_job_status),
                     )
 
-            model_instance_handler = ModelInstanceController.instance().get_instance(work_request.model_id, str(work_request.id))
+            model_instance_handler = ModelInstanceController.instance().get_instance(
+                work_request.model_id, str(work_request.id)
+            )
 
             if model_instance_handler is None:
                 ContextLogger.warn(
@@ -767,6 +764,48 @@ class WorkRequestWorker(Thread):
 
         return work_request
 
+    def _handle_work_request_cache(self, work_request: WorkRequest) -> list[str]:
+        if (
+            not ModelController.instance()
+            .get_model(work_request.model_id)
+            .details.cache_enabled
+        ):
+            return work_request.request_payload.entries
+
+        try:
+            cached_results = ModelInputCache.instance().lookup_model_results(
+                work_request.model_id, work_request.request_payload.entries
+            )
+
+            non_cached_entries = list(
+                filter(
+                    lambda input: not any(
+                        map(
+                            lambda cached_result: input == cached_result.input,
+                            cached_results,
+                        )
+                    ),
+                    work_request.request_payload.entries,
+                )
+            )
+
+            if len(non_cached_entries) > 0:
+                # TODO: [cache] persist in workrequest temp table
+
+                return non_cached_entries
+
+            # TODO: [cache] update result in S3 from cached entries
+
+            return []
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                f"Failed to load model cache for workrequest = [{work_request.id}], error = [{exc_info()!r}]",
+            )
+            traceback.print_exc(file=stdout)
+
+            return work_request.request_payload.entries
+
     def _handle_queued_requests(self, work_requests: List[WorkRequest]):
         ContextLogger.debug(self._logger_key, "Handling [QUEUED] requests...")
 
@@ -783,7 +822,10 @@ class WorkRequestWorker(Thread):
                 continue
 
             if ModelInstanceController.instance().max_instances_limit_reached():
-                ContextLogger.warn(self._logger_key, "Max Concurrent Model Instances reached, skipping queued WorkRequests")
+                ContextLogger.warn(
+                    self._logger_key,
+                    "Max Concurrent Model Instances reached, skipping queued WorkRequests",
+                )
                 return
 
             updated_work_request: WorkRequest = None
@@ -797,6 +839,15 @@ class WorkRequestWorker(Thread):
 
                 if updated_work_request is None:
                     raise Exception("Failed to persist updated WorkRequest")
+
+                non_cached_inputs = self._handle_work_request_cache(
+                    updated_work_request
+                )
+
+                if len(non_cached_inputs) == 0:
+                    # TODO: [cache] mark work request completed (above method will handle result creation)
+                    # TODO: [cache] logging
+                    continue
 
                 pod = ScalingManager.instance().acquire_instance(
                     work_request.model_id, str(work_request.id), 5
@@ -830,13 +881,16 @@ class WorkRequestWorker(Thread):
 
                 # TODO: eventually this will replace the "acquire_instance"
                 ModelInstanceController.instance().request_instance(
-                    work_request.model_id, str(work_request.id), ignore_max_concurrent_limit=True
+                    work_request.model_id,
+                    str(work_request.id),
+                    ignore_max_concurrent_limit=True,
                 )
 
                 if updated_work_request is None:
                     raise Exception("Failed to persist updated WorkRequest")
 
                 # throws exception on failure, which will be caught
+                # TODO: [cache] add non_cached_inputs to submit_job
                 updated_work_request = self._submit_job(updated_work_request, pod)
             except:
                 ContextLogger.error(
@@ -876,9 +930,9 @@ class WorkRequestWorker(Thread):
                 WorkRequestStatus.PROCESSING.value,
             ],
             server_ids=[
-                'NULL',
+                "NULL",
                 ServerController.instance().server_id,
-            ]
+            ],
         )
         ContextLogger.debug(self._logger_key, "WorkRequests loaded from DB.")
 

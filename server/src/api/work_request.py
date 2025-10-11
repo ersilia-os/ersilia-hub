@@ -1,7 +1,14 @@
 from sys import exc_info
 from typing import Annotated
 
+from controllers.auth import AuthController
+from controllers.s3_integration import S3IntegrationController
 from controllers.work_request import WorkRequestController
+from fastapi import APIRouter, HTTPException, Query, Request
+from library.api_utils import api_handler
+from library.fastapi_root import FastAPIRoot
+from objects.api import AuthType
+from objects.rbac import Permission
 from objects.work_request import (
     WorkRequest,
     WorkRequestCreateModel,
@@ -12,20 +19,7 @@ from objects.work_request import (
     WorkRequestStatus,
     WorkRequestUpdateModel,
 )
-from controllers.model import ModelController
-
-from fastapi import APIRouter, HTTPException, Query, Request
-
-from library.fastapi_root import FastAPIRoot
-from controllers.s3_integration import S3IntegrationController
-
-from library.api_utils import api_handler
-from objects.api import AuthType
 from python_framework.logger import ContextLogger, LogLevel
-
-from objects.rbac import Permission
-from controllers.auth import AuthController
-
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -55,7 +49,6 @@ def create_request(
         raise HTTPException(status_code=400, detail="Missing request body")
 
     new_work_request: WorkRequest | None = None
-    
 
     try:
         new_work_request = WorkRequest.from_object(work_request.to_object())
@@ -68,6 +61,10 @@ def create_request(
     new_work_request.metadata.host = tracking_details.host
 
     valid, reason = WorkRequestController.instance().validate_request(new_work_request)
+
+    if auth_details.auth_type != AuthType.ErsiliaUser:
+        # cannot cache inputs if not a registered user
+        new_work_request.request_payload.cache_opt_in = False
 
     if not valid:
         raise HTTPException(status_code=400, detail=reason)

@@ -46,13 +46,15 @@ class ModelInputCacheRecord(DAORecord):
     def generate_delete_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return super().generate_delete_query_args()
 
-class ModelInputCacheSelectBatchQuery(DAOQuery):
 
+class ModelInputCacheSelectBatchQuery(DAOQuery):
     model_id: str
     input_hashes: list[str]
     result_only: bool
 
-    def __init__(self, model_id: str, input_hashes: list[str], result_only: bool = False):
+    def __init__(
+        self, model_id: str, input_hashes: list[str], result_only: bool = False
+    ):
         super().__init__(ModelInputCacheRecord)
 
         self.model_id = model_id
@@ -60,7 +62,9 @@ class ModelInputCacheSelectBatchQuery(DAOQuery):
         self.result_only = result_only
 
     def to_sql(self):
-        field_map = {}
+        field_map = {
+            "query_ModelId": self.model_id,
+        }
 
         sql = """
             SELECT
@@ -72,9 +76,11 @@ class ModelInputCacheSelectBatchQuery(DAOQuery):
             WHERE ModelId = :query_ModelId
             AND InputHash IN (%s)
         """ % (
-                "" if self.result_only else ", Input, UserId, LastUpdated",
-                ",".join(list(map(lambda input_hash: f"'{input_hash}'", self.input_hashes)))
-            )
+            "" if self.result_only else ", Input, UserId, LastUpdated",
+            ",".join(
+                list(map(lambda input_hash: f"'{input_hash}'", self.input_hashes))
+            ),
+        )
 
         return sql, field_map
 
@@ -106,7 +112,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
         }
 
         sql = """
-            INSERT INTO WorkRequest (
+            INSERT INTO ModelInputCache (
                 ModelId,
                 InputHash,
                 Input,
@@ -134,6 +140,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
         """
 
         return sql, field_map
+
 
 class ModelInputCacheDAO(BaseDAO.DAO):
     queries = {

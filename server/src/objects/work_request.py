@@ -8,11 +8,10 @@ from pydantic import BaseModel, Field
 
 class WorkRequestPayloadModel(BaseModel):
     entries: List[str]
+    cache_opt_in: bool = False
 
     def to_object(self) -> Dict[str, Any]:
-        return {
-            "entries": self.entries,
-        }
+        return {"entries": self.entries, "cacheOptIn": self.cache_opt_in}
 
 
 # simple check if line contains a comma
@@ -23,9 +22,11 @@ def check_payload_line_is_header(line: str) -> bool:
 
 class WorkRequestPayload:
     entries: List[str]
+    cache_opt_in: bool
 
-    def __init__(self, entries: List[str]):
+    def __init__(self, entries: List[str], cache_opt_in: bool = False):
         self.entries = entries
+        self.cache_opt_in = cache_opt_in
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestPayload":
@@ -39,11 +40,13 @@ class WorkRequestPayload:
                     map(lambda e: e.strip(), obj["entries"]),
                 )
             ),
+            False if "cacheOptIn" not in obj else obj["cacheOptIn"],
         )
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "entries": self.entries,
+            "cacheOptIn": self.cache_opt_in,
         }
 
 
