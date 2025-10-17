@@ -86,6 +86,8 @@ class JobSubmissionTask(Thread):
     retry_count: int
     id: str
 
+    non_cached_inputs: list[str] | None
+
     _pod_ready_timeout: int
 
     def __init__(
@@ -94,6 +96,7 @@ class JobSubmissionTask(Thread):
         work_request: WorkRequest,
         pod: K8sPod,
         retry_count: int = 1,
+        non_cached_inputs: list[str] | None = None,
     ):
         Thread.__init__(self)
 
@@ -102,6 +105,7 @@ class JobSubmissionTask(Thread):
         self.pod = pod
         self.retry_count = retry_count
         self.id = JobSubmissionTask.infer_id(work_request)
+        self.non_cached_inputs = non_cached_inputs
 
         self._logger_key = "JobSubmissionTask[%s]" % self.id
         self._kill_event = Event()
@@ -219,7 +223,11 @@ class JobSubmissionTask(Thread):
                         self.work_request.model_id,
                         str(self.work_request.id),
                         self.pod.ip,
-                        self.work_request.request_payload.entries,
+                        (
+                            self.work_request.request_payload.entries
+                            if self.non_cached_inputs is None
+                            else self.non_cached_inputs
+                        ),
                     )
                 )
                 job_id = job_submission_response.job_id
@@ -285,7 +293,11 @@ class JobSubmissionTask(Thread):
                     self.work_request.model_id,
                     str(self.work_request.id),
                     self.pod.ip,
-                    self.work_request.request_payload.entries,
+                    (
+                        self.work_request.request_payload.entries
+                        if self.non_cached_inputs is None
+                        else self.non_cached_inputs
+                    ),
                 )
 
                 break
@@ -462,7 +474,12 @@ class WorkRequestWorker(Thread):
         return updated_work_request
 
     def _process_completed_job(
-        self, work_request: WorkRequest, pod: K8sPod, result_content: JobResult = None
+        self,
+        work_request: WorkRequest,
+        pod: K8sPod,
+        result_content: JobResult = None,
+        has_cached_results: bool = False,
+        non_cached_inputs: list[str] | None = None,
     ):
         # if not defined. we assume ASYNC mode
         if result_content is None:
@@ -482,6 +499,14 @@ class WorkRequestWorker(Thread):
             )
             return self._process_failed_job(work_request, reason="Job Result is empty")
 
+        if has_cached_results:
+            ModelInputCache.instance().hydrate_job_result_with_cached_results(
+                work_request.id,
+                work_request.request_payload.entries,
+                non_cached_inputs,
+                result_content,
+            )
+
         if not self._upload_result_to_s3(work_request, result_content):
             sleep(30)
 
@@ -497,6 +522,14 @@ class WorkRequestWorker(Thread):
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%d]" % work_request.id)
 
+        if work_request.request_payload.cache_opt_in:
+            ModelInputCache.instance().cache_model_results(
+                work_request.model_id,
+                non_cached_inputs,
+                result_content,
+                work_request.user_id,
+            )
+
     def _handle_processing_work_request(
         self, work_request: WorkRequest, pod: K8sPod
     ) -> WorkRequest:
@@ -504,6 +537,7 @@ class WorkRequestWorker(Thread):
         job_execution_mode: ModelExecutionMode = ModelExecutionMode.ASYNC
         sync_job_status: JobStatus = None
         sync_job_result: JobResult = None
+        job_has_cached_results: bool = False
 
         if self.has_job_submission_task(work_request):
             task = self._job_submission_tasks[JobSubmissionTask.infer_id(work_request)]
@@ -519,6 +553,10 @@ class WorkRequestWorker(Thread):
             job_execution_mode = task.model_execution_mode
             sync_job_status = task.sync_job_status
             sync_job_result = task.sync_job_result
+            job_has_cached_results = task.non_cached_inputs is None or len(
+                task.non_cached_inputs
+            ) != len(work_request.request_payload.entries)
+            job_non_cached_inputs = task.non_cached_inputs
 
             # clear task
             del self._job_submission_tasks[task.id]
@@ -536,7 +574,10 @@ class WorkRequestWorker(Thread):
 
                 if status_response.status == JobStatus.COMPLETED:
                     updated_work_request = self._process_completed_job(
-                        work_request, pod
+                        work_request,
+                        pod,
+                        has_cached_results=job_has_cached_results,
+                        non_cached_inputs=job_non_cached_inputs,
                     )
                 elif status_response.status == JobStatus.FAILED:
                     updated_work_request = self._process_failed_job(work_request)
@@ -549,7 +590,11 @@ class WorkRequestWorker(Thread):
             else:
                 if sync_job_status == JobStatus.COMPLETED:
                     updated_work_request = self._process_completed_job(
-                        work_request, pod, sync_job_result
+                        work_request,
+                        pod,
+                        sync_job_result,
+                        has_cached_results=job_has_cached_results,
+                        non_cached_inputs=job_non_cached_inputs,
                     )
                 elif sync_job_status == JobStatus.FAILED:
                     updated_work_request = self._process_failed_job(work_request)
@@ -657,19 +702,33 @@ class WorkRequestWorker(Thread):
                         )
                         continue
                     else:
-                        try:
-                            updated_work_request = self._submit_job(work_request, pod)
-                        except:
-                            ContextLogger.error(
-                                self._logger_key,
-                                "Failed to submit job, error = [%s]" % repr(exc_info()),
-                            )
-                            traceback.print_exc(file=stdout)
+                        ContextLogger.warn(
+                            self._logger_key,
+                            "WorkRequest [%d] in processing state, but does not have a JobId, assuming [FAILED]"
+                            % work_request.id,
+                        )
 
-                            updated_work_request = (
-                                self._controller.mark_workrequest_failed(work_request)
-                            )
-                            continue
+                        updated_work_request = self._controller.mark_workrequest_failed(
+                            work_request
+                        )
+
+                        continue
+
+                        # TODO: we should self-heal before this happens, this will be handled better with model-integration v2
+
+                        # try:
+                        #    updated_work_request = self._submit_job(work_request, pod)
+                        # except:
+                        #    ContextLogger.error(
+                        #        self._logger_key,
+                        #        "Failed to submit job, error = [%s]" % repr(exc_info()),
+                        #    )
+                        #    traceback.print_exc(file=stdout)
+
+                        #    updated_work_request = (
+                        #        self._controller.mark_workrequest_failed(work_request)
+                        #    )
+                        #    continue
 
                 self._handle_processing_work_request(updated_work_request, pod)
             except:
@@ -740,7 +799,11 @@ class WorkRequestWorker(Thread):
                 traceback.print_exc(file=stdout)
 
     def _submit_job(
-        self, work_request: WorkRequest, pod: K8sPod, retry_count=1
+        self,
+        work_request: WorkRequest,
+        pod: K8sPod,
+        retry_count=1,
+        non_cached_inputs: list[str] = None,
     ) -> WorkRequest:
         ContextLogger.debug(
             self._logger_key,
@@ -757,7 +820,7 @@ class WorkRequestWorker(Thread):
             return work_request
 
         task = JobSubmissionTask(
-            self._controller, work_request.copy(), pod, retry_count
+            self._controller, work_request.copy(), pod, retry_count, non_cached_inputs
         )
         self._job_submission_tasks[task.id] = task
         task.start()
@@ -838,15 +901,31 @@ class WorkRequestWorker(Thread):
                 )
 
                 if updated_work_request is None:
-                    raise Exception("Failed to persist updated WorkRequest")
+                    raise Exception(
+                        "Failed to persist updated WorkRequest [%d]" % work_request.id
+                    )
 
                 non_cached_inputs = self._handle_work_request_cache(
                     updated_work_request
                 )
 
                 if len(non_cached_inputs) == 0:
-                    # TODO: [cache] mark work request completed (above method will handle result creation)
-                    # TODO: [cache] logging
+                    updated_work_request.request_status = WorkRequestStatus.COMPLETED
+                    updated_work_request.processed_timestamp = utc_now()
+                    updated_work_request = self._controller.update_request(
+                        updated_work_request, retry_count=1
+                    )
+
+                    if updated_work_request is None:
+                        raise Exception(
+                            "Failed to update WorkRequest [%d]" % work_request.id
+                        )
+
+                    ContextLogger.info(
+                        self._logger_key,
+                        "Request completed by cached results [%d]" % work_request.id,
+                    )
+
                     continue
 
                 pod = ScalingManager.instance().acquire_instance(
@@ -890,8 +969,9 @@ class WorkRequestWorker(Thread):
                     raise Exception("Failed to persist updated WorkRequest")
 
                 # throws exception on failure, which will be caught
-                # TODO: [cache] add non_cached_inputs to submit_job
-                updated_work_request = self._submit_job(updated_work_request, pod)
+                updated_work_request = self._submit_job(
+                    updated_work_request, pod, non_cached_inputs=non_cached_inputs
+                )
             except:
                 ContextLogger.error(
                     self._logger_key,

@@ -12,6 +12,7 @@ from src.db.daos.work_request_result_cache_temp import (
     WorkRequestResultCacheTempDAO,
     WorkRequestResultCacheTempRecord,
 )
+from src.objects.model_integration import JobResult
 
 
 class ModelInputCache:
@@ -52,6 +53,7 @@ class ModelInputCache:
         results: list[str],
         user_id: str | None = None,
     ) -> bool:
+        # TODO: [cache] change results everywhere to be Json (in sql + dao) and pass in the JobResult object
         try:
             with TransactionManager(
                 ApplicationConfig.instance().database_config
@@ -194,3 +196,14 @@ class ModelInputCache:
             raise Exception(
                 f"Failed to load persisted workrequest results cache for [{work_request_id}], error = [{exc_info()!r}]"
             )
+
+    def hydrate_job_result_with_cached_results(
+        self,
+        work_request_id: int,
+        work_request_ordered_inputs: list[str],
+        job_inputs: list[str],
+        job_result: JobResult,
+    ):
+        pass
+        # TODO: [cache] load work request results -> merge results + cache into final JobResult
+        # TODO: [cache] APPLY ORDER based on ordered_inputs + cached results (find the "gaps" by selectively merging the 2 result lists)
