@@ -62,7 +62,7 @@ class WorkRequestResultCacheTempSelectBatchQuery(DAOQuery):
                 WorkRequestId,
                 InputHash,
                 Input,
-                Result
+                Result::text
             FROM WorkRequestResultCacheTemp
             WHERE WorkRequestId = :query_WorkRequestId
             LIMIT %d
@@ -106,7 +106,7 @@ class WorkRequestResultCacheTempInsertQuery(DAOQuery):
                 :query_WorkRequestId,
                 :query_InputHash,
                 :query_Input,
-                :query_Result
+                :query_Result::jsonb
             )
             ON CONFLICT
             DO NOTHING -- simply ignore conflicts, cache value SHOULD always be the same
@@ -114,7 +114,7 @@ class WorkRequestResultCacheTempInsertQuery(DAOQuery):
                 WorkRequestId,
                 InputHash,
                 Input,
-                Result
+                Result::text
         """
 
         return sql, field_map

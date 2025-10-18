@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS WorkRequestResultCacheTemp (
     WorkRequestId bigint NOT NULL,
     InputHash text NOT NULL,
     Input text NOT NULL,
-    Result text NOT NULL
+    Result jsonb NOT NULL
 );
 
 ALTER TABLE WorkRequestResultCacheTemp

@@ -70,7 +70,7 @@ class ModelInputCacheSelectBatchQuery(DAOQuery):
             SELECT
                 ModelId,
                 InputHash,
-                Result
+                Result::text
                 %s
             FROM ModelInputCache
             WHERE ModelId = :query_ModelId
@@ -124,7 +124,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 :query_ModelId,
                 :query_InputHash,
                 :query_Input,
-                :query_Result,
+                :query_Result::jsonb,
                 :query_UserId,
                 CURRENT_TIMESTAMP
             )
@@ -134,7 +134,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 ModelId,
                 InputHash,
                 Input,
-                Result,
+                Result::text,
                 UserId,
                 LastUpdated::text
         """

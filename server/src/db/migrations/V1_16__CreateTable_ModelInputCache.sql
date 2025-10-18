@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS ModelInputCache (
     ModelId text NOT NULL,
     InputHash text NOT NULL,
     Input text NOT NULL,
-    Result text NOT NULL,
+    Result jsonb NOT NULL,
     UserId text,
     LastUpdated timestamp NOT NULL
 );

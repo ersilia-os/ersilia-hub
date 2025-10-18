@@ -1,6 +1,8 @@
 import traceback
 from hashlib import md5
+from json import dumps, loads
 from sys import exc_info, stdout
+from typing import Any
 
 from python_framework.config_utils import load_environment_variable
 from python_framework.db.transaction_manager import TransactionManager
@@ -12,7 +14,6 @@ from src.db.daos.work_request_result_cache_temp import (
     WorkRequestResultCacheTempDAO,
     WorkRequestResultCacheTempRecord,
 )
-from src.objects.model_integration import JobResult
 
 
 class ModelInputCache:
@@ -50,10 +51,9 @@ class ModelInputCache:
         self,
         model_id: str,
         inputs: list[str],
-        results: list[str],
+        results: list[dict[str, Any]],
         user_id: str | None = None,
     ) -> bool:
-        # TODO: [cache] change results everywhere to be Json (in sql + dao) and pass in the JobResult object
         try:
             with TransactionManager(
                 ApplicationConfig.instance().database_config
@@ -64,7 +64,7 @@ class ModelInputCache:
                             connection=conn,
                             modelid=model_id,
                             inputhash=md5(inputs[i].encode()).hexdigest(),
-                            result=results[i],
+                            result=dumps(results[i]),
                             input=inputs[i],
                             userid=user_id,
                         )
@@ -202,8 +202,22 @@ class ModelInputCache:
         work_request_id: int,
         work_request_ordered_inputs: list[str],
         job_inputs: list[str],
-        job_result: JobResult,
-    ):
-        pass
-        # TODO: [cache] load work request results -> merge results + cache into final JobResult
-        # TODO: [cache] APPLY ORDER based on ordered_inputs + cached results (find the "gaps" by selectively merging the 2 result lists)
+        job_results: list[dict[str, Any]],
+    ) -> list[dict[str, Any] | None]:
+        cached_results = self.load_work_request_cached_results(work_request_id)
+        consolidated_results: dict[str, dict[str, Any] | None] = dict(
+            map(lambda input: (input, None), work_request_ordered_inputs)
+        )
+
+        # set job results in final_results map
+        for i in range(len(job_inputs)):
+            if job_inputs[i] in consolidated_results:
+                consolidated_results[job_inputs[i]] = job_results[i]
+
+        for result in cached_results:
+            if result.input in consolidated_results:
+                consolidated_results[result.input] = loads(result.result)
+
+        return list(
+            map(lambda input: consolidated_results[input], work_request_ordered_inputs)
+        )

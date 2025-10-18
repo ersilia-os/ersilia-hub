@@ -481,16 +481,20 @@ class WorkRequestWorker(Thread):
         has_cached_results: bool = False,
         non_cached_inputs: list[str] | None = None,
     ):
+        _result_content: JobResult | None = result_content
+        job_result_content = result_content
+
         # if not defined. we assume ASYNC mode
-        if result_content is None:
-            result_content = ModelIntegrationController.instance().get_job_result(
+        if _result_content is None:
+            _result_content = ModelIntegrationController.instance().get_job_result(
                 work_request.model_id,
                 str(work_request.id),
                 pod.ip,
                 work_request.model_job_id,
             )
+            job_result_content = _result_content
 
-        if result_content is None:
+        if _result_content is None:
             # NOTE: this should never happen, but checking anyway
             ContextLogger.error(
                 self._logger_key,
@@ -500,17 +504,19 @@ class WorkRequestWorker(Thread):
             return self._process_failed_job(work_request, reason="Job Result is empty")
 
         if has_cached_results:
-            ModelInputCache.instance().hydrate_job_result_with_cached_results(
-                work_request.id,
-                work_request.request_payload.entries,
-                non_cached_inputs,
-                result_content,
+            _result_content = (
+                ModelInputCache.instance().hydrate_job_result_with_cached_results(
+                    work_request.id,
+                    work_request.request_payload.entries,
+                    non_cached_inputs,
+                    _result_content,
+                )
             )
 
-        if not self._upload_result_to_s3(work_request, result_content):
+        if not self._upload_result_to_s3(work_request, _result_content):
             sleep(30)
 
-            if not self._upload_result_to_s3(work_request, result_content):
+            if not self._upload_result_to_s3(work_request, _result_content):
                 raise Exception("Failed to upload result to S3, twice")
 
         work_request.request_status = WorkRequestStatus.COMPLETED
@@ -526,7 +532,7 @@ class WorkRequestWorker(Thread):
             ModelInputCache.instance().cache_model_results(
                 work_request.model_id,
                 non_cached_inputs,
-                result_content,
+                job_result_content,
                 work_request.user_id,
             )
 
