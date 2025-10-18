@@ -208,6 +208,12 @@ class ModelInputCache:
             map(lambda input: (input, None), ordered_inputs)
         )
 
+        ContextLogger.debug(
+            self._logger_key,
+            "Consolidating [%d] cached results with [%d] processed results..."
+            % (len(cached_results), len(job_results)),
+        )
+
         # set job results in final_results map
         for i in range(len(job_inputs)):
             if job_inputs[i] in consolidated_results:
@@ -227,6 +233,12 @@ class ModelInputCache:
         job_results: list[dict[str, Any]],
     ) -> list[dict[str, Any] | None]:
         cached_results = self.load_work_request_cached_results(work_request_id)
+
+        ContextLogger.debug(
+            self._logger_key,
+            "Loaded [%d] cached results for workrequest [%d]"
+            % (len(cached_results), work_request_id),
+        )
 
         return self.consolidate_results(
             work_request_ordered_inputs, job_inputs, job_results, cached_results

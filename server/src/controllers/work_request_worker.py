@@ -206,10 +206,16 @@ class JobSubmissionTask(Thread):
         return updated_work_request, _pod
 
     def _submit_job(self) -> WorkRequest:
+        job_inputs = (
+            self.work_request.request_payload.entries
+            if self.non_cached_inputs is None
+            else self.non_cached_inputs
+        )
+
         ContextLogger.debug(
             self._logger_key,
-            "Submitting job to model [%s] for workrequest [%d]..."
-            % (self.work_request.model_id, self.work_request.id),
+            "Submitting job to model [%s] for workrequest [%d] with inputs [%d]..."
+            % (self.work_request.model_id, self.work_request.id, len(job_inputs)),
         )
 
         attempt_count = 0
@@ -222,11 +228,7 @@ class JobSubmissionTask(Thread):
                         self.work_request.model_id,
                         str(self.work_request.id),
                         self.pod.ip,
-                        (
-                            self.work_request.request_payload.entries
-                            if self.non_cached_inputs is None
-                            else self.non_cached_inputs
-                        ),
+                        job_inputs,
                     )
                 )
                 job_id = job_submission_response.job_id
@@ -274,10 +276,16 @@ class JobSubmissionTask(Thread):
         return updated_work_request
 
     def _submit_job_sync(self) -> WorkRequest:
+        job_inputs = (
+            self.work_request.request_payload.entries
+            if self.non_cached_inputs is None
+            else self.non_cached_inputs
+        )
+
         ContextLogger.debug(
             self._logger_key,
-            "Submitting SYNC job to model [%s] for workrequest [%d]..."
-            % (self.work_request.model_id, self.work_request.id),
+            "Submitting SYNC job to model [%s] for workrequest [%d] with inputs [%d] ..."
+            % (self.work_request.model_id, self.work_request.id, len(job_inputs)),
         )
 
         attempt_count = 0
@@ -292,11 +300,7 @@ class JobSubmissionTask(Thread):
                     self.work_request.model_id,
                     str(self.work_request.id),
                     self.pod.ip,
-                    (
-                        self.work_request.request_payload.entries
-                        if self.non_cached_inputs is None
-                        else self.non_cached_inputs
-                    ),
+                    job_inputs,
                 )
 
                 break
@@ -480,6 +484,16 @@ class WorkRequestWorker(Thread):
         has_cached_results: bool = False,
         non_cached_inputs: list[str] | None = None,
     ):
+        ContextLogger.debug(
+            self._logger_key,
+            "Processing COMPLETED job for workrequest [%d], has_cached_results = [%s], non_cached_inputs = [%d]..."
+            % (
+                work_request.id,
+                has_cached_results,
+                0 if non_cached_inputs is None else len(non_cached_inputs),
+            ),
+        )
+
         _result_content: JobResult | None = result_content
         job_result_content = result_content
 
@@ -544,6 +558,8 @@ class WorkRequestWorker(Thread):
         sync_job_result: JobResult = None
         job_has_cached_results: bool = False
         job_non_cached_inputs: list[str] = work_request.request_payload.entries
+
+        # TODO: something funky here, the task has correct non_cached_results, but job_non_cached_inputs = 100
 
         if self.has_job_submission_task(work_request):
             task = self._job_submission_tasks[JobSubmissionTask.infer_id(work_request)]
