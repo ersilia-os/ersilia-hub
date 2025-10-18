@@ -4,16 +4,15 @@ from json import dumps, loads
 from sys import exc_info, stdout
 from typing import Any
 
-from python_framework.config_utils import load_environment_variable
-from python_framework.db.transaction_manager import TransactionManager
-from python_framework.logger import ContextLogger, LogLevel
-
-from src.config.application_config import ApplicationConfig
-from src.db.daos.model_input_cache import ModelInputCacheDAO, ModelInputCacheRecord
-from src.db.daos.work_request_result_cache_temp import (
+from config.application_config import ApplicationConfig
+from db.daos.model_input_cache import ModelInputCacheDAO, ModelInputCacheRecord
+from db.daos.work_request_result_cache_temp import (
     WorkRequestResultCacheTempDAO,
     WorkRequestResultCacheTempRecord,
 )
+from python_framework.config_utils import load_environment_variable
+from python_framework.db.transaction_manager import TransactionManager
+from python_framework.logger import ContextLogger, LogLevel
 
 
 class ModelInputCache:
@@ -62,11 +61,11 @@ class ModelInputCache:
                     try:
                         _ = ModelInputCacheDAO.execute_insert(
                             connection=conn,
-                            modelid=model_id,
-                            inputhash=md5(inputs[i].encode()).hexdigest(),
+                            model_id=model_id,
+                            input_hash=md5(inputs[i].encode()).hexdigest(),
                             result=dumps(results[i]),
                             input=inputs[i],
-                            userid=user_id,
+                            user_id=user_id,
                         )
                     except:
                         # NOTE: allow single failures
@@ -145,8 +144,8 @@ class ModelInputCache:
                     try:
                         _ = WorkRequestResultCacheTempDAO.execute_insert(
                             connection=conn,
-                            workrequestid=work_request_id,
-                            inputhash=record.input_hash,
+                            work_request_id=work_request_id,
+                            input_hash=record.input_hash,
                             result=record.result,
                             input=record.input,
                         )
@@ -197,16 +196,16 @@ class ModelInputCache:
                 f"Failed to load persisted workrequest results cache for [{work_request_id}], error = [{exc_info()!r}]"
             )
 
-    def hydrate_job_result_with_cached_results(
+    def consolidate_results(
         self,
-        work_request_id: int,
-        work_request_ordered_inputs: list[str],
+        ordered_inputs: list[str],
         job_inputs: list[str],
         job_results: list[dict[str, Any]],
+        cached_results: list[WorkRequestResultCacheTempRecord]
+        | list[ModelInputCacheRecord],
     ) -> list[dict[str, Any] | None]:
-        cached_results = self.load_work_request_cached_results(work_request_id)
         consolidated_results: dict[str, dict[str, Any] | None] = dict(
-            map(lambda input: (input, None), work_request_ordered_inputs)
+            map(lambda input: (input, None), ordered_inputs)
         )
 
         # set job results in final_results map
@@ -218,6 +217,17 @@ class ModelInputCache:
             if result.input in consolidated_results:
                 consolidated_results[result.input] = loads(result.result)
 
-        return list(
-            map(lambda input: consolidated_results[input], work_request_ordered_inputs)
+        return list(map(lambda input: consolidated_results[input], ordered_inputs))
+
+    def hydrate_job_result_with_cached_results(
+        self,
+        work_request_id: int,
+        work_request_ordered_inputs: list[str],
+        job_inputs: list[str],
+        job_results: list[dict[str, Any]],
+    ) -> list[dict[str, Any] | None]:
+        cached_results = self.load_work_request_cached_results(work_request_id)
+
+        return self.consolidate_results(
+            work_request_ordered_inputs, job_inputs, job_results, cached_results
         )

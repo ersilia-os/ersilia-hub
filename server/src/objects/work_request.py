@@ -392,7 +392,7 @@ class WorkRequestModel(BaseModel):
         for result in self.result:
             csv_value_line = [self.request_payload.entries[result_index]]
 
-            for key, value in result.items():
+            for key, value in sorted(result.items(), key=lambda r: r[0]):
                 if result_index == 0:
                     csv_column_names.append(key)
 

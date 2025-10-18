@@ -40,6 +40,20 @@
                     [(ngModel)]="entriesString"></textarea>
             </mat-form-field>
         </div>
+
+        @if (canOptInToCache()) {
+            <div class="contribute">
+                <div class="check">
+                    <mat-checkbox [(ngModel)]="cacheOptIn"></mat-checkbox>
+                </div>
+
+                <div class="notice">
+                  If you would like to contribute to Ersilia Hub's model cache, you can select this checkbox.
+                  <br/>
+                  The result of your inputs will be cached and future calculations of the same Molecules will use the cached result.
+                </div>
+            </div>
+        }
     </div>
 
     <div class="dialog-actions">

@@ -9,6 +9,7 @@ from typing import Dict, List, Set, Tuple, Union
 
 from controllers.k8s import K8sController
 from controllers.model import ModelController
+from controllers.model_input_cache import ModelInputCache
 from controllers.model_instance_handler import ModelInstanceController
 from controllers.model_instance_log import (
     ModelInstanceLogController,
@@ -34,8 +35,6 @@ from python_framework.time import (
     utc_now,
     utc_now_datetime,
 )
-
-from src.controllers.model_input_cache import ModelInputCache
 
 
 class WorkRequestControllerStub:
@@ -544,6 +543,7 @@ class WorkRequestWorker(Thread):
         sync_job_status: JobStatus = None
         sync_job_result: JobResult = None
         job_has_cached_results: bool = False
+        job_non_cached_inputs: list[str] = work_request.request_payload.entries
 
         if self.has_job_submission_task(work_request):
             task = self._job_submission_tasks[JobSubmissionTask.infer_id(work_request)]
@@ -846,6 +846,9 @@ class WorkRequestWorker(Thread):
                 work_request.model_id, work_request.request_payload.entries
             )
 
+            if len(cached_results) == 0:
+                return work_request.request_payload.entries
+
             non_cached_entries = list(
                 filter(
                     lambda input: not any(
@@ -859,17 +862,31 @@ class WorkRequestWorker(Thread):
             )
 
             if len(non_cached_entries) > 0:
-                # TODO: [cache] persist in workrequest temp table
+                if not ModelInputCache.instance().persist_cached_workrequest_results(
+                    work_request.id, cached_results
+                ):
+                    raise Exception(
+                        "Failed to persist cached WorkRequest [%d] results, ignoring cache"
+                        % work_request.id,
+                    )
 
                 return non_cached_entries
 
-            # TODO: [cache] update result in S3 from cached entries
+            job_result = ModelInputCache.instance().consolidate_results(
+                work_request.request_payload.entries, [], [], cached_results
+            )
+
+            if not self._upload_result_to_s3(work_request, job_result):
+                sleep(20)
+
+                if not self._upload_result_to_s3(work_request, job_result):
+                    raise Exception("Failed to upload result to S3, twice")
 
             return []
         except:
             ContextLogger.warn(
                 self._logger_key,
-                f"Failed to load model cache for workrequest = [{work_request.id}], error = [{exc_info()!r}]",
+                f"Failed to handle WorkRequest from cached results for workrequest = [{work_request.id}], error = [{exc_info()!r}]",
             )
             traceback.print_exc(file=stdout)
 

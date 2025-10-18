@@ -23,7 +23,7 @@ class ModelInputCacheRecord(DAORecord):
         self.user_id = None if "userid" not in result else result["userid"]
         self.last_updated = (
             None
-            if result["lastupdated"] is None
+            if "lastupdated" not in result or result["lastupdated"] is None
             else timestamp_to_utc_timestamp(result["lastupdated"])
         )
 
@@ -124,7 +124,7 @@ class ModelInputCacheInsertQuery(DAOQuery):
                 :query_ModelId,
                 :query_InputHash,
                 :query_Input,
-                :query_Result::jsonb,
+                :query_Result,
                 :query_UserId,
                 CURRENT_TIMESTAMP
             )

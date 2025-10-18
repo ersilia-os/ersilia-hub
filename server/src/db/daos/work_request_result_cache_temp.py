@@ -106,7 +106,7 @@ class WorkRequestResultCacheTempInsertQuery(DAOQuery):
                 :query_WorkRequestId,
                 :query_InputHash,
                 :query_Input,
-                :query_Result::jsonb
+                :query_Result
             )
             ON CONFLICT
             DO NOTHING -- simply ignore conflicts, cache value SHOULD always be the same
