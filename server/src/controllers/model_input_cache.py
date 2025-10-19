@@ -170,14 +170,14 @@ class ModelInputCache:
         try:
             records: list[WorkRequestResultCacheTempRecord] = []
             batch_size = 1000
-            offset = 0
+            batch_offset = 0
 
             while True:
                 batch_records = WorkRequestResultCacheTempDAO.execute_select_all(
                     ApplicationConfig.instance().database_config,
                     work_request_id=work_request_id,
                     batch_size=batch_size,
-                    offset=offset,
+                    batch_offset=batch_offset,
                 )
 
                 if batch_records is None or len(batch_records) == 0:
@@ -188,7 +188,7 @@ class ModelInputCache:
                 if len(batch_records) < batch_size:
                     break
 
-                offset += batch_size
+                batch_offset += batch_size
 
             return records
         except:
