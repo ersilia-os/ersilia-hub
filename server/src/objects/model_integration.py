@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Union
 
 
 class JobStatus(Enum):
-
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -63,7 +62,6 @@ class JobSubmissionRequest:
 
 
 class JobSubmissionResponse:
-
     job_id: str
     message: str
 
@@ -89,4 +87,4 @@ class JobStatusResponse:
         return JobStatusResponse(obj["job_id"], obj["status"])
 
 
-JobResult = List[Dict[str, Any]]
+JobResult = list[dict[str, Any] | None]

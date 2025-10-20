@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS WorkRequestResultCacheTemp (
+    WorkRequestId bigint NOT NULL,
+    InputHash text NOT NULL,
+    Input text NOT NULL,
+    Result jsonb NOT NULL
+);
+
+ALTER TABLE WorkRequestResultCacheTemp
+  ADD CONSTRAINT WORKREQUESTRESULTCACHETEMP_PK_WORKREQUESTID_INPUTHASH PRIMARY KEY (WorkRequestId, InputHash);
+
+CREATE INDEX WORKREQUESTRESULTCACHETEMP_WORKREQUESTID_INDEX ON WorkRequestResultCacheTemp (WorkRequestId);

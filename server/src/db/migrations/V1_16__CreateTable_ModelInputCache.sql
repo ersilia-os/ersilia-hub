@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS ModelInputCache (
+    ModelId text NOT NULL,
+    InputHash text NOT NULL,
+    Input text NOT NULL,
+    Result jsonb NOT NULL,
+    UserId text,
+    LastUpdated timestamp NOT NULL
+);
+
+ALTER TABLE ModelInputCache
+  ADD CONSTRAINT MODELINPUTCACHE_PK_MODELID_INPUTHASH PRIMARY KEY (ModelId, InputHash);
+
+ALTER TABLE ModelInputCache
+  ADD CONSTRAINT MODELINPUTCACHE_FK_MODELID FOREIGN KEY (ModelId)
+  REFERENCES Model (Id);
+
+CREATE INDEX MODELINPUTCACHE_USERID_INDEX ON ModelInputCache (UserId);
+

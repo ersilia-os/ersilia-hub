@@ -1,14 +1,27 @@
-from sys import exc_info, stdout
 import traceback
-from config.application_config import ApplicationConfig
-from controllers.app_watch import AppWatch
-from controllers.k8s import K8sController
-from controllers.model import ModelController
-from python_framework.graceful_killer import GracefulKiller
-from python_framework.logger import ContextLogger
+from sys import exc_info, stdout
 
 import api as API_RESOURCES
-
+from config.application_config import ApplicationConfig
+from config.auth_config import AuthConfig
+from controllers.app_watch import AppWatch
+from controllers.auth import AuthController
+from controllers.failed_server_handler import FailedServerHandler
+from controllers.instance_metrics import InstanceMetricsController
+from controllers.k8s import K8sController
+from controllers.k8s_proxy import K8sProxyController
+from controllers.model import ModelController
+from controllers.model_input_cache import ModelInputCache
+from controllers.model_instance_handler import ModelInstanceController
+from controllers.model_instance_log import ModelInstanceLogController
+from controllers.model_integration import ModelIntegrationController
+from controllers.node_monitor import NodeMonitorController
+from controllers.recommendation_engine import RecommendationEngine
+from controllers.s3_integration import S3IntegrationController
+from controllers.scaling_manager import ScalingManager
+from controllers.server import ServerController
+from controllers.work_request import WorkRequestController
+from library.fastapi_root import FastAPIRoot
 from python_framework.config_utils import load_environment_variable
 from python_framework.db.connection_pool import ConnectionPool
 from python_framework.db.connection_pool import (
@@ -23,21 +36,6 @@ from python_framework.db.postgresutils import (
 from python_framework.graceful_killer import GracefulKiller
 from python_framework.logger import ContextLogger, LogLevel
 
-from controllers.scaling_manager import ScalingManager
-from controllers.work_request import WorkRequestController
-from library.fastapi_root import FastAPIRoot
-from controllers.model_integration import ModelIntegrationController
-from controllers.s3_integration import S3IntegrationController
-from controllers.k8s_proxy import K8sProxyController
-from config.auth_config import AuthConfig
-from controllers.auth import AuthController
-from controllers.model_instance_log import ModelInstanceLogController
-from controllers.model_instance_handler import ModelInstanceController
-from controllers.node_monitor import NodeMonitorController
-from controllers.instance_metrics import InstanceMetricsController
-from controllers.recommendation_engine import RecommendationEngine
-from controllers.server import ServerController
-from controllers.failed_server_handler import FailedServerHandler
 
 def init_configs():
     ApplicationConfig.initialize()
@@ -81,6 +79,7 @@ def init():
     # controllers
     K8sController.initialize()
     ModelController.initialize()
+    ModelInputCache.initialize()
     ScalingManager.initialize()
     ModelInstanceLogController.initialize()
     ModelIntegrationController.initialize()

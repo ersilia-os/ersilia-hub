@@ -108,3 +108,20 @@
   font-size: 12px;
   font-style: italic;
 }
+
+.contribute {
+  background-color: $pastel-blue;
+  border-radius: 7px;
+  padding: 6px;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+
+  .check {
+    margin: 8px;
+  }
+
+  .notice {}
+}

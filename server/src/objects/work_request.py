@@ -2,30 +2,31 @@ from enum import Enum
 from json import dumps, loads
 from typing import Any, Dict, List, Union
 
-from pydantic import BaseModel, Field
-
 from db.daos.work_request import WorkRequestRecord
+from pydantic import BaseModel, Field
 
 
 class WorkRequestPayloadModel(BaseModel):
     entries: List[str]
+    cache_opt_in: bool = False
 
     def to_object(self) -> Dict[str, Any]:
-        return {
-            "entries": self.entries,
-        }
+        return {"entries": self.entries, "cacheOptIn": self.cache_opt_in}
+
 
 # simple check if line contains a comma
 # NOTE: we might improve this later, once we have a regex for SMILES
 def check_payload_line_is_header(line: str) -> bool:
     return "," in line
 
+
 class WorkRequestPayload:
-
     entries: List[str]
+    cache_opt_in: bool
 
-    def __init__(self, entries: List[str]):
+    def __init__(self, entries: List[str], cache_opt_in: bool = False):
         self.entries = entries
+        self.cache_opt_in = cache_opt_in
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestPayload":
@@ -33,17 +34,23 @@ class WorkRequestPayload:
             raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
-            list(filter(lambda line: not check_payload_line_is_header(line), obj["entries"])),
+            list(
+                filter(
+                    lambda line: not check_payload_line_is_header(line),
+                    map(lambda e: e.strip(), obj["entries"]),
+                )
+            ),
+            False if "cacheOptIn" not in obj else obj["cacheOptIn"],
         )
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "entries": self.entries,
+            "cacheOptIn": self.cache_opt_in,
         }
 
 
 class WorkRequestStatus(Enum):
-
     QUEUED = "QUEUED"
     SCHEDULING = "SCHEDULING"
     PROCESSING = "PROCESSING"
@@ -67,7 +74,6 @@ class WorkRequestStatus(Enum):
 
 # NOT RETURNED VIA API
 class WorkRequestMetadata:
-
     user_agent: str
     session_id: str
     host: str
@@ -99,7 +105,6 @@ class WorkRequestMetadata:
 
 
 class WorkRequest:
-
     id: int
     model_id: str
     user_id: str
@@ -280,7 +285,6 @@ class WorkRequest:
 
 
 class WorkRequestCreateModel(BaseModel):
-
     model_id: str
     request_payload: WorkRequestPayloadModel
 
@@ -296,7 +300,6 @@ WorkRequestResult = List[Union[str, Dict[str, Any]]]
 
 
 class WorkRequestModel(BaseModel):
-
     id: int | None = None
     model_id: str
     user_id: str
@@ -389,7 +392,7 @@ class WorkRequestModel(BaseModel):
         for result in self.result:
             csv_value_line = [self.request_payload.entries[result_index]]
 
-            for key, value in result.items():
+            for key, value in sorted(result.items(), key=lambda r: r[0]):
                 if result_index == 0:
                     csv_column_names.append(key)
 
@@ -407,12 +410,10 @@ class WorkRequestModel(BaseModel):
 
 
 class WorkRequestListModel(BaseModel):
-
     items: List[WorkRequestModel]
 
 
 class WorkRequestUpdateModel(BaseModel):
-
     id: int
     request_status: WorkRequestStatus
     request_status_reason: str | None = None
