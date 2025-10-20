@@ -8,7 +8,7 @@ class WorkRequestResultCacheTempRecord(DAORecord):
     work_request_id: int
     input_hash: str
     input: str
-    result: str
+    result: str | None
 
     def __init__(self, result: dict):
         super().__init__(result)
@@ -16,7 +16,7 @@ class WorkRequestResultCacheTempRecord(DAORecord):
         self.work_request_id = result["workrequestid"]
         self.input_hash = result["inputhash"]
         self.input = result["input"]
-        self.result = result["result"]
+        self.result = None if "result" not in result else result["result"]
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return {
@@ -136,10 +136,11 @@ class WorkRequestResultCacheTempDeleteQuery(DAOQuery):
 
         sql = """
             DELETE FROM WorkRequestResultCacheTemp
-            WHERE WorkRequestId = :query_WorkRequestId,
+            WHERE WorkRequestId = :query_WorkRequestId
             RETURNING
                 WorkRequestId,
-                InputHash
+                InputHash,
+                Input
         """
 
         return sql, field_map

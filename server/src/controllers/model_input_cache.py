@@ -196,6 +196,17 @@ class ModelInputCache:
                 f"Failed to load persisted workrequest results cache for [{work_request_id}], error = [{exc_info()!r}]"
             )
 
+    def clear_work_request_cached_results(self, work_request_id: int):
+        try:
+            deleted = WorkRequestResultCacheTempDAO.execute_delete(
+                ApplicationConfig.instance().database_config,
+                work_request_id=work_request_id,
+            )
+        except:
+            raise Exception(
+                f"Failed to clear persisted workrequest results cache for [{work_request_id}], error = [{exc_info()!r}]"
+            )
+
     def consolidate_results(
         self,
         ordered_inputs: list[str],

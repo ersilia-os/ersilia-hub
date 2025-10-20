@@ -502,7 +502,10 @@ class WorkRequestWorker(Thread):
         return S3IntegrationController.instance().upload_result(result_obj)
 
     def _process_failed_job(
-        self, work_request: WorkRequest, reason: str = "Job Failed"
+        self,
+        work_request: WorkRequest,
+        reason: str = "Job Failed",
+        has_cached_results: bool = False,
     ):
         work_request.request_status = WorkRequestStatus.FAILED
         work_request.request_status_reason = reason
@@ -510,6 +513,14 @@ class WorkRequestWorker(Thread):
         updated_work_request = self._controller.update_request(
             work_request, retry_count=1
         )
+
+        if has_cached_results:
+            try:
+                ModelInputCache.instance().clear_work_request_cached_results(
+                    work_request.id
+                )
+            except:
+                ContextLogger.warn(self._logger_key, repr(exc_info()))
 
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%s]" % work_request.id)
@@ -565,6 +576,13 @@ class WorkRequestWorker(Thread):
                     _result_content,
                 )
             )
+
+            try:
+                ModelInputCache.instance().clear_work_request_cached_results(
+                    work_request.id
+                )
+            except:
+                ContextLogger.warn(self._logger_key, repr(exc_info()))
 
         if not self._upload_result_to_s3(work_request, _result_content):
             sleep(30)
@@ -638,7 +656,9 @@ class WorkRequestWorker(Thread):
                     non_cached_inputs=job_non_cached_inputs,
                 )
             elif job_status == JobStatus.FAILED:
-                updated_work_request = self._process_failed_job(work_request)
+                updated_work_request = self._process_failed_job(
+                    work_request, has_cached_results=job_has_cached_results
+                )
             else:
                 ContextLogger.error(
                     self._logger_key,
