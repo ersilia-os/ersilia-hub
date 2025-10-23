@@ -1,6 +1,4 @@
-from controllers.scaling_manager import ScalingManager
 from fastapi import APIRouter
-
 from library.fastapi_root import FastAPIRoot
 
 ###############################################################################
@@ -23,6 +21,7 @@ def register(fastapi_root: FastAPIRoot = None):
 # TODO: add DB, AWS and k8s checks to below
 #
 
+
 @router.get("/healthz")
 def healthz():
     return {"status": "ok"}
@@ -36,4 +35,3 @@ def healthz():
 @router.get("/livez")
 def healthz():
     return {"status": "ok"}
-

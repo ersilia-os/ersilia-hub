@@ -714,6 +714,7 @@ class WorkRequestWorker(Thread):
                     work_request.last_updated, "-5m"
                 )
 
+                # TODO: [instances v2] change this to check if ModelInstance exists - WR is same server, so SHOULD have an instance
                 pod = K8sController.instance().get_pod_by_request(
                     work_request.model_id, str(work_request.id)
                 )
@@ -817,6 +818,7 @@ class WorkRequestWorker(Thread):
                 if is_date_in_range_from_now(work_request.last_updated, "-2m"):
                     continue
 
+                # TODO: [instances v2] check for model instance
                 pod = K8sController.instance().get_pod_by_request(
                     work_request.model_id, str(work_request.id)
                 )
@@ -1006,6 +1008,7 @@ class WorkRequestWorker(Thread):
 
                     continue
 
+                # TODO: [instances v2] replace with ModelInstance creation + wait on pod created ??
                 pod = ScalingManager.instance().acquire_instance(
                     work_request.model_id, str(work_request.id), 5
                 )
@@ -1036,7 +1039,7 @@ class WorkRequestWorker(Thread):
                     updated_work_request, retry_count=0
                 )
 
-                # TODO: eventually this will replace the "acquire_instance"
+                # TODO: [instances v2] can remove this once above pod creation is replaced
                 ModelInstanceController.instance().request_instance(
                     work_request.model_id,
                     str(work_request.id),
@@ -1135,6 +1138,7 @@ class WorkRequestWorker(Thread):
                     "Handling [FAILED] WorkRequest with id [%d]..." % work_request.id,
                 )
 
+                # TODO: [instances v2] replace this with ModelInstanceController.ensure_instance_terminated(model_id, wr_id OR instance_name)
                 ScalingManager.instance().release_instance(
                     work_request.model_id, str(work_request.id)
                 )

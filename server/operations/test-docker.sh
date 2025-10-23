@@ -15,7 +15,6 @@ docker run -p 8080:8080 --network=host \
     -e LOG_LEVEL_ModelIntegrationController="DEBUG" \
     -e LOG_LEVEL_K8sController="DEBUG" \
     -e LOG_LEVEL_K8sProxyController="DEBUG" \
-    -e LOG_LEVEL_ScalingManager="DEBUG" \
     -e LOG_LEVEL_ScalingWorker="DEBUG" \
     -e LOG_LEVEL_WorkRequestController="DEBUG" \
     -e LOG_LEVEL_WorkRequestWorker="DEBUG" \
