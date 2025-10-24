@@ -15,11 +15,14 @@ from db.daos.model_instance_log import (
     ModelInstanceLogRecord,
 )
 from objects.instance import ModelInstance
-from objects.k8s import K8sPod
+from objects.k8s import ErsiliaAnnotations, K8sPod
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
+
+from src.controllers.model import ModelController
+from src.controllers.server import ServerController
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -128,14 +131,9 @@ class ModelInstanceHandler(Thread):
             except:
                 pass
 
-            try:
-                K8sController.instance().delete_pod(
-                    self.model_id, target_pod_name=self.pod_name
-                )
-            except:
-                pass
+            self._terminate_pod()
 
-            # TODO: wait for pod to be GONE
+            # TODO: wait for pod to be GONE ??
 
         self._controller.remove_instance(self.model_id, self.work_request_id)
 
@@ -145,11 +143,95 @@ class ModelInstanceHandler(Thread):
         ContextLogger.info(self._logger_key, "Handler terminated")
         del ContextLogger.instance().context_logger_map[self._logger_key]
 
-    def _on_start(self):
-        # TODO: [instances v2] create pod here
+    def _create_pod(self) -> bool:
+        try:
+            model = ModelController.instance().get_model(self.model_id)
+
+            if model is None:
+                raise Exception("model [%s] not found" % self.model_id)
+
+            if not model.enabled:
+                raise Exception("model [%s] is disabled" % self.model_id)
+
+            new_pod = K8sController.instance().deploy_new_pod(
+                self.model_id,
+                model.details.k8s_resources,
+                disable_memory_limit=model.details.disable_memory_limit,
+                annotations=dict(
+                    [
+                        (ErsiliaAnnotations.REQUEST_ID.value, self.work_request_id),
+                        (
+                            ErsiliaAnnotations.SERVER_ID.value,
+                            ServerController.instance().server_id,
+                        ),
+                    ]
+                ),
+                model_template_version=model.details.template_version,
+            )
+
+            if new_pod is None:
+                raise Exception("null pod on creation")
+
+            self.k8s_pod = new_pod
+            self.pod_name = new_pod.name
+            self.pod_exists = True
+
+            return True
+        except:
+            ContextLogger.error(
+                self._logger_key, f"Failed to create pod, error = [{repr(exc_info())}]"
+            )
+            traceback.print_exc(file=stdout)
+
+            self.state = ModelInstanceState.SHOULD_TERMINATE
+            self.pod_exists = False
+
+            return False
+
+    def _terminate_pod(self):
+        if not self.pod_exists:
+            return
+
+        _pod_name = (
+            self.pod_name
+            if self.pod_name is not None
+            else self.k8s_pod.name
+            if self.k8s_pod is not None
+            else None
+        )
+
+        if _pod_name is None:
+            ContextLogger.warn(
+                self._logger_key, "Failed to terminate pod, cannot determine name"
+            )
+
+            return
+
+        try:
+            if K8sController.instance().delete_pod(
+                self.model_id, target_pod_name=_pod_name
+            ):
+                ContextLogger.debug(self._logger_key, "Pod [%s] terminated" % _pod_name)
+            else:
+                ContextLogger.warn(
+                    self._logger_key,
+                    "Pod [%s] termination failed - possibly already terminated"
+                    % _pod_name,
+                )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to terminate pod [%s], error = %s"
+                % (_pod_name, repr(exc_info())),
+            )
+
+    def _on_start(self) -> bool:
+        if not self._create_pod():
+            return False
 
         # load pod + state for first time
-        self._check_pod_state()
+        if not self._check_pod_state(self.k8s_pod):
+            return False
 
         # add pod to podmetricscontroller
         # TODO: need to add namespace to pod
@@ -157,35 +239,37 @@ class ModelInstanceHandler(Thread):
             "eos-models", self.pod_name, self.model_id
         )
 
-    def _check_pod_state(self):
-        k8s_pod: K8sPod | None = None
+        return True
+
+    def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
+        _k8s_pod: K8sPod | None = k8s_pod
 
         try:
-            if self.pod_name is None:
+            if _k8s_pod is None and self.pod_name is None:
                 ContextLogger.debug(
                     self._logger_key,
                     f"Loading pod by request model_id = [{self.model_id}], request_id = [{self.work_request_id}]...",
                 )
-                k8s_pod = K8sController.instance().get_pod_by_request(
+                _k8s_pod = K8sController.instance().get_pod_by_request(
                     self.model_id, self.work_request_id
                 )
             else:
                 ContextLogger.debug(
                     self._logger_key, f"Loading pod by name = [{self.pod_name}]..."
                 )
-                k8s_pod = K8sController.instance().get_pod(self.pod_name)
+                _k8s_pod = K8sController.instance().get_pod(self.pod_name)
 
-            if k8s_pod is None:
+            if _k8s_pod is None:
                 ContextLogger.warn(
                     self._logger_key, "Pod missing, likely terminated by k8s"
                 )
                 self.state = ModelInstanceState.SHOULD_TERMINATE
                 self.pod_exists = False
 
-                return
+                return False
 
-            self.k8s_pod = k8s_pod
-            self.pod_name = k8s_pod.name
+            self.k8s_pod = _k8s_pod
+            self.pod_name = _k8s_pod.name
             self.pod_exists = True
 
             if (
@@ -197,6 +281,7 @@ class ModelInstanceHandler(Thread):
                 self.state = ModelInstanceState.ACTIVE
 
             # TODO: update state e.g. readiness + active
+            return True
         except:
             ContextLogger.error(
                 self._logger_key, f"Failed to find pod, error = [{repr(exc_info())}]"
@@ -206,19 +291,20 @@ class ModelInstanceHandler(Thread):
             self.state = ModelInstanceState.SHOULD_TERMINATE
             self.pod_exists = False
 
+            return False
+
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
 
-        self._on_start()
+        if self._on_start():
+            while True:
+                if self._wait_or_kill(10):
+                    break
 
-        while True:
-            if self._wait_or_kill(10):
-                break
+                _ = self._check_pod_state()
 
-            self._check_pod_state()
-
-            if self.state == ModelInstanceState.SHOULD_TERMINATE:
-                break
+                if self.state == ModelInstanceState.SHOULD_TERMINATE:
+                    break
 
         self._on_terminated()
         self._finalize()
