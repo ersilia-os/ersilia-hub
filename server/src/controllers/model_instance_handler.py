@@ -1,4 +1,5 @@
 import traceback
+from datetime import datetime
 from enum import Enum
 from json import loads
 from sys import exc_info, stdout
@@ -133,15 +134,14 @@ class ModelInstanceHandler(Thread):
 
             self._terminate_pod()
 
-            # TODO: wait for pod to be GONE ??
-
-        self._controller.remove_instance(self.model_id, self.work_request_id)
-
         self.state = ModelInstanceState.TERMINATED
+        ContextLogger.info(self._logger_key, "Handler terminated")
 
     def _finalize(self):
-        ContextLogger.info(self._logger_key, "Handler terminated")
+        ContextLogger.info(self._logger_key, "Handler finalized")
         del ContextLogger.instance().context_logger_map[self._logger_key]
+
+        self._controller.remove_instance(self.model_id, self.work_request_id)
 
     def _create_pod(self) -> bool:
         try:
@@ -209,7 +209,7 @@ class ModelInstanceHandler(Thread):
 
         try:
             if K8sController.instance().delete_pod(
-                self.model_id, target_pod_name=_pod_name
+                self.model_id, target_pod_name=_pod_name, force=True
             ):
                 ContextLogger.debug(self._logger_key, "Pod [%s] terminated" % _pod_name)
             else:
@@ -240,6 +240,11 @@ class ModelInstanceHandler(Thread):
         )
 
         return True
+
+    def wait_for_pod_scheduled(self, timeout: int = 0):
+        start_time = datetime.now().timestamp()
+
+        # TODO: [instance v2] continue this
 
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
         _k8s_pod: K8sPod | None = k8s_pod
@@ -296,18 +301,26 @@ class ModelInstanceHandler(Thread):
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
 
-        if self._on_start():
-            while True:
-                if self._wait_or_kill(10):
-                    break
+        try:
+            if self._on_start():
+                while True:
+                    if self._wait_or_kill(5):
+                        break
 
-                _ = self._check_pod_state()
+                    _ = self._check_pod_state()
 
-                if self.state == ModelInstanceState.SHOULD_TERMINATE:
-                    break
+                    if self.state == ModelInstanceState.SHOULD_TERMINATE:
+                        break
+        finally:
+            self._on_terminated()
 
-        self._on_terminated()
-        self._finalize()
+        # NOTE: we only want to "finalize" once the instance is marked for "kill"
+        #       this happens after the WorkRequest has completed processing
+        while True:
+            if not self._wait_or_kill(10):
+                continue
+
+            self._finalize()
 
 
 class ModelInstanceControllerKillInstance(KillInstance):
@@ -404,7 +417,7 @@ class ModelInstanceController:
         del self.model_instance_handlers[key]
 
     def get_instance(
-        self, model_id: str, work_request_id: str
+        self, model_id: str, work_request_id: int
     ) -> Union[ModelInstanceHandler, None]:
         key = f"{model_id}_{work_request_id}"
 
@@ -420,6 +433,9 @@ class ModelInstanceController:
 
         for handler in self.model_instance_handlers.values():
             # TODO: apply filters
+
+            if handler.k8s_pod is None:
+                continue
 
             metrics = InstanceMetricsController.instance().get_instance(
                 handler.k8s_pod.namespace, handler.k8s_pod.name
@@ -497,12 +513,19 @@ class ModelInstanceController:
         return list(instances.values())
 
     def ensure_instance_terminated(
-        self,
-        model_id: str | None = None,
-        work_request_id: int | None = None,
-        instance_name: str | None = None,
+        self, model_id: str, work_request_id: int, wait: bool = False
     ):
-        # TODO: [instances v2] ensure ModelInstance is terminated (WAIT if exists)
-        # TODO: [instances v2] recheck pod exists and terminate (no grace-period) if it still exists - no additional wait needed
-        # TODO: [instances v2] model instance log ??
-        pass
+        instance = self.get_instance(model_id, work_request_id)
+
+        if instance is None:
+            ContextLogger.debug(
+                self._logger_key,
+                "No instance found for model [%s], workrequest [%d]"
+                % (model_id, work_request_id),
+            )
+            return
+
+        instance.kill()
+
+        if wait:
+            instance.join()

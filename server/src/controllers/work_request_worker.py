@@ -1008,12 +1008,13 @@ class WorkRequestWorker(Thread):
 
                     continue
 
-                # TODO: [instances v2] replace with ModelInstance creation + wait on pod created ??
-                pod = ScalingManager.instance().acquire_instance(
-                    work_request.model_id, str(work_request.id), 5
+                instance = ModelInstanceController.instance().request_instance(
+                    work_request.model_id,
+                    str(work_request.id),
+                    ignore_max_concurrent_limit=True,
                 )
 
-                if pod is None:
+                if instance is None:
                     ContextLogger.warn(
                         self._logger_key,
                         "Failed to acquire instance for WorkRequest [%d]. Setting status to [QUEUED] and adding model id [%s] to skip list"
@@ -1039,16 +1040,10 @@ class WorkRequestWorker(Thread):
                     updated_work_request, retry_count=0
                 )
 
-                # TODO: [instances v2] can remove this once above pod creation is replaced
-                ModelInstanceController.instance().request_instance(
-                    work_request.model_id,
-                    str(work_request.id),
-                    ignore_max_concurrent_limit=True,
-                )
-
                 if updated_work_request is None:
                     raise Exception("Failed to persist updated WorkRequest")
 
+                # TODO: [instance v2 - job] move job submission to instance
                 # throws exception on failure, which will be caught
                 updated_work_request = self._submit_job(
                     updated_work_request, pod, non_cached_inputs=non_cached_inputs

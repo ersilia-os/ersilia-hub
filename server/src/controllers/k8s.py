@@ -1,36 +1,35 @@
-from sys import exc_info, stdout
 import traceback
-from typing import Dict, List, Union
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
-from kubernetes import client, config
-from kubernetes.client import (
-    CoreV1Api,
-    AppsV1Api,
-    V1PodList,
-    V1Pod,
-    V1PodTemplateList,
-    V1NodeList,
-)
-from objects.k8s import (
-    ErsiliaAnnotations,
-    K8sNode,
-    K8sPod,
-    K8sPodResources,
-    K8sPodTemplate,
-    ErsiliaLabels,
-)
-from library.process_lock import ProcessLock
 from subprocess import Popen, run
-from threading import Thread, Event
-from python_framework.graceful_killer import GracefulKiller, KillInstance
-
-from python_framework.thread_safe_cache import ThreadSafeCache
+from sys import exc_info, stdout
+from threading import Event, Thread
+from typing import Dict, List, Union
 
 from controllers.model_instance_log import (
     ModelInstanceLogController,
     ModelInstanceLogEvent,
 )
+from kubernetes import client, config
+from kubernetes.client import (
+    AppsV1Api,
+    CoreV1Api,
+    V1NodeList,
+    V1Pod,
+    V1PodList,
+    V1PodTemplateList,
+)
+from library.process_lock import ProcessLock
+from objects.k8s import (
+    ErsiliaAnnotations,
+    ErsiliaLabels,
+    K8sNode,
+    K8sPod,
+    K8sPodResources,
+    K8sPodTemplate,
+)
+from python_framework.config_utils import load_environment_variable
+from python_framework.graceful_killer import GracefulKiller, KillInstance
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_cache import ThreadSafeCache
 
 
 class K8sControllerKillInstance(KillInstance):
@@ -39,7 +38,6 @@ class K8sControllerKillInstance(KillInstance):
 
 
 class K8sController(Thread):
-
     UPDATE_WAIT_TIME = 30
     MODEL_LABEL_SELECTOR = "app.kubernetes.io/component=model"
     MODELTEMPLATE_LABEL_SELECTOR = "app.kubernetes.io/component=model-template"
@@ -140,7 +138,7 @@ class K8sController(Thread):
         disable_memory_limit: bool = False,
         annotations: Dict[str, str] = None,
         model_template_version: str = "0.0.0",
-        image_tag: str = "latest"
+        image_tag: str = "latest",
     ) -> Union[None | K8sPod]:
         ContextLogger.debug(
             self._logger_key,
@@ -162,7 +160,10 @@ class K8sController(Thread):
             self._template_cache[template_key]
             .copy()
             .transform_for_model(
-                model_id, k8s_resources, image_tag, disable_memory_limit=disable_memory_limit
+                model_id,
+                k8s_resources,
+                image_tag,
+                disable_memory_limit=disable_memory_limit,
             )
         )
         ContextLogger.trace(
@@ -382,10 +383,12 @@ class K8sController(Thread):
 
         return candidate_pods
 
-    def _delete_pod(self, pod_name: str, model_id: str = None) -> bool:
+    def _delete_pod(
+        self, pod_name: str, model_id: str = None, force: bool = False
+    ) -> bool:
         try:
             deleted_pod = self._api_core.delete_namespaced_pod(
-                pod_name, self._namespace
+                pod_name, self._namespace, grace_period_seconds=0 if force else None
             )
 
             if deleted_pod is None:
@@ -482,6 +485,7 @@ class K8sController(Thread):
         model_id: str,
         annotations_filter: Dict[str, str] = None,
         target_pod_name: str = None,
+        force: bool = False,
     ) -> bool:
         if target_pod_name is not None:
             return self._delete_pod(target_pod_name, model_id)
@@ -506,13 +510,11 @@ class K8sController(Thread):
         if target_pod_name is None:
             return True  # could not find pod, so we assume it's already scaled down
 
-        return self._delete_pod(target_pod_name, model_id)
+        return self._delete_pod(target_pod_name, model_id, force=force)
 
     def _download_pod_logs(self, pod_name: str, model_id: str = None) -> str | None:
         try:
-            logs = self._api_core.read_namespaced_pod_log(
-                pod_name, self._namespace
-            )
+            logs = self._api_core.read_namespaced_pod_log(pod_name, self._namespace)
 
             if logs is None:
                 raise Exception("Failed to download pod logs")
