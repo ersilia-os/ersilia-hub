@@ -146,6 +146,7 @@ class JobSubmissionTask(Thread):
     def kill(self):
         self._kill_event.set()
 
+    # TODO: [instance v2 - job] move this to instance handler
     def _wait_for_pod(self) -> Tuple[WorkRequest, K8sPod]:
         ContextLogger.debug(
             self._logger_key,
@@ -182,7 +183,7 @@ class JobSubmissionTask(Thread):
         )
 
         ModelInstanceLogController.instance().log_instance(
-            log_event=ModelInstanceLogEvent.INSTANCE_READY,
+            log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
             k8s_pod=_pod,
         )
 

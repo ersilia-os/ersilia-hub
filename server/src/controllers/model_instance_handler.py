@@ -10,7 +10,13 @@ from typing import Dict, List, Union
 from config.application_config import ApplicationConfig
 from controllers.instance_metrics import InstanceMetricsController
 from controllers.k8s import K8sController
+from controllers.model import ModelController
+from controllers.model_instance_log import (
+    ModelInstanceLogController,
+    ModelInstanceLogEvent,
+)
 from controllers.s3_integration import S3IntegrationController
+from controllers.server import ServerController
 from db.daos.model_instance_log import (
     ModelInstanceLogDAO,
     ModelInstanceLogQuery,
@@ -22,9 +28,6 @@ from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
-
-from src.controllers.model import ModelController
-from src.controllers.server import ServerController
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -145,6 +148,13 @@ class ModelInstanceHandler(Thread):
         self.state = ModelInstanceState.TERMINATED
         ContextLogger.info(self._logger_key, "Handler terminated")
 
+        ModelInstanceLogController.instance().log_instance(
+            ModelInstanceLogEvent.INSTANCE_TERMINATED,
+            k8s_pod=self.k8s_pod,
+            model_id=self.model_id,
+            work_request_id=self.work_request_id,
+        )
+
     def _finalize(self):
         ContextLogger.info(self._logger_key, "Handler finalized")
         del ContextLogger.instance().context_logger_map[self._logger_key]
@@ -184,6 +194,13 @@ class ModelInstanceHandler(Thread):
             self.pod_name = new_pod.name
             self.pod_exists = True
 
+            ModelInstanceLogController.instance().log_instance(
+                ModelInstanceLogEvent.INSTANCE_POD_CREATED,
+                k8s_pod=self.k8s_pod,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
+
             return True
         except:
             ContextLogger.error(
@@ -193,6 +210,12 @@ class ModelInstanceHandler(Thread):
 
             self.state = ModelInstanceState.SHOULD_TERMINATE
             self.pod_exists = False
+
+            ModelInstanceLogController.instance().log_instance(
+                ModelInstanceLogEvent.INSTANCE_POD_CREATION_FAILED,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
 
             return False
 
@@ -220,6 +243,13 @@ class ModelInstanceHandler(Thread):
                 self.model_id, target_pod_name=_pod_name, force=True
             ):
                 ContextLogger.debug(self._logger_key, "Pod [%s] terminated" % _pod_name)
+
+                ModelInstanceLogController.instance().log_instance(
+                    ModelInstanceLogEvent.INSTANCE_POD_TERMINATED,
+                    k8s_pod=self.k8s_pod,
+                    model_id=self.model_id,
+                    work_request_id=self.work_request_id,
+                )
             else:
                 ContextLogger.warn(
                     self._logger_key,
@@ -334,6 +364,13 @@ class ModelInstanceHandler(Thread):
 
         try:
             if self._on_start():
+                ModelInstanceLogController.instance().log_instance(
+                    ModelInstanceLogEvent.INSTANCE_CREATED,
+                    k8s_pod=self.k8s_pod,
+                    model_id=self.model_id,
+                    work_request_id=self.work_request_id,
+                )
+
                 while True:
                     if self._wait_or_kill(5):
                         break
@@ -342,16 +379,22 @@ class ModelInstanceHandler(Thread):
 
                     if self.state == ModelInstanceState.SHOULD_TERMINATE:
                         break
+            else:
+                ModelInstanceLogController.instance().log_instance(
+                    ModelInstanceLogEvent.INSTANCE_CREATION_FAILED,
+                    model_id=self.model_id,
+                    work_request_id=self.work_request_id,
+                )
         finally:
             self._on_terminated()
 
         # NOTE: we only want to "finalize" once the instance is marked for "kill"
         #       this happens after the WorkRequest has completed processing
         while True:
-            if not self._wait_or_kill(10):
-                continue
+            if self._wait_or_kill(10):
+                break
 
-            self._finalize()
+        self._finalize()
 
 
 class ModelInstanceControllerKillInstance(KillInstance):
@@ -423,7 +466,7 @@ class ModelInstanceController:
         if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
             raise Exception("Max Concurrent Model Instances reached")
 
-        key = f"{model_id}_{work_request_id}"
+        key = f"{model_id}-wr:{work_request_id}"
 
         if key in self.model_instance_handlers:
             return self.model_instance_handlers[key]
@@ -431,6 +474,12 @@ class ModelInstanceController:
         handler = ModelInstanceHandler(model_id, work_request_id, self)
         self.model_instance_handlers[key] = handler
         handler.start()
+
+        ModelInstanceLogController.instance().log_instance(
+            ModelInstanceLogEvent.INSTANCE_REQUESTED,
+            model_id=model_id,
+            work_request_id=work_request_id,
+        )
 
         return handler
 
