@@ -18,7 +18,6 @@ from controllers.model_integration import ModelIntegrationController
 from controllers.node_monitor import NodeMonitorController
 from controllers.recommendation_engine import RecommendationEngine
 from controllers.s3_integration import S3IntegrationController
-from controllers.scaling_manager import ScalingManager
 from controllers.server import ServerController
 from controllers.work_request import WorkRequestController
 from library.fastapi_root import FastAPIRoot
@@ -80,7 +79,6 @@ def init():
     K8sController.initialize()
     ModelController.initialize()
     ModelInputCache.initialize()
-    ScalingManager.initialize()
     ModelInstanceLogController.initialize()
     ModelIntegrationController.initialize()
     InstanceMetricsController.initialize()
@@ -106,7 +104,6 @@ def run():
     try:
         K8sController.instance().start()
         ModelController.instance().start()
-        ScalingManager.instance().start()
         NodeMonitorController.instance().start()
         ServerController.instance().start()
         FailedServerHandler.instance().start()

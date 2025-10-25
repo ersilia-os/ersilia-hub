@@ -10,14 +10,16 @@ from typing import Dict, List, Set, Tuple, Union
 from controllers.k8s import K8sController
 from controllers.model import ModelController
 from controllers.model_input_cache import ModelInputCache
-from controllers.model_instance_handler import ModelInstanceController
+from controllers.model_instance_handler import (
+    ModelInstanceController,
+    ModelInstanceHandler,
+)
 from controllers.model_instance_log import (
     ModelInstanceLogController,
     ModelInstanceLogEvent,
 )
 from controllers.model_integration import ModelIntegrationController
 from controllers.s3_integration import S3IntegrationController
-from controllers.scaling_manager import ScalingManager
 from controllers.server import ServerController
 from objects.k8s import K8sPod
 from objects.model import ModelExecutionMode
@@ -144,6 +146,7 @@ class JobSubmissionTask(Thread):
     def kill(self):
         self._kill_event.set()
 
+    # TODO: [instance v2 - job] move this to instance handler
     def _wait_for_pod(self) -> Tuple[WorkRequest, K8sPod]:
         ContextLogger.debug(
             self._logger_key,
@@ -180,7 +183,7 @@ class JobSubmissionTask(Thread):
         )
 
         ModelInstanceLogController.instance().log_instance(
-            log_event=ModelInstanceLogEvent.INSTANCE_READY,
+            log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
             k8s_pod=_pod,
         )
 
@@ -530,7 +533,7 @@ class WorkRequestWorker(Thread):
     def _process_completed_job(
         self,
         work_request: WorkRequest,
-        pod: K8sPod,
+        instance: ModelInstanceHandler,
         result_content: JobResult = None,
         has_cached_results: bool = False,
         non_cached_inputs: list[str] | None = None,
@@ -545,6 +548,13 @@ class WorkRequestWorker(Thread):
             ),
         )
 
+        if instance.k8s_pod is None:
+            return self._process_failed_job(
+                work_request,
+                reason="Instance pod is null",
+                has_cached_results=has_cached_results,
+            )
+
         _result_content: JobResult | None = result_content
         job_result_content = result_content
 
@@ -553,7 +563,7 @@ class WorkRequestWorker(Thread):
             _result_content = ModelIntegrationController.instance().get_job_result(
                 work_request.model_id,
                 str(work_request.id),
-                pod.ip,
+                instance.k8s_pod.ip,
                 work_request.model_job_id,
             )
             job_result_content = _result_content
@@ -565,7 +575,11 @@ class WorkRequestWorker(Thread):
                 "Job Result is None for workrequest [%d], jobid [%s]"
                 % (work_request.id, work_request.model_job_id),
             )
-            return self._process_failed_job(work_request, reason="Job Result is empty")
+            return self._process_failed_job(
+                work_request,
+                reason="Job Result is empty",
+                has_cached_results=has_cached_results,
+            )
 
         if has_cached_results:
             _result_content = (
@@ -583,6 +597,12 @@ class WorkRequestWorker(Thread):
                 )
             except:
                 ContextLogger.warn(self._logger_key, repr(exc_info()))
+
+        if len(_result_content) != len(work_request.request_payload.entries):
+            return self._process_failed_job(
+                work_request,
+                reason="Model result count not the same as model input count",
+            )
 
         if not self._upload_result_to_s3(work_request, _result_content):
             sleep(30)
@@ -608,7 +628,7 @@ class WorkRequestWorker(Thread):
             )
 
     def _handle_processing_work_request(
-        self, work_request: WorkRequest, pod: K8sPod
+        self, work_request: WorkRequest, instance: ModelInstanceHandler
     ) -> WorkRequest:
         ContextLogger.trace(
             self._logger_key,
@@ -650,7 +670,7 @@ class WorkRequestWorker(Thread):
             if job_status == JobStatus.COMPLETED:
                 updated_work_request = self._process_completed_job(
                     work_request,
-                    pod,
+                    instance,
                     job_result,
                     has_cached_results=job_has_cached_results,
                     non_cached_inputs=job_non_cached_inputs,
@@ -666,20 +686,7 @@ class WorkRequestWorker(Thread):
                     % (work_request.id, job_status),
                 )
 
-            model_instance_handler = ModelInstanceController.instance().get_instance(
-                work_request.model_id, str(work_request.id)
-            )
-
-            if model_instance_handler is None:
-                ContextLogger.warn(
-                    self._logger_key,
-                    "Failed to terminate ModelInstanceHandler for workrequest [%d], model [%s] - reason = [Missing instance]"
-                    % (work_request.id, work_request.model_id),
-                )
-
-                return updated_work_request
-
-            model_instance_handler.kill()
+            instance.kill()
 
             return updated_work_request
         except:
@@ -714,20 +721,20 @@ class WorkRequestWorker(Thread):
                     work_request.last_updated, "-5m"
                 )
 
-                pod = K8sController.instance().get_pod_by_request(
-                    work_request.model_id, str(work_request.id)
+                instance = ModelInstanceController.instance().get_instance(
+                    work_request.model_id, work_request.id
                 )
 
-                if pod is None:
+                if instance is None:
                     ContextLogger.warn(
                         self._logger_key,
-                        "Failed to find pod for request_id = [%d]" % work_request.id,
+                        "Failed to find instance for request_id = [%d]"
+                        % work_request.id,
                     )
 
-                    # TODO: potentially "self-heal" by getting a new pod
+                    # TODO: potentially "self-heal" by setting back to queued and getting a new instance
 
                     if not potentially_new_workload:
-                        # NOTE: if work request "disappeared", we set it to FAILED and can rerun it from there
                         ContextLogger.warn(
                             self._logger_key,
                             "WorkRequest [%d] older than [5m] but missing, assuming [FAILED]"
@@ -742,7 +749,7 @@ class WorkRequestWorker(Thread):
 
                 updated_work_request = work_request
 
-                # if no job_id, but we have a pod, job submission might have failed
+                # if no job_id, but we have a instance, job submission might have failed
                 if (
                     work_request.model_job_id is None
                     or len(work_request.model_job_id) == 0
@@ -775,23 +782,7 @@ class WorkRequestWorker(Thread):
 
                         continue
 
-                        # TODO: we should self-heal before this happens, this will be handled better with model-integration v2
-
-                        # try:
-                        #    updated_work_request = self._submit_job(work_request, pod)
-                        # except:
-                        #    ContextLogger.error(
-                        #        self._logger_key,
-                        #        "Failed to submit job, error = [%s]" % repr(exc_info()),
-                        #    )
-                        #    traceback.print_exc(file=stdout)
-
-                        #    updated_work_request = (
-                        #        self._controller.mark_workrequest_failed(work_request)
-                        #    )
-                        #    continue
-
-                self._handle_processing_work_request(updated_work_request, pod)
+                self._handle_processing_work_request(updated_work_request, instance)
             except:
                 ContextLogger.error(
                     self._logger_key,
@@ -817,14 +808,14 @@ class WorkRequestWorker(Thread):
                 if is_date_in_range_from_now(work_request.last_updated, "-2m"):
                     continue
 
-                pod = K8sController.instance().get_pod_by_request(
-                    work_request.model_id, str(work_request.id)
+                instance = ModelInstanceController.instance().get_instance(
+                    work_request.model_id, work_request.id
                 )
 
-                if pod is None:
+                if instance is None:
                     ContextLogger.warn(
                         self._logger_key,
-                        "Failed to find pod for request_id = [%d]. Assuming process failed, moving back to [QUEUED]"
+                        "Failed to find instance for request_id = [%d]. Assuming process failed, moving back to [QUEUED]"
                         % work_request.id,
                     )
 
@@ -832,10 +823,21 @@ class WorkRequestWorker(Thread):
                     work_request.request_status_reason = (
                         "FAILED TO FIND REQUESTED INSTANCE"
                     )
+                elif not instance.is_active():
+                    ContextLogger.warn(
+                        self._logger_key,
+                        "Instance for request_id = [%d] in in-active state. Assuming process failed, moving back to [QUEUED]"
+                        % work_request.id,
+                    )
+
+                    work_request.request_status = WorkRequestStatus.QUEUED
+                    work_request.request_status_reason = (
+                        "INSTANCE UNEXPECTED IN-ACTIVE STATE"
+                    )
                 else:
                     ContextLogger.debug(
                         self._logger_key,
-                        "Found pod for [SCHEDULING] work request [%d], setting status to [PROCESSING]"
+                        "Found instance for [SCHEDULING] work request [%d], setting status to [PROCESSING]"
                         % work_request.id,
                     )
                     work_request.request_status = WorkRequestStatus.PROCESSING
@@ -862,7 +864,7 @@ class WorkRequestWorker(Thread):
     def _submit_job(
         self,
         work_request: WorkRequest,
-        pod: K8sPod,
+        instance: ModelInstanceHandler,
         retry_count=1,
         non_cached_inputs: list[str] = None,
     ) -> WorkRequest:
@@ -880,8 +882,17 @@ class WorkRequestWorker(Thread):
             )
             return work_request
 
+        if instance.k8s_pod is None or not instance.is_active():
+            raise Exception(
+                "Failed to submit job, instance does not have a pod or is in-active"
+            )
+
         task = JobSubmissionTask(
-            self._controller, work_request.copy(), pod, retry_count, non_cached_inputs
+            self._controller,
+            work_request.copy(),
+            instance.k8s_pod,
+            retry_count,
+            non_cached_inputs,
         )
         self._job_submission_tasks[task.id] = task
         task.start()
@@ -950,7 +961,7 @@ class WorkRequestWorker(Thread):
     def _handle_queued_requests(self, work_requests: List[WorkRequest]):
         ContextLogger.debug(self._logger_key, "Handling [QUEUED] requests...")
 
-        # skip list based on failed pod scaling, NOT due to job submit failures
+        # skip list based on failed instance creation, NOT due to job submit failures
         skipped_model_ids: Set[str] = set()
 
         for work_request in work_requests:
@@ -1006,11 +1017,13 @@ class WorkRequestWorker(Thread):
 
                     continue
 
-                pod = ScalingManager.instance().acquire_instance(
-                    work_request.model_id, str(work_request.id), 5
+                instance = ModelInstanceController.instance().request_instance(
+                    work_request.model_id,
+                    str(work_request.id),
+                    ignore_max_concurrent_limit=True,
                 )
 
-                if pod is None:
+                if instance is None:
                     ContextLogger.warn(
                         self._logger_key,
                         "Failed to acquire instance for WorkRequest [%d]. Setting status to [QUEUED] and adding model id [%s] to skip list"
@@ -1036,19 +1049,18 @@ class WorkRequestWorker(Thread):
                     updated_work_request, retry_count=0
                 )
 
-                # TODO: eventually this will replace the "acquire_instance"
-                ModelInstanceController.instance().request_instance(
-                    work_request.model_id,
-                    str(work_request.id),
-                    ignore_max_concurrent_limit=True,
-                )
-
                 if updated_work_request is None:
                     raise Exception("Failed to persist updated WorkRequest")
 
+                if not instance.wait_for_pod_created(timeout=30):
+                    raise Exception("Pod failed to create within [30]s")
+
+                # TODO: [instance v2 - job] move job submission to instance
                 # throws exception on failure, which will be caught
                 updated_work_request = self._submit_job(
-                    updated_work_request, pod, non_cached_inputs=non_cached_inputs
+                    updated_work_request,
+                    instance,
+                    non_cached_inputs=non_cached_inputs,
                 )
             except:
                 ContextLogger.error(
@@ -1135,8 +1147,8 @@ class WorkRequestWorker(Thread):
                     "Handling [FAILED] WorkRequest with id [%d]..." % work_request.id,
                 )
 
-                ScalingManager.instance().release_instance(
-                    work_request.model_id, str(work_request.id)
+                ModelInstanceController.instance().ensure_instance_terminated(
+                    work_request.model_id, work_request.id
                 )
             except:
                 ContextLogger.error(

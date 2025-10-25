@@ -18,7 +18,6 @@ server:
     logLevelModelIntegrationController: INFO
     logLevelK8sController: INFO
     logLevelK8sProxyController: INFO
-    logLevelScalingManager: INFO
     logLevelScalingWorker: INFO
     logLevelWorkRequestController: INFO
     logLevelWorkRequestWorker: INFO

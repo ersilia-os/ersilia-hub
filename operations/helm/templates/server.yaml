@@ -56,8 +56,6 @@ spec:
               value: {{ .Values.server.env.logLevelK8sController }}
             - name: LOG_LEVEL_K8sProxyController
               value: {{ .Values.server.env.logLevelK8sProxyController }}
-            - name: LOG_LEVEL_ScalingManager
-              value: {{ .Values.server.env.logLevelScalingManager }}
             - name: LOG_LEVEL_ScalingWorker
               value: {{ .Values.server.env.logLevelScalingWorker }}
             - name: LOG_LEVEL_WorkRequestController
