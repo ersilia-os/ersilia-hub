@@ -4,6 +4,7 @@ from enum import Enum
 from json import loads
 from sys import exc_info, stdout
 from threading import Event, Thread
+from time import sleep
 from typing import Dict, List, Union
 
 from config.application_config import ApplicationConfig
@@ -106,6 +107,13 @@ class ModelInstanceHandler(Thread):
     def kill(self):
         self._kill_event.set()
         self.state = ModelInstanceState.SHOULD_TERMINATE
+
+    def is_active(self) -> bool:
+        return self.state not in [
+            ModelInstanceState.SHOULD_TERMINATE,
+            ModelInstanceState.TERMINATING,
+            ModelInstanceState.TERMINATED,
+        ]
 
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
@@ -241,10 +249,33 @@ class ModelInstanceHandler(Thread):
 
         return True
 
-    def wait_for_pod_scheduled(self, timeout: int = 0):
-        start_time = datetime.now().timestamp()
+    # NOTE: theoretically, this will always return true after _on_start has been executed, till termination
+    # NOTE: this is not checking if the pod is scheduled (started), only CREATED
+    def wait_for_pod_created(self, timeout: int = 0) -> bool:
+        if self.state in [
+            ModelInstanceState.SHOULD_TERMINATE,
+            ModelInstanceState.TERMINATING,
+            ModelInstanceState.TERMINATED,
+        ]:
+            return False
 
-        # TODO: [instance v2] continue this
+        if self.k8s_pod is not None:
+            return True
+
+        start_time = 0 if timeout <= 0 else datetime.now().timestamp()
+
+        while True:
+            if self.k8s_pod is not None:
+                return True
+
+            sleep(2)
+
+            if timeout > 0 and (datetime.now().timestamp() - start_time > timeout):
+                ContextLogger.warn(
+                    self._logger_key,
+                    "wait_for_pod_scheduled timeout [%d] reached" % timeout,
+                )
+                return False
 
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
         _k8s_pod: K8sPod | None = k8s_pod
