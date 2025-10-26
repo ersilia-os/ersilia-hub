@@ -307,6 +307,68 @@ class ModelInstanceHandler(Thread):
                 )
                 return False
 
+    # TODO: [instance v2 - job] redo this FOR instance handler
+    def wait_for_pod_ready(self) -> Tuple[WorkRequest, K8sPod]:
+        ContextLogger.debug(
+            self._logger_key,
+            "Waiting for pod [%s] to be ready for workrequest [%d]..."
+            % (self.pod.name, self.work_request.id),
+        )
+
+        start_time = time()
+        _pod = self.pod
+
+        # wait for the model to become available
+        while not _pod.state.ready:
+            current_time = time()
+
+            if current_time - start_time > self._pod_ready_timeout:
+                ModelInstanceLogController.instance().log_instance(
+                    log_event=ModelInstanceLogEvent.INSTANCE_READINESS_FAILED,
+                    k8s_pod=_pod,
+                )
+
+                raise Exception(
+                    "Instance [%s] took longer than [%d]s to start - workrequest [%d]"
+                    % (_pod.name, self._pod_ready_timeout, self.work_request.id)
+                )
+
+            sleep(8)
+
+            _pod = K8sController.instance().get_pod(_pod.name)
+
+        ContextLogger.debug(
+            self._logger_key,
+            "pod [%s] is ready for workrequest [%d]..."
+            % (self.pod.name, self.work_request.id),
+        )
+
+        ModelInstanceLogController.instance().log_instance(
+            log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
+            k8s_pod=_pod,
+        )
+
+        updated_work_request: WorkRequest = self.work_request.copy()
+
+        try:
+            updated_work_request.pod_ready_timestamp = utc_now()
+            _updated_work_request = WorkRequestController.instance().update_request(
+                updated_work_request, retry_count=1
+            )
+
+            if _updated_work_request is None:
+                raise Exception("Update returned null")
+
+            return _updated_work_request, _pod
+        except:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to persist podreadytimestamp for workrequest id = [%s], error = [%s]"
+                % (updated_work_request.id, repr(exc_info())),
+            )
+
+        return updated_work_request, _pod
+
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
         _k8s_pod: K8sPod | None = k8s_pod
 
