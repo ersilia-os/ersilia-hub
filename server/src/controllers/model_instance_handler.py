@@ -9,6 +9,7 @@ from typing import Dict, List, Union
 
 from config.application_config import ApplicationConfig
 from controllers.instance_metrics import InstanceMetricsController
+from controllers.job_submission_process import JobSubmissionProcess
 from controllers.k8s import K8sController
 from controllers.model import ModelController
 from controllers.model_instance_log import (
@@ -28,6 +29,11 @@ from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
+from python_framework.time import utc_now
+
+from src.controllers.work_request import WorkRequestController
+from src.objects.model import ModelExecutionMode
+from src.objects.work_request import WorkRequest, WorkRequestStatus
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -75,10 +81,12 @@ class ModelInstanceHandler(Thread):
     state: ModelInstanceState
     pod_exists: bool
 
+    job_submission_process: JobSubmissionProcess | None
+
     def __init__(
         self,
         model_id: str,
-        work_request_id: str,
+        work_request_id: int,
         controller: ModelInstanceControllerStub,
     ):
         Thread.__init__(self)
@@ -94,6 +102,8 @@ class ModelInstanceHandler(Thread):
 
         self.state = ModelInstanceState.REQUESTED
         self.pod_exists = False
+
+        self.job_submission_process = None
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -130,6 +140,14 @@ class ModelInstanceHandler(Thread):
             "eos-models", self.pod_name
         )
 
+        if self.job_submission_process is not None:
+            try:
+                if self.job_submission_process.is_alive():
+                    self.job_submission_process.kill()
+                    self.job_submission_process.join()
+            except:
+                pass
+
         if self.pod_exists:
             try:
                 logs = K8sController.instance().download_pod_logs(
@@ -158,6 +176,12 @@ class ModelInstanceHandler(Thread):
     def _finalize(self):
         ContextLogger.info(self._logger_key, "Handler finalized")
         del ContextLogger.instance().context_logger_map[self._logger_key]
+
+        if self.job_submission_process is not None:
+            try:
+                self.job_submission_process.finalize()
+            except:
+                pass
 
         self._controller.remove_instance(self.model_id, self.work_request_id)
 
@@ -421,6 +445,76 @@ class ModelInstanceHandler(Thread):
 
             return False
 
+    def _submit_job(self) -> bool:
+        # NOTE: we only allow job submission ONCE per model instance (for now)
+        #       if submission failed for any reason, we need to restart the instance
+        if self.job_submission_process is not None:
+            return False
+
+        work_request: WorkRequest | None = None
+
+        try:
+            work_request = WorkRequestController.instance().get_requests(
+                id=self.work_request_id
+            )[0]
+
+            _job_entries: list[str] = []  # TODO: need to get this
+            self.job_submission_process = JobSubmissionProcess(
+                self.model_id, self.work_request_id, _job_entries, self.k8s_pod
+            )
+
+            if not self.job_submission_process.submit_job():
+                ContextLogger.warn(self._logger_key, "Failed to submit job")
+
+                return False
+
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_JOB_SUBMITTED,
+                k8s_pod=self.pod,
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to submit job, error = [%s]" % repr(exc_info()),
+            )
+
+            return False
+
+        updated_work_request: WorkRequest | None = work_request.copy()
+        updated_work_request.request_status = WorkRequestStatus.PROCESSING
+        updated_work_request.model_job_id = (
+            self.job_submission_process.job_id
+            if self.job_submission_process.model_execution_mode
+            == ModelExecutionMode.ASYNC
+            else "SYNC"
+        )
+        updated_work_request.request_status_reason = (
+            "JOB SUBMITTED"
+            if self.job_submission_process.model_execution_mode
+            == ModelExecutionMode.ASYNC
+            else "SYNC JOB SUBMITTED"
+        )
+        updated_work_request.job_submission_timestamp = utc_now()
+        updated_work_request = WorkRequestController.instance().update_request(
+            updated_work_request, retry_count=1
+        )
+
+        if updated_work_request is None:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to update workrequest [%d] with new job_id" % work_request.id,
+            )
+
+        return True
+
+    def _handle_job_submission_process(self):
+        # TODO: check job state -> consider / plan what to do with completion, download results here or let workrequest worker do it?
+        # NOTE: we DO NOT have to update the workrequest state here, we can simply download results and push to s3
+
+        # TODO: on complete:
+        # self.state = ModelInstanceState.SHOULD_TERMINATE
+        pass
+
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
 
@@ -441,6 +535,27 @@ class ModelInstanceHandler(Thread):
 
                     if self.state == ModelInstanceState.SHOULD_TERMINATE:
                         break
+
+                    if self.job_submission_process is None:
+                        if (
+                            not self.pod_exists
+                            or self.state != ModelInstanceState.ACTIVE
+                        ):
+                            continue
+
+                        if not self._submit_job():
+                            ModelInstanceLogController.instance().log_instance(
+                                ModelInstanceLogEvent.INSTANCE_JOB_SUBMISSION_FAILED,
+                                model_id=self.model_id,
+                                work_request_id=self.work_request_id,
+                            )
+
+                            break
+                    else:
+                        self._handle_job_submission_process()
+
+                        if self.state == ModelInstanceState.SHOULD_TERMINATE:
+                            break
             else:
                 ModelInstanceLogController.instance().log_instance(
                     ModelInstanceLogEvent.INSTANCE_CREATION_FAILED,

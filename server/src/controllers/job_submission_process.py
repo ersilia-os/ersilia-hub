@@ -4,21 +4,12 @@ from threading import Event, Thread
 from time import sleep
 
 from controllers.model import ModelController
-from controllers.model_instance_log import (
-    ModelInstanceLogController,
-    ModelInstanceLogEvent,
-)
 from controllers.model_integration import ModelIntegrationController
-from controllers.work_request import WorkRequestController
 from objects.k8s import K8sPod
 from objects.model import ModelExecutionMode
 from objects.model_integration import JobResult, JobStatus
-from objects.work_request import WorkRequest, WorkRequestStatus
 from python_framework.config_utils import load_environment_variable
 from python_framework.logger import ContextLogger, LogLevel
-from python_framework.time import (
-    utc_now,
-)
 
 
 class JobSubmissionProcess(Thread):
@@ -26,7 +17,7 @@ class JobSubmissionProcess(Thread):
     _kill_event: Event
 
     model_id: str
-    work_request_id: int
+    work_request_id: str
     id: str
     pod: K8sPod
     job_entries: list[str]
@@ -37,16 +28,13 @@ class JobSubmissionProcess(Thread):
     job_status: JobStatus
     job_status_reason: str | None
 
-    non_cached_inputs: list[str] | None
-
     def __init__(
         self,
         model_id: str,
-        work_request_id: int,
+        work_request_id: str,
         job_entries: list[str],
         pod: K8sPod,
         retry_count: int = 1,
-        non_cached_inputs: list[str] | None = None,
     ):
         Thread.__init__(self)
 
@@ -56,7 +44,6 @@ class JobSubmissionProcess(Thread):
         self.job_entries = job_entries
         self.pod = pod
         self.retry_count = retry_count
-        self.non_cached_inputs = non_cached_inputs
 
         self._logger_key = "JobSubmissionProcess[%s]" % self.id
         self._kill_event = Event()
@@ -87,8 +74,8 @@ class JobSubmissionProcess(Thread):
     def _submit_job(self) -> bool:
         ContextLogger.debug(
             self._logger_key,
-            "Submitting job to model [%s] for workrequest [%d] with inputs [%d]..."
-            % (self.work_request.model_id, self.work_request.id, len(self.job_entries)),
+            "Submitting job to model [%s] for workrequest [%s] with inputs [%d]..."
+            % (self.model_id, self.work_request_id, len(self.job_entries)),
         )
 
         attempt_count = 0
@@ -108,7 +95,7 @@ class JobSubmissionProcess(Thread):
                 break
             except:
                 error_str = (
-                    "Failed to submit job for instance [%s], workrequest [%d], error [%s]"
+                    "Failed to submit job for instance [%s], workrequest [%s], error [%s]"
                     % (self.pod.name, self.work_request_id, repr(exc_info()))
                 )
 
@@ -123,33 +110,11 @@ class JobSubmissionProcess(Thread):
         if job_submission_response is None:
             ContextLogger.error(
                 self._logger_key,
-                "Failed to submit job for instance [%s], workrequest [%d] after [%d] attempts"
+                "Failed to submit job for instance [%s], workrequest [%s] after [%d] attempts"
                 % (self.pod.name, self.work_request_id, attempt_count),
             )
 
             return False
-
-        # TODO: [job v2] move this to model instance as part of job submission
-        updated_work_request: WorkRequest = self.work_request.copy()
-        updated_work_request.request_status = WorkRequestStatus.PROCESSING
-        updated_work_request.model_job_id = job_id
-        updated_work_request.request_status_reason = "JOB SUBMITTED"
-        updated_work_request.job_submission_timestamp = utc_now()
-        updated_work_request = WorkRequestController.instance().update_request(
-            updated_work_request, retry_count=1
-        )
-
-        if updated_work_request is None:
-            raise Exception(
-                "Failed to update workrequest [%d] with new job_id"
-                % self.work_request.id
-            )
-
-        # TODO: [job v2] move this to model instance as part of job submission
-        ModelInstanceLogController.instance().log_instance(
-            log_event=ModelInstanceLogEvent.INSTANCE_JOB_SUBMITTED,
-            k8s_pod=self.pod,
-        )
 
         self.job_id = job_submission_response.job_id
 
@@ -174,7 +139,7 @@ class JobSubmissionProcess(Thread):
         if status_response.status not in [JobStatus.COMPLETED, JobStatus.FAILED]:
             ContextLogger.debug(
                 self._logger_key,
-                "Job still processing for workrequest [%d]..." % self.work_request_id,
+                "Job still processing for workrequest [%s]..." % self.work_request_id,
             )
 
             return False
@@ -208,7 +173,7 @@ class JobSubmissionProcess(Thread):
     def _submit_job_sync(self) -> bool:
         ContextLogger.debug(
             self._logger_key,
-            "Submitting SYNC job to model [%s] for workrequest [%d] with inputs [%d] ..."
+            "Submitting SYNC job to model [%s] for workrequest [%s] with inputs [%d] ..."
             % (self.model_id, self.work_request_id, len(self.job_entries)),
         )
 
@@ -230,7 +195,7 @@ class JobSubmissionProcess(Thread):
                 break
             except:
                 error_str = (
-                    "Failed to submit SYNC job for instance [%s], workrequest [%d], error [%s]"
+                    "Failed to submit SYNC job for instance [%s], workrequest [%s], error [%s]"
                     % (self.pod.name, self.work_request_id, repr(exc_info()))
                 )
 
@@ -245,30 +210,11 @@ class JobSubmissionProcess(Thread):
         if self.job_result is None or self.job_status == JobStatus.FAILED:
             ContextLogger.error(
                 self._logger_key,
-                "Failed to submit SYNC job for instance [%s], workrequest [%d] after [%d] attempts"
+                "Failed to submit SYNC job for instance [%s], workrequest [%s] after [%d] attempts"
                 % (self.pod.name, self.work_request_id, attempt_count),
             )
 
             return False
-
-        # TODO: [job v2] move this to model instance as part of job submission
-        updated_work_request: WorkRequest = self.work_request.copy()
-        updated_work_request.model_job_id = "SYNC"
-        updated_work_request.request_status = WorkRequestStatus.PROCESSING
-        updated_work_request.request_status_reason = "SYNC JOB SUBMITTED"
-        updated_work_request.job_submission_timestamp = utc_now()
-        updated_work_request = WorkRequestController.instance().update_request(
-            updated_work_request, retry_count=1
-        )
-
-        if updated_work_request is None:
-            raise Exception("Failed to update workrequest [%d]" % self.work_request.id)
-
-        # TODO: [job v2] move this to model instance as part of job submission
-        ModelInstanceLogController.instance().log_instance(
-            log_event=ModelInstanceLogEvent.INSTANCE_JOB_SUBMITTED,
-            k8s_pod=self.pod,
-        )
 
         return True
 
@@ -283,7 +229,7 @@ class JobSubmissionProcess(Thread):
         except:
             ContextLogger.error(
                 self._logger_key,
-                "Job submision failed for workrequest [%d] on pod [%s], error = [%s]"
+                "Job submision failed for workrequest [%s] on pod [%s], error = [%s]"
                 % (self.work_request_id, self.pod.name, repr(exc_info())),
             )
             traceback.print_exc(file=stdout)
@@ -305,7 +251,7 @@ class JobSubmissionProcess(Thread):
         except:
             ContextLogger.error(
                 self._logger_key,
-                "Job submision failed for workrequest [%d] on pod [%s], error = [%s]"
+                "Job submision failed for workrequest [%s] on pod [%s], error = [%s]"
                 % (self.work_request_id, self.pod.name, repr(exc_info())),
             )
             traceback.print_exc(file=stdout)
