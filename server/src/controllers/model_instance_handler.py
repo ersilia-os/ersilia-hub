@@ -33,6 +33,7 @@ from python_framework.time import utc_now
 
 from src.controllers.work_request import WorkRequestController
 from src.objects.model import ModelExecutionMode
+from src.objects.model_integration import JobStatus
 from src.objects.work_request import WorkRequest, WorkRequestStatus
 
 ###
@@ -43,10 +44,6 @@ from src.objects.work_request import WorkRequest, WorkRequestStatus
 #   - pod termination
 #   - monitoring
 #
-# TODO: eventually, we should merge the current JobSubmissionTask (thread) with this handler
-# TODO: move the pod creation stuff from k8s to here, keep k8s integration there but move template stuff
-# TODO: handle startup and termination here
-# NOTE: ! no major changes required on WorkRequestWorker really, just integrate with this class instead of k8scontroller directly
 ###
 
 
@@ -82,12 +79,14 @@ class ModelInstanceHandler(Thread):
     pod_exists: bool
 
     job_submission_process: JobSubmissionProcess | None
+    job_submission_entries: list[str] | None
 
     def __init__(
         self,
         model_id: str,
         work_request_id: int,
         controller: ModelInstanceControllerStub,
+        job_submission_entries: list[str] | None = None,
     ):
         Thread.__init__(self)
 
@@ -104,6 +103,7 @@ class ModelInstanceHandler(Thread):
         self.pod_exists = False
 
         self.job_submission_process = None
+        self.job_submission_entries = job_submission_entries
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -327,74 +327,32 @@ class ModelInstanceHandler(Thread):
             if timeout > 0 and (datetime.now().timestamp() - start_time > timeout):
                 ContextLogger.warn(
                     self._logger_key,
-                    "wait_for_pod_scheduled timeout [%d] reached" % timeout,
+                    "wait_for_pod_created timeout [%d] reached" % timeout,
                 )
                 return False
 
-    # TODO: [instance v2 - job] redo this FOR instance handler
-    def wait_for_pod_ready(self) -> Tuple[WorkRequest, K8sPod]:
-        ContextLogger.debug(
-            self._logger_key,
-            "Waiting for pod [%s] to be ready for workrequest [%d]..."
-            % (self.pod.name, self.work_request.id),
-        )
+    def wait_for_pod_ready(self, timeout: int = 0) -> bool:
+        if self.k8s_pod is not None and self.k8s_pod.state.ready:
+            return True
 
-        start_time = time()
-        _pod = self.pod
+        start_time = 0 if timeout <= 0 else datetime.now().timestamp()
 
-        # wait for the model to become available
-        while not _pod.state.ready:
-            current_time = time()
+        while True:
+            if self.k8s_pod is not None and self.k8s_pod.state.ready:
+                return True
 
-            if current_time - start_time > self._pod_ready_timeout:
-                ModelInstanceLogController.instance().log_instance(
-                    log_event=ModelInstanceLogEvent.INSTANCE_READINESS_FAILED,
-                    k8s_pod=_pod,
+            sleep(2)
+
+            if timeout > 0 and (datetime.now().timestamp() - start_time > timeout):
+                ContextLogger.warn(
+                    self._logger_key,
+                    "wait_for_pod_ready timeout [%d] reached" % timeout,
                 )
-
-                raise Exception(
-                    "Instance [%s] took longer than [%d]s to start - workrequest [%d]"
-                    % (_pod.name, self._pod_ready_timeout, self.work_request.id)
-                )
-
-            sleep(8)
-
-            _pod = K8sController.instance().get_pod(_pod.name)
-
-        ContextLogger.debug(
-            self._logger_key,
-            "pod [%s] is ready for workrequest [%d]..."
-            % (self.pod.name, self.work_request.id),
-        )
-
-        ModelInstanceLogController.instance().log_instance(
-            log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
-            k8s_pod=_pod,
-        )
-
-        updated_work_request: WorkRequest = self.work_request.copy()
-
-        try:
-            updated_work_request.pod_ready_timestamp = utc_now()
-            _updated_work_request = WorkRequestController.instance().update_request(
-                updated_work_request, retry_count=1
-            )
-
-            if _updated_work_request is None:
-                raise Exception("Update returned null")
-
-            return _updated_work_request, _pod
-        except:
-            ContextLogger.warn(
-                self._logger_key,
-                "Failed to persist podreadytimestamp for workrequest id = [%s], error = [%s]"
-                % (updated_work_request.id, repr(exc_info())),
-            )
-
-        return updated_work_request, _pod
+                return False
 
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
         _k8s_pod: K8sPod | None = k8s_pod
+        _initial_k8s_pod = _k8s_pod
 
         try:
             if _k8s_pod is None and self.pod_name is None:
@@ -424,6 +382,21 @@ class ModelInstanceHandler(Thread):
             self.pod_name = _k8s_pod.name
             self.pod_exists = True
 
+            # update log
+            if _initial_k8s_pod is None:
+                # NOTE: pod creation is logged in create_pod method
+                pass
+            elif (
+                _initial_k8s_pod.state.ready != _k8s_pod.state.ready
+                or _initial_k8s_pod.state.phase != _k8s_pod.state.phase
+            ):
+                if not _initial_k8s_pod.state.ready and _k8s_pod.state.ready:
+                    ModelInstanceLogController.instance().log_instance(
+                        log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
+                        k8s_pod=_k8s_pod,
+                    )
+
+            # update instance state
             if (
                 self.k8s_pod.state.phase == "Terminating"
                 or self.k8s_pod.state.phase == "Terminated"
@@ -432,7 +405,6 @@ class ModelInstanceHandler(Thread):
             elif self.k8s_pod.state.ready:
                 self.state = ModelInstanceState.ACTIVE
 
-            # TODO: update state e.g. readiness + active
             return True
         except:
             ContextLogger.error(
@@ -449,6 +421,11 @@ class ModelInstanceHandler(Thread):
         # NOTE: we only allow job submission ONCE per model instance (for now)
         #       if submission failed for any reason, we need to restart the instance
         if self.job_submission_process is not None:
+            ContextLogger.warn(self._logger_key, "JobSubmissionProcess already exists, not re-submitting job")
+            return False
+        
+        if self.job_submission_entries is None or len(self.job_submission_entries) == 0:
+            ContextLogger.warn(self._logger_key, "Cannot submit job, no job entries defined")
             return False
 
         work_request: WorkRequest | None = None
@@ -458,7 +435,9 @@ class ModelInstanceHandler(Thread):
                 id=self.work_request_id
             )[0]
 
-            _job_entries: list[str] = []  # TODO: need to get this
+            _job_entries =  self.work_request.request_payload.entries
+            if self.non_cached_inputs is None            if self.non_cached_inputs is None
+            else self.non_cached_inputs            else self.non_cached_inputs
             self.job_submission_process = JobSubmissionProcess(
                 self.model_id, self.work_request_id, _job_entries, self.k8s_pod
             )
@@ -508,12 +487,22 @@ class ModelInstanceHandler(Thread):
         return True
 
     def _handle_job_submission_process(self):
-        # TODO: check job state -> consider / plan what to do with completion, download results here or let workrequest worker do it?
-        # NOTE: we DO NOT have to update the workrequest state here, we can simply download results and push to s3
+        try:
+            if self.job_submission_process.handle_job_completion():
+                self.state = ModelInstanceState.SHOULD_TERMINATE
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to handle job submission process, error = [%s]"
+                % repr(exc_info()),
+            )
 
-        # TODO: on complete:
-        # self.state = ModelInstanceState.SHOULD_TERMINATE
-        pass
+    def is_job_completed(self) -> bool:
+        return (
+            self.job_submission_process is not None
+            and self.job_submission_process.job_status
+            in [JobStatus.COMPLETED, JobStatus.FAILED]
+        )
 
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
@@ -537,9 +526,12 @@ class ModelInstanceHandler(Thread):
                         break
 
                     if self.job_submission_process is None:
+                        # only submit job once pod is created and in READY state
                         if (
                             not self.pod_exists
                             or self.state != ModelInstanceState.ACTIVE
+                            or self.k8s_pod is None
+                            or not self.k8s_pod.state.ready
                         ):
                             continue
 
@@ -639,6 +631,7 @@ class ModelInstanceController:
         model_id: str,
         work_request_id: str,
         ignore_max_concurrent_limit: bool = False,
+        job_submission_entries: list[str] | None = None,
     ) -> ModelInstanceHandler:
         if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
             raise Exception("Max Concurrent Model Instances reached")
@@ -648,7 +641,7 @@ class ModelInstanceController:
         if key in self.model_instance_handlers:
             return self.model_instance_handlers[key]
 
-        handler = ModelInstanceHandler(model_id, work_request_id, self)
+        handler = ModelInstanceHandler(model_id, work_request_id, self, job_submission_entries)
         self.model_instance_handlers[key] = handler
         handler.start()
 

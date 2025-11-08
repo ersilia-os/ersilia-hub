@@ -120,8 +120,7 @@ class JobSubmissionProcess(Thread):
 
         return True
 
-    # TODO: [job v2] call this from model instance as part of check_job_process
-    def check_job_completed(self) -> bool:
+    def handle_job_completion(self) -> bool:
         if self.job_status in [JobStatus.COMPLETED, JobStatus.FAILED]:
             return True
 
