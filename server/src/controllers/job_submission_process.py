@@ -7,9 +7,10 @@ from controllers.model import ModelController
 from controllers.model_integration import ModelIntegrationController
 from objects.k8s import K8sPod
 from objects.model import ModelExecutionMode
-from objects.model_integration import JobResult, JobStatus
+from objects.model_integration import JobResult, JobStatus, JobStatusResponse
 from python_framework.config_utils import load_environment_variable
 from python_framework.logger import ContextLogger, LogLevel
+from python_framework.time import utc_now
 
 
 class JobSubmissionProcess(Thread):
@@ -27,6 +28,8 @@ class JobSubmissionProcess(Thread):
     job_id: str | None
     job_status: JobStatus
     job_status_reason: str | None
+    job_submission_timestamp: str | None
+    job_completion_timestamp: str | None
 
     def __init__(
         self,
@@ -55,6 +58,8 @@ class JobSubmissionProcess(Thread):
         self.job_id = None
         self.job_status = JobStatus.PENDING
         self.job_status_reason = None
+        self.job_submission_timestamp = None
+        self.job_completion_timestamp = None
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -83,6 +88,7 @@ class JobSubmissionProcess(Thread):
 
         while attempt_count <= self.retry_count:
             try:
+                self.job_submission_timestamp = utc_now()
                 job_submission_response = (
                     ModelIntegrationController.instance().submit_job(
                         self.model_id,
@@ -128,12 +134,22 @@ class JobSubmissionProcess(Thread):
         if self.model_execution_mode == ModelExecutionMode.SYNC:
             return False
 
-        status_response = ModelIntegrationController.instance().get_job_status(
-            self.model_id,
-            str(self.work_request_id),
-            self.pod.ip,
-            self.job_id,
-        )
+        status_response: JobStatusResponse | None = None
+
+        try:
+            status_response = ModelIntegrationController.instance().get_job_status(
+                self.model_id,
+                str(self.work_request_id),
+                self.pod.ip,
+                self.job_id,
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to get job status, error = [%s]" % (repr(exc_info())),
+            )
+
+            return False
 
         if status_response.status not in [JobStatus.COMPLETED, JobStatus.FAILED]:
             ContextLogger.debug(
@@ -142,6 +158,9 @@ class JobSubmissionProcess(Thread):
             )
 
             return False
+
+        if self.model_execution_mode == ModelExecutionMode.ASYNC:
+            self.job_completion_timestamp = utc_now()
 
         if status_response.status == JobStatus.COMPLETED:
             ContextLogger.debug(self._logger_key, "Job COMPLETED")
@@ -164,7 +183,7 @@ class JobSubmissionProcess(Thread):
             return
 
         while True:
-            if self.check_job_completed():
+            if self.handle_job_completion():
                 break
 
             sleep(15)
@@ -180,6 +199,7 @@ class JobSubmissionProcess(Thread):
 
         while attempt_count <= self.retry_count:
             try:
+                self.job_submission_timestamp = utc_now()
                 (
                     self.job_status,
                     self.job_status_reason,
@@ -190,6 +210,7 @@ class JobSubmissionProcess(Thread):
                     self.pod.ip,
                     self.job_entries,
                 )
+                self.job_completion_timestamp = utc_now()
 
                 break
             except:

@@ -167,7 +167,7 @@ class ModelIntegrationController:
         request_id: str,
         host: str,
         entries: List[str],
-        wait_for_readiness: bool = False,
+        wait_for_readiness: bool = True,
     ) -> JobSubmissionResponse:
         ContextLogger.debug(
             self._logger_key,
@@ -224,7 +224,6 @@ class ModelIntegrationController:
                 ModelIntegrationController.instance()._logger_key,
                 error_str,
             )
-            traceback.print_exc(file=stdout)
 
             raise Exception(error_str)
 
@@ -234,7 +233,7 @@ class ModelIntegrationController:
         request_id: str,
         host: str,
         entries: List[str],
-        wait_for_readiness: bool = False,
+        wait_for_readiness: bool = True,
     ) -> Tuple[JobStatus, str, JobResult]:
         ContextLogger.debug(
             self._logger_key,
@@ -295,7 +294,6 @@ class ModelIntegrationController:
                 ModelIntegrationController.instance()._logger_key,
                 error_str,
             )
-            traceback.print_exc(file=stdout)
 
             return (
                 JobStatus.FAILED,

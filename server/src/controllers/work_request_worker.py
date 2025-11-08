@@ -7,6 +7,7 @@ from threading import Event, Thread
 from time import sleep
 from typing import Dict, List, Set, Union
 
+from controllers.job_submission_process import JobSubmissionProcess
 from controllers.model import ModelController
 from controllers.model_input_cache import ModelInputCache
 from controllers.model_instance_handler import (
@@ -136,7 +137,11 @@ class WorkRequestWorker(Thread):
         work_request: WorkRequest,
         reason: str = "Job Failed",
         has_cached_results: bool = False,
+        instance: ModelInstanceHandler | None = None,
     ):
+        if instance is not None:
+            instance.kill()
+
         work_request.request_status = WorkRequestStatus.FAILED
         work_request.request_status_reason = reason
         work_request.processed_timestamp = utc_now()
@@ -175,17 +180,21 @@ class WorkRequestWorker(Thread):
             ),
         )
 
+        instance.kill()
+
         if instance.k8s_pod is None:
             return self._process_failed_job(
                 work_request,
                 reason="Instance pod is null",
                 has_cached_results=has_cached_results,
+                instance=instance,
             )
 
         _result_content: JobResult | None = result_content
         job_result_content = result_content
 
         # if not defined. we assume ASYNC mode
+        # TODO: in the future, we can move this result_content handling into the jobsubmissionprocess as well
         if _result_content is None:
             _result_content = ModelIntegrationController.instance().get_job_result(
                 work_request.model_id,
@@ -206,6 +215,7 @@ class WorkRequestWorker(Thread):
                 work_request,
                 reason="Job Result is empty",
                 has_cached_results=has_cached_results,
+                instance=instance,
             )
 
         if has_cached_results:
@@ -271,26 +281,31 @@ class WorkRequestWorker(Thread):
 
             return work_request
 
-        job_status: JobStatus = instance.job_submission_process.job_status
-        job_result: JobResult = instance.job_submission_process.job_result
-        job_status_reason: str | None = (
-            instance.job_submission_process.job_status_reason
+        job_submission_process: JobSubmissionProcess = instance.job_submission_process
+        job_status: JobStatus = job_submission_process.job_status
+        job_result: JobResult = job_submission_process.job_result
+        job_submission_timestamp: str | None = (
+            job_submission_process.job_submission_timestamp
         )
+        job_completion_timestamp: str | None = (
+            job_submission_process.job_completion_timestamp
+        )
+        job_status_reason: str | None = job_submission_process.job_status_reason
         job_has_cached_results: bool = len(work_request.request_payload.entries) != len(
             instance.job_submission_entries
         )
         job_non_cached_inputs: list[str] | None = (
-            instance.job_submission_process.job_entries
-            if job_has_cached_results
-            else None
+            job_submission_process.job_entries if job_has_cached_results else None
         )
 
         try:
-            updated_work_request: WorkRequest | None = None
+            updated_work_request: WorkRequest = work_request.copy()
+            updated_work_request.job_submission_timestamp = job_submission_timestamp
+            updated_work_request.pod_ready_timestamp = instance.pod_ready_timestamp
 
             if job_status == JobStatus.COMPLETED:
                 updated_work_request = self._process_completed_job(
-                    work_request,
+                    updated_work_request,
                     instance,
                     job_result,
                     has_cached_results=job_has_cached_results,
@@ -298,9 +313,10 @@ class WorkRequestWorker(Thread):
                 )
             elif job_status == JobStatus.FAILED:
                 updated_work_request = self._process_failed_job(
-                    work_request,
+                    updated_work_request,
                     has_cached_results=job_has_cached_results,
                     reason=job_status_reason,
+                    instance=instance,
                 )
             else:
                 ContextLogger.error(
