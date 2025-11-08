@@ -421,11 +421,16 @@ class ModelInstanceHandler(Thread):
         # NOTE: we only allow job submission ONCE per model instance (for now)
         #       if submission failed for any reason, we need to restart the instance
         if self.job_submission_process is not None:
-            ContextLogger.warn(self._logger_key, "JobSubmissionProcess already exists, not re-submitting job")
+            ContextLogger.warn(
+                self._logger_key,
+                "JobSubmissionProcess already exists, not re-submitting job",
+            )
             return False
-        
+
         if self.job_submission_entries is None or len(self.job_submission_entries) == 0:
-            ContextLogger.warn(self._logger_key, "Cannot submit job, no job entries defined")
+            ContextLogger.warn(
+                self._logger_key, "Cannot submit job, no job entries defined"
+            )
             return False
 
         work_request: WorkRequest | None = None
@@ -435,11 +440,11 @@ class ModelInstanceHandler(Thread):
                 id=self.work_request_id
             )[0]
 
-            _job_entries =  self.work_request.request_payload.entries
-            if self.non_cached_inputs is None            if self.non_cached_inputs is None
-            else self.non_cached_inputs            else self.non_cached_inputs
             self.job_submission_process = JobSubmissionProcess(
-                self.model_id, self.work_request_id, _job_entries, self.k8s_pod
+                self.model_id,
+                self.work_request_id,
+                self.job_submission_entries,
+                self.k8s_pod,
             )
 
             if not self.job_submission_process.submit_job():
@@ -641,7 +646,9 @@ class ModelInstanceController:
         if key in self.model_instance_handlers:
             return self.model_instance_handlers[key]
 
-        handler = ModelInstanceHandler(model_id, work_request_id, self, job_submission_entries)
+        handler = ModelInstanceHandler(
+            model_id, work_request_id, self, job_submission_entries
+        )
         self.model_instance_handlers[key] = handler
         handler.start()
 
