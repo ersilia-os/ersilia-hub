@@ -2,6 +2,7 @@ import traceback
 from datetime import datetime
 from enum import Enum
 from json import loads
+from math import floor
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
@@ -25,6 +26,7 @@ from db.daos.model_instance_log import (
 )
 from objects.instance import ModelInstance
 from objects.k8s import ErsiliaAnnotations, K8sPod
+from objects.model import ModelUpdate
 from objects.model_integration import JobStatus
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
@@ -53,6 +55,12 @@ class ModelInstanceState(Enum):
     TERMINATED = "TERMINATED"
 
 
+class ModelInstanceTerminationReason(Enum):
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    OOMKILLED = "OOMKILLED"
+
+
 class ModelInstanceControllerStub:
     def remove_instance(
         self, model_id: str, work_request_id: str, terminate: bool = False
@@ -72,9 +80,10 @@ class ModelInstanceHandler(Thread):
     k8s_pod: K8sPod | None
     pod_exists: bool
     pod_ready_timestamp: str | None
-    k8s_pod_termination_reason: str | None
+    _pod_logs: str | None
 
     state: ModelInstanceState
+    termination_reason: ModelInstanceTerminationReason | None
 
     job_submission_process: JobSubmissionProcess | None
     job_submission_entries: list[str] | None
@@ -98,9 +107,10 @@ class ModelInstanceHandler(Thread):
         self.k8s_pod = None
         self.pod_exists = False
         self.pod_ready_timestamp = None
-        self.k8s_pod_termination_reason = Noen
+        self._pod_logs = None
 
         self.state = ModelInstanceState.REQUESTED
+        self.termination_reason = None
 
         self.job_submission_process = None
         self.job_submission_entries = job_submission_entries
@@ -128,6 +138,48 @@ class ModelInstanceHandler(Thread):
             ModelInstanceState.TERMINATED,
         ]
 
+    def _autoheal_oomkill(self):
+        model = ModelController.instance().get_model(self.model_id)
+
+        if model is None:
+            return
+
+        model_update = ModelUpdate.copy_model(model)
+        # increase model memory limit by:
+        # - 20% if memory currently above 8Gi
+        # - 35% if memory currently above 4Gi
+        # - 50% if memory currently above 1.4Gi
+        # - else it gets set to 1.4Gi
+        if model.details.k8s_resources.memory_limit >= 8192:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.2
+            )
+        elif model.details.k8s_resources.memory_limit >= 4096:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.35
+            )
+        elif model.details.k8s_resources.memory_limit >= 1400:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.5
+            )
+        else:
+            model_update.details.k8s_resources.memory_limit = 1400
+
+        ModelController.instance().update_model(model_update)
+
+    def _cache_pod_logs(self):
+        _latest_logs: str | None = None
+
+        try:
+            _latest_logs = K8sController.instance().download_pod_logs(
+                self.model_id, target_pod_name=self.pod_name
+            )
+        except:
+            pass
+
+        if _latest_logs is not None:
+            self._pod_logs = _latest_logs
+
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
 
@@ -149,22 +201,20 @@ class ModelInstanceHandler(Thread):
                 pass
 
         if self.pod_exists:
-            try:
-                logs = K8sController.instance().download_pod_logs(
-                    self.model_id, target_pod_name=self.pod_name
-                )
+            self._cache_pod_logs()
 
-                if logs is not None:
-                    S3IntegrationController.instance().upload_instance_logs(
-                        self.model_id, self.work_request_id, logs
-                    )
-            except:
-                pass
+            if self._pod_logs is not None:
+                S3IntegrationController.instance().upload_instance_logs(
+                    self.model_id, self.work_request_id, self._pod_logs
+                )
 
             self._terminate_pod()
 
         self.state = ModelInstanceState.TERMINATED
         ContextLogger.info(self._logger_key, "Handler terminated")
+
+        if self.termination_reason == ModelInstanceTerminationReason.OOMKILLED:
+            self._autoheal_oomkill()
 
         ModelInstanceLogController.instance().log_instance(
             ModelInstanceLogEvent.INSTANCE_TERMINATED,
@@ -352,25 +402,91 @@ class ModelInstanceHandler(Thread):
                 return False
 
     def _was_pod_oomkilled(self):
-        # TODO: 1. get metrics (if exists)
-        # TODO: 2. check MAX memory
-        # TODO: 3. compare to metrics or model mem limit
-        # TODO: 4. if equal or above, assume oomkilled
-        # TODO: return true
-        pass
+        metrics = InstanceMetricsController.instance().get_instance(
+            "eos-models", self.pod_name
+        )
 
-    def _infer_pod_termination_reason(
+        if metrics is None:
+            ContextLogger.warn(
+                self._logger_key, "Cannot check OOMKilled, metrics instance not found"
+            )
+            return False
+
+        model = ModelController.instance().get_model(self.model_id)
+
+        if (
+            model is None
+            or model.details is None
+            or model.details.k8s_resources is None
+        ):
+            ContextLogger.warn(
+                self._logger_key,
+                "Cannot check OOMKilled, model not found or k8s_resource details null",
+            )
+            return False
+
+        if (
+            model.details.disable_memory_limit
+            or model.details.k8s_resources.memory_limit is None
+        ):
+            ContextLogger.debug(
+                self._logger_key, "Not OOMKilled, memory limit disabled"
+            )
+            return False
+
+        return (
+            model.details.k8s_resources.memory_limit * 1024 * 1024
+        ) <= metrics.memory_running_averages.max
+
+    def _was_process_oomkilled(self) -> bool:
+        _logs: str | None = None
+
+        # first check if the logs are cached already
+        if self._pod_logs is not None:
+            _logs = self._pod_logs
+        else:  # else get logs
+            self._cache_pod_logs()
+            _logs = self._pod_logs
+
+        if _logs is None:
+            ContextLogger.warn(
+                self._logger_key,
+                "failed to check process OOMKilled, no pod logs available",
+            )
+            return False
+
+        # very trivial search for "Killed"
+        return "Killed" in _logs
+
+    def _infer_termination_reason(
         self, previous_k8s_pod: K8sPod | None, k8s_pod: K8sPod | None
-    ):
-        # NOTE: eventually add other possible termniation reasons here, for now we only check OOMkilled
+    ) -> bool:
+        # NOTE: eventually add other possible termination reasons here, for now we only check OOMkilled
         if self._was_pod_oomkilled():
-            self.k8s_pod_termination_reason = "OOMKilled"
+            ContextLogger.warn(self._logger_key, "Pod possibly OOMKIlled by k8s")
+            self.termination_reason = ModelInstanceTerminationReason.OOMKILLED
             ModelInstanceLogController.instance().log_instance(
                 log_event=ModelInstanceLogEvent.INSTANCE_POD_OOMKILLED,
                 k8s_pod=self.k8s_pod,
                 model_id=self.model_id,
                 work_request_id=self.work_request_id,
             )
+
+            return True
+
+        if self._was_process_oomkilled():
+            ContextLogger.warn(self._logger_key, "Pod possibly OOMKIlled by Python")
+            self.termination_reason = ModelInstanceTerminationReason.OOMKILLED
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_POD_OOMKILLED,
+                k8s_pod=self.k8s_pod,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
+
+            return True
+
+        return False
 
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
         ContextLogger.trace(self._logger_key, "check_pod_state...")
@@ -397,7 +513,7 @@ class ModelInstanceHandler(Thread):
                 ContextLogger.warn(
                     self._logger_key, "Pod missing, likely terminated by k8s"
                 )
-                self._infer_pod_termination_reason(_initial_k8s_pod, _k8s_pod)
+                self._infer_termination_reason(_initial_k8s_pod, _k8s_pod)
                 self.state = ModelInstanceState.SHOULD_TERMINATE
                 self.pod_exists = False
 
@@ -424,13 +540,17 @@ class ModelInstanceHandler(Thread):
                     )
                     self.pod_ready_timestamp = utc_now()
 
+            # Download logs when container is ready
+            if self.pod_ready_timestamp is not None:
+                self._cache_pod_logs()
+
             # update instance state
             if (
                 self.k8s_pod.state.phase == "Terminating"
                 or self.k8s_pod.state.phase == "Terminated"
             ):
+                self._infer_termination_reason(_initial_k8s_pod, _k8s_pod)
                 self.state = ModelInstanceState.SHOULD_TERMINATE
-                self._infer_pod_termination_reason(_initial_k8s_pod, _k8s_pod)
             elif self.k8s_pod.state.ready:
                 self.state = ModelInstanceState.ACTIVE
 
@@ -500,12 +620,22 @@ class ModelInstanceHandler(Thread):
         try:
             if self.job_submission_process.handle_job_completion():
                 self.state = ModelInstanceState.SHOULD_TERMINATE
+                self.termination_reason = ModelInstanceTerminationReason.COMPLETED
         except:
+            self.state = ModelInstanceState.SHOULD_TERMINATE
+            self.termination_reason = ModelInstanceTerminationReason.FAILED
             ContextLogger.error(
                 self._logger_key,
                 "Failed to handle job submission process, error = [%s]"
                 % repr(exc_info()),
             )
+
+        # if job failed, there is still a chance of abnormal pod termination, so we need to check that
+        if (
+            self.state == ModelInstanceState.SHOULD_TERMINATE
+            and self.job_submission_process.job_status not in [JobStatus.COMPLETED]
+        ):
+            _ = self._infer_termination_reason(None, None)
 
     def is_job_completed(self) -> bool:
         return (
@@ -561,6 +691,9 @@ class ModelInstanceHandler(Thread):
                                 model_id=self.model_id,
                                 work_request_id=self.work_request_id,
                             )
+                            self.termination_reason = (
+                                ModelInstanceTerminationReason.FAILED
+                            )
 
                             break
                     else:
@@ -569,6 +702,7 @@ class ModelInstanceHandler(Thread):
                         if self.state == ModelInstanceState.SHOULD_TERMINATE:
                             break
             else:
+                self.termination_reason = ModelInstanceTerminationReason.FAILED
                 ModelInstanceLogController.instance().log_instance(
                     ModelInstanceLogEvent.INSTANCE_CREATION_FAILED,
                     k8s_pod=self.k8s_pod,

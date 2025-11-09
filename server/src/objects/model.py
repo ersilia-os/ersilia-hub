@@ -1,15 +1,14 @@
 from enum import Enum
 from json import dumps, loads
 from typing import Any, Dict, Union
-from db.daos.model import ModelRecord
-from pydantic import BaseModel
 
+from db.daos.model import ModelRecord
 from objects.k8s import K8sPodResources
 from objects.k8s_model import K8sPodResourcesModel
+from pydantic import BaseModel
 
 
 class ModelExecutionMode(Enum):
-
     SYNC = "SYNC"
     ASYNC = "ASYNC"
 
@@ -29,7 +28,6 @@ class ModelExecutionMode(Enum):
 
 
 class ModelDetails:
-
     template_version: str
     description: str
     size_megabytes: int
@@ -81,7 +79,7 @@ class ModelDetails:
             self.execution_mode,
             self.k8s_resources,
             self.image_tag,
-            self.cache_enabled
+            self.cache_enabled,
         )
 
     @staticmethod
@@ -102,8 +100,12 @@ class ModelDetails:
                 if "k8sResources" not in obj
                 else K8sPodResources.from_object(obj["k8sResources"])
             ),
-            "latest" if "imageTag" not in obj or obj["imageTag"] is None else obj["imageTag"],
-            False if "cacheEnabled" not in obj or obj["cacheEnabled"] is None else obj["cacheEnabled"],
+            "latest"
+            if "imageTag" not in obj or obj["imageTag"] is None
+            else obj["imageTag"],
+            False
+            if "cacheEnabled" not in obj or obj["cacheEnabled"] is None
+            else obj["cacheEnabled"],
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -127,7 +129,6 @@ class ModelDetails:
 
 
 class ModelDetailsApiModel(BaseModel):
-
     template_version: str
     description: str
     disable_memory_limit: bool
@@ -165,7 +166,6 @@ class ModelDetailsApiModel(BaseModel):
 
 
 class Model:
-
     id: str
     enabled: bool
     details: ModelDetails
@@ -228,7 +228,6 @@ class Model:
 
 
 class ModelApiModel(BaseModel):
-
     id: str
     enabled: bool
     details: ModelDetailsApiModel
@@ -253,7 +252,6 @@ class ModelApiModel(BaseModel):
 
 
 class ModelScalingInfo:
-
     enabled: bool
     current_instances: int
     max_instances: int
@@ -291,7 +289,6 @@ class ModelScalingInfo:
 
 
 class ModelScalingInfoModel(BaseModel):
-
     enabled: bool
     current_instances: int
     max_instances: int
@@ -306,7 +303,6 @@ class ModelScalingInfoModel(BaseModel):
 
 
 class ModelUpdate:
-
     id: str
     details: ModelDetails
     enabled: bool
@@ -321,9 +317,12 @@ class ModelUpdate:
         self.details = details
         self.enabled = enabled
 
+    @staticmethod
+    def copy_model(model: Model) -> "ModelUpdate":
+        return ModelUpdate(model.id, model.details.copy(), model.enabled)
+
 
 class ModelUpdateApiModel(BaseModel):
-
     id: str
     details: ModelDetailsApiModel
     enabled: bool
@@ -333,7 +332,6 @@ class ModelUpdateApiModel(BaseModel):
 
 
 class ModelInstance(BaseModel):
-
     model_id: str
     request_id: str
 

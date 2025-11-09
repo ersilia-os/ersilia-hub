@@ -14,7 +14,6 @@ from controllers.model_instance_handler import (
     ModelInstanceController,
     ModelInstanceHandler,
 )
-from controllers.model_integration import ModelIntegrationController
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
 from objects.model_integration import JobResult, JobStatus
@@ -192,17 +191,6 @@ class WorkRequestWorker(Thread):
 
         _result_content: JobResult | None = result_content
         job_result_content = result_content
-
-        # if not defined. we assume ASYNC mode
-        # TODO: in the future, we can move this result_content handling into the jobsubmissionprocess as well
-        if _result_content is None:
-            _result_content = ModelIntegrationController.instance().get_job_result(
-                work_request.model_id,
-                str(work_request.id),
-                instance.k8s_pod.ip,
-                work_request.model_job_id,
-            )
-            job_result_content = _result_content
 
         if _result_content is None:
             # NOTE: this should never happen, but checking anyway
