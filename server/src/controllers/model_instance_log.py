@@ -21,6 +21,7 @@ class ModelInstanceLogEvent(Enum):
     INSTANCE_POD_CREATED = "INSANCE_POD_CREATED"
     INSTANCE_POD_CREATION_FAILED = "INSANCE_POD_CREATION_FAILED"
     INSTANCE_POD_TERMINATED = "INSTANCE_POD_TERMINATED"
+    INSTANCE_POD_OOMKILLED = "INSTANCE_POD_OOMKILLED"
     INSTANCE_POD_READY = "INSTANCE_POD_READY"
     INSTANCE_TERMINATED = "INSTANCE_TERMINATED"
     INSTANCE_QUERIED = "INSTANCE_QUERIED"
@@ -28,6 +29,7 @@ class ModelInstanceLogEvent(Enum):
     INSTANCE_READY = "INSTANCE_READY"
     INSTANCE_READINESS_FAILED = "INSTANCE_READINESS_FAILED"
     INSTANCE_JOB_SUBMITTED = "INSTANCE_JOB_SUBMITTED"
+    INSTANCE_JOB_SUBMISSION_FAILED = "INSTANCE_JOB_SUBMISSION_FAILED"
     INSTANCE_JOB_COMPLETED = "INSTANCE_JOB_COMPLETED"
     INSTANCE_UPDATED = "INSTANCE_UPDATED"
 
@@ -81,7 +83,7 @@ class ModelInstanceLogController:
         log_event: ModelInstanceLogEvent,
         k8s_pod: K8sPod | None = None,
         model_id: str | None = None,
-        work_request_id: int | None = None,
+        work_request_id: int | str | None = None,
     ):
         _model_id = (
             model_id

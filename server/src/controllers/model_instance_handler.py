@@ -2,6 +2,7 @@ import traceback
 from datetime import datetime
 from enum import Enum
 from json import loads
+from math import floor
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
@@ -9,6 +10,7 @@ from typing import Dict, List, Union
 
 from config.application_config import ApplicationConfig
 from controllers.instance_metrics import InstanceMetricsController
+from controllers.job_submission_process import JobSubmissionProcess
 from controllers.k8s import K8sController
 from controllers.model import ModelController
 from controllers.model_instance_log import (
@@ -24,10 +26,13 @@ from db.daos.model_instance_log import (
 )
 from objects.instance import ModelInstance
 from objects.k8s import ErsiliaAnnotations, K8sPod
+from objects.model import ModelUpdate
+from objects.model_integration import JobStatus
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
+from python_framework.time import utc_now
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -37,10 +42,6 @@ from python_framework.thread_safe_cache import ThreadSafeCache
 #   - pod termination
 #   - monitoring
 #
-# TODO: eventually, we should merge the current JobSubmissionTask (thread) with this handler
-# TODO: move the pod creation stuff from k8s to here, keep k8s integration there but move template stuff
-# TODO: handle startup and termination here
-# NOTE: ! no major changes required on WorkRequestWorker really, just integrate with this class instead of k8scontroller directly
 ###
 
 
@@ -52,6 +53,12 @@ class ModelInstanceState(Enum):
     SHOULD_TERMINATE = "SHOULD_TERMINATE"
     TERMINATING = "TERMINATING"
     TERMINATED = "TERMINATED"
+
+
+class ModelInstanceTerminationReason(Enum):
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    OOMKILLED = "OOMKILLED"
 
 
 class ModelInstanceControllerStub:
@@ -71,15 +78,22 @@ class ModelInstanceHandler(Thread):
     work_request_id: str
     pod_name: str | None
     k8s_pod: K8sPod | None
+    pod_exists: bool
+    pod_ready_timestamp: str | None
+    _pod_logs: str | None
 
     state: ModelInstanceState
-    pod_exists: bool
+    termination_reason: ModelInstanceTerminationReason | None
+
+    job_submission_process: JobSubmissionProcess | None
+    job_submission_entries: list[str] | None
 
     def __init__(
         self,
         model_id: str,
-        work_request_id: str,
+        work_request_id: int,
         controller: ModelInstanceControllerStub,
+        job_submission_entries: list[str] | None = None,
     ):
         Thread.__init__(self)
 
@@ -91,9 +105,15 @@ class ModelInstanceHandler(Thread):
         self.work_request_id = str(work_request_id)
         self.pod_name = None
         self.k8s_pod = None
+        self.pod_exists = False
+        self.pod_ready_timestamp = None
+        self._pod_logs = None
 
         self.state = ModelInstanceState.REQUESTED
-        self.pod_exists = False
+        self.termination_reason = None
+
+        self.job_submission_process = None
+        self.job_submission_entries = job_submission_entries
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -118,6 +138,48 @@ class ModelInstanceHandler(Thread):
             ModelInstanceState.TERMINATED,
         ]
 
+    def _autoheal_oomkill(self):
+        model = ModelController.instance().get_model(self.model_id)
+
+        if model is None:
+            return
+
+        model_update = ModelUpdate.copy_model(model)
+        # increase model memory limit by:
+        # - 20% if memory currently above 8Gi
+        # - 35% if memory currently above 4Gi
+        # - 50% if memory currently above 1.4Gi
+        # - else it gets set to 1.4Gi
+        if model.details.k8s_resources.memory_limit >= 8192:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.2
+            )
+        elif model.details.k8s_resources.memory_limit >= 4096:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.35
+            )
+        elif model.details.k8s_resources.memory_limit >= 1400:
+            model_update.details.k8s_resources.memory_limit = floor(
+                model_update.details.k8s_resources.memory_limit * 1.5
+            )
+        else:
+            model_update.details.k8s_resources.memory_limit = 1400
+
+        ModelController.instance().update_model(model_update)
+
+    def _cache_pod_logs(self):
+        _latest_logs: str | None = None
+
+        try:
+            _latest_logs = K8sController.instance().download_pod_logs(
+                self.model_id, target_pod_name=self.pod_name
+            )
+        except:
+            pass
+
+        if _latest_logs is not None:
+            self._pod_logs = _latest_logs
+
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
 
@@ -130,23 +192,29 @@ class ModelInstanceHandler(Thread):
             "eos-models", self.pod_name
         )
 
-        if self.pod_exists:
+        if self.job_submission_process is not None:
             try:
-                logs = K8sController.instance().download_pod_logs(
-                    self.model_id, target_pod_name=self.pod_name
-                )
-
-                if logs is not None:
-                    S3IntegrationController.instance().upload_instance_logs(
-                        self.model_id, self.work_request_id, logs
-                    )
+                if self.job_submission_process.is_alive():
+                    self.job_submission_process.kill()
+                    self.job_submission_process.join()
             except:
                 pass
+
+        if self.pod_exists:
+            self._cache_pod_logs()
+
+            if self._pod_logs is not None:
+                S3IntegrationController.instance().upload_instance_logs(
+                    self.model_id, self.work_request_id, self._pod_logs
+                )
 
             self._terminate_pod()
 
         self.state = ModelInstanceState.TERMINATED
         ContextLogger.info(self._logger_key, "Handler terminated")
+
+        if self.termination_reason == ModelInstanceTerminationReason.OOMKILLED:
+            self._autoheal_oomkill()
 
         ModelInstanceLogController.instance().log_instance(
             ModelInstanceLogEvent.INSTANCE_TERMINATED,
@@ -158,6 +226,12 @@ class ModelInstanceHandler(Thread):
     def _finalize(self):
         ContextLogger.info(self._logger_key, "Handler finalized")
         del ContextLogger.instance().context_logger_map[self._logger_key]
+
+        if self.job_submission_process is not None:
+            try:
+                self.job_submission_process.finalize()
+            except:
+                pass
 
         self._controller.remove_instance(self.model_id, self.work_request_id)
 
@@ -213,6 +287,7 @@ class ModelInstanceHandler(Thread):
 
             ModelInstanceLogController.instance().log_instance(
                 ModelInstanceLogEvent.INSTANCE_POD_CREATION_FAILED,
+                k8s_pod=self.k8s_pod,
                 model_id=self.model_id,
                 work_request_id=self.work_request_id,
             )
@@ -303,12 +378,121 @@ class ModelInstanceHandler(Thread):
             if timeout > 0 and (datetime.now().timestamp() - start_time > timeout):
                 ContextLogger.warn(
                     self._logger_key,
-                    "wait_for_pod_scheduled timeout [%d] reached" % timeout,
+                    "wait_for_pod_created timeout [%d] reached" % timeout,
                 )
                 return False
 
+    def wait_for_pod_ready(self, timeout: int = 0) -> bool:
+        if self.k8s_pod is not None and self.k8s_pod.state.ready:
+            return True
+
+        start_time = 0 if timeout <= 0 else datetime.now().timestamp()
+
+        while True:
+            if self.k8s_pod is not None and self.k8s_pod.state.ready:
+                return True
+
+            sleep(2)
+
+            if timeout > 0 and (datetime.now().timestamp() - start_time > timeout):
+                ContextLogger.warn(
+                    self._logger_key,
+                    "wait_for_pod_ready timeout [%d] reached" % timeout,
+                )
+                return False
+
+    def _was_pod_oomkilled(self):
+        metrics = InstanceMetricsController.instance().get_instance(
+            "eos-models", self.pod_name
+        )
+
+        if metrics is None:
+            ContextLogger.warn(
+                self._logger_key, "Cannot check OOMKilled, metrics instance not found"
+            )
+            return False
+
+        model = ModelController.instance().get_model(self.model_id)
+
+        if (
+            model is None
+            or model.details is None
+            or model.details.k8s_resources is None
+        ):
+            ContextLogger.warn(
+                self._logger_key,
+                "Cannot check OOMKilled, model not found or k8s_resource details null",
+            )
+            return False
+
+        if (
+            model.details.disable_memory_limit
+            or model.details.k8s_resources.memory_limit is None
+        ):
+            ContextLogger.debug(
+                self._logger_key, "Not OOMKilled, memory limit disabled"
+            )
+            return False
+
+        return (
+            model.details.k8s_resources.memory_limit * 1024 * 1024
+        ) <= metrics.memory_running_averages.max
+
+    def _was_process_oomkilled(self) -> bool:
+        _logs: str | None = None
+
+        # first check if the logs are cached already
+        if self._pod_logs is not None:
+            _logs = self._pod_logs
+        else:  # else get logs
+            self._cache_pod_logs()
+            _logs = self._pod_logs
+
+        if _logs is None:
+            ContextLogger.warn(
+                self._logger_key,
+                "failed to check process OOMKilled, no pod logs available",
+            )
+            return False
+
+        # very trivial search for "Killed"
+        return "Killed" in _logs
+
+    def _infer_termination_reason(
+        self, previous_k8s_pod: K8sPod | None, k8s_pod: K8sPod | None
+    ) -> bool:
+        # NOTE: eventually add other possible termination reasons here, for now we only check OOMkilled
+        if self._was_pod_oomkilled():
+            ContextLogger.warn(self._logger_key, "Pod possibly OOMKIlled by k8s")
+            self.termination_reason = ModelInstanceTerminationReason.OOMKILLED
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_POD_OOMKILLED,
+                k8s_pod=self.k8s_pod,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
+
+            return True
+
+        if self._was_process_oomkilled():
+            ContextLogger.warn(self._logger_key, "Pod possibly OOMKIlled by Python")
+            self.termination_reason = ModelInstanceTerminationReason.OOMKILLED
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_POD_OOMKILLED,
+                k8s_pod=self.k8s_pod,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
+
+            return True
+
+        return False
+
     def _check_pod_state(self, k8s_pod: K8sPod | None = None) -> bool:
+        ContextLogger.trace(self._logger_key, "check_pod_state...")
+
         _k8s_pod: K8sPod | None = k8s_pod
+        _initial_k8s_pod = _k8s_pod
 
         try:
             if _k8s_pod is None and self.pod_name is None:
@@ -329,6 +513,7 @@ class ModelInstanceHandler(Thread):
                 ContextLogger.warn(
                     self._logger_key, "Pod missing, likely terminated by k8s"
                 )
+                self._infer_termination_reason(_initial_k8s_pod, _k8s_pod)
                 self.state = ModelInstanceState.SHOULD_TERMINATE
                 self.pod_exists = False
 
@@ -338,15 +523,37 @@ class ModelInstanceHandler(Thread):
             self.pod_name = _k8s_pod.name
             self.pod_exists = True
 
+            # update log
+            if _initial_k8s_pod is None:
+                # NOTE: pod creation is logged in create_pod method
+                pass
+            elif (
+                _initial_k8s_pod.state.ready != _k8s_pod.state.ready
+                or _initial_k8s_pod.state.phase != _k8s_pod.state.phase
+            ):
+                if not _initial_k8s_pod.state.ready and _k8s_pod.state.ready:
+                    ModelInstanceLogController.instance().log_instance(
+                        log_event=ModelInstanceLogEvent.INSTANCE_POD_READY,
+                        k8s_pod=self.k8s_pod,
+                        model_id=self.model_id,
+                        work_request_id=self.work_request_id,
+                    )
+                    self.pod_ready_timestamp = utc_now()
+
+            # Download logs when container is ready
+            if self.pod_ready_timestamp is not None:
+                self._cache_pod_logs()
+
+            # update instance state
             if (
                 self.k8s_pod.state.phase == "Terminating"
                 or self.k8s_pod.state.phase == "Terminated"
             ):
+                self._infer_termination_reason(_initial_k8s_pod, _k8s_pod)
                 self.state = ModelInstanceState.SHOULD_TERMINATE
             elif self.k8s_pod.state.ready:
                 self.state = ModelInstanceState.ACTIVE
 
-            # TODO: update state e.g. readiness + active
             return True
         except:
             ContextLogger.error(
@@ -358,6 +565,84 @@ class ModelInstanceHandler(Thread):
             self.pod_exists = False
 
             return False
+
+    def _submit_job(self) -> bool:
+        # NOTE: we only allow job submission ONCE per model instance (for now)
+        #       if submission failed for any reason, we need to restart the instance
+        if self.job_submission_process is not None:
+            ContextLogger.warn(
+                self._logger_key,
+                "JobSubmissionProcess already exists, not re-submitting job",
+            )
+            return False
+
+        if self.job_submission_entries is None or len(self.job_submission_entries) == 0:
+            ContextLogger.warn(
+                self._logger_key, "Cannot submit job, no job entries defined"
+            )
+            return False
+
+        try:
+            self.job_submission_process = JobSubmissionProcess(
+                self.model_id,
+                self.work_request_id,
+                self.job_submission_entries,
+                self.k8s_pod,
+            )
+
+            if not self.job_submission_process.submit_job():
+                ContextLogger.warn(self._logger_key, "Failed to submit job")
+
+                return False
+
+            ModelInstanceLogController.instance().log_instance(
+                log_event=ModelInstanceLogEvent.INSTANCE_JOB_SUBMITTED,
+                k8s_pod=self.k8s_pod,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+            )
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to submit job, error = [%s]" % repr(exc_info()),
+            )
+
+            return False
+
+        return True
+
+    def _handle_job_submission_process(self):
+        ContextLogger.trace(self._logger_key, "_handle_job_submission_process...")
+
+        if self.job_submission_process is None:
+            return
+
+        try:
+            if self.job_submission_process.handle_job_completion():
+                self.state = ModelInstanceState.SHOULD_TERMINATE
+                self.termination_reason = ModelInstanceTerminationReason.COMPLETED
+        except:
+            self.state = ModelInstanceState.SHOULD_TERMINATE
+            self.termination_reason = ModelInstanceTerminationReason.FAILED
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to handle job submission process, error = [%s]"
+                % repr(exc_info()),
+            )
+
+        # if job failed, there is still a chance of abnormal pod termination, so we need to check that
+        if (
+            self.state == ModelInstanceState.SHOULD_TERMINATE
+            and self.job_submission_process.job_status not in [JobStatus.COMPLETED]
+        ):
+            _ = self._infer_termination_reason(None, None)
+
+    def is_job_completed(self) -> bool:
+        return (
+            self.job_submission_process is not None
+            and self.job_submission_process.job_status
+            in [JobStatus.COMPLETED, JobStatus.FAILED]
+        )
 
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
@@ -379,9 +664,48 @@ class ModelInstanceHandler(Thread):
 
                     if self.state == ModelInstanceState.SHOULD_TERMINATE:
                         break
+
+                    if self.job_submission_process is None:
+                        # only submit job once pod is created and in READY state
+                        if (
+                            not self.pod_exists
+                            or self.state != ModelInstanceState.ACTIVE
+                            or self.k8s_pod is None
+                            or not self.k8s_pod.state.ready
+                        ):
+                            continue
+
+                        ContextLogger.debug(
+                            self._logger_key,
+                            f"[pre-job submission] pod state.ready = {self.k8s_pod.state.ready}",
+                        )
+                        ContextLogger.debug(
+                            self._logger_key,
+                            f"[pre-job submission] pod state.phase = {self.k8s_pod.state.phase}",
+                        )
+
+                        if not self._submit_job():
+                            ModelInstanceLogController.instance().log_instance(
+                                ModelInstanceLogEvent.INSTANCE_JOB_SUBMISSION_FAILED,
+                                k8s_pod=self.k8s_pod,
+                                model_id=self.model_id,
+                                work_request_id=self.work_request_id,
+                            )
+                            self.termination_reason = (
+                                ModelInstanceTerminationReason.FAILED
+                            )
+
+                            break
+                    else:
+                        self._handle_job_submission_process()
+
+                        if self.state == ModelInstanceState.SHOULD_TERMINATE:
+                            break
             else:
+                self.termination_reason = ModelInstanceTerminationReason.FAILED
                 ModelInstanceLogController.instance().log_instance(
                     ModelInstanceLogEvent.INSTANCE_CREATION_FAILED,
+                    k8s_pod=self.k8s_pod,
                     model_id=self.model_id,
                     work_request_id=self.work_request_id,
                 )
@@ -462,16 +786,19 @@ class ModelInstanceController:
         model_id: str,
         work_request_id: str,
         ignore_max_concurrent_limit: bool = False,
+        job_submission_entries: list[str] | None = None,
     ) -> ModelInstanceHandler:
         if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
             raise Exception("Max Concurrent Model Instances reached")
 
-        key = f"{model_id}-wr:{work_request_id}"
+        key = f"{model_id}_{work_request_id}"
 
         if key in self.model_instance_handlers:
             return self.model_instance_handlers[key]
 
-        handler = ModelInstanceHandler(model_id, work_request_id, self)
+        handler = ModelInstanceHandler(
+            model_id, work_request_id, self, job_submission_entries
+        )
         self.model_instance_handlers[key] = handler
         handler.start()
 
@@ -546,7 +873,7 @@ class ModelInstanceController:
                         "correlation_ids": (
                             None if work_request_id is None else [work_request_id]
                         ),
-                        "log_events": ["INSTANCE_READY"],
+                        "log_events": ["INSTANCE_CREATED"],
                     },
                 )
             )

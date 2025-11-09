@@ -1,9 +1,9 @@
-from sys import exc_info, stdout
 import traceback
-from typing import List, Tuple, Union
+from sys import exc_info, stdout
 from time import sleep, time
+from typing import List, Tuple, Union
 
-from requests import get, post
+from controllers.k8s_proxy import K8sProxy, K8sProxyController
 from objects.model_integration import (
     JobResult,
     JobStatus,
@@ -11,14 +11,12 @@ from objects.model_integration import (
     JobSubmissionRequest,
     JobSubmissionResponse,
 )
-from python_framework.logger import ContextLogger, LogLevel
 from python_framework.config_utils import load_environment_variable
-
-from controllers.k8s_proxy import K8sProxy, K8sProxyController
+from python_framework.logger import ContextLogger, LogLevel
+from requests import get, post
 
 
 class ModelIntegrationController:
-
     _instance: "ModelIntegrationController" = None
 
     _logger_key: str = None
@@ -58,10 +56,8 @@ class ModelIntegrationController:
             return ModelIntegrationController._instance
 
         ModelIntegrationController._instance = ModelIntegrationController(
-            int(load_environment_variable(f"MODEL_INTEGRATION_PORT", default="80")),
-            float(
-                load_environment_variable(f"MODEL_INTEGRATION_TIMEOUT", default="10")
-            ),
+            int(load_environment_variable("MODEL_INTEGRATION_PORT", default="80")),
+            float(load_environment_variable("MODEL_INTEGRATION_TIMEOUT", default="10")),
             load_environment_variable("MODEL_INTEGRATION_PROXY_IDS"),
         )
 
@@ -166,14 +162,21 @@ class ModelIntegrationController:
                 return False
 
     def submit_job(
-        self, model_id: str, request_id: str, host: str, entries: List[str]
+        self,
+        model_id: str,
+        request_id: str,
+        host: str,
+        entries: List[str],
+        wait_for_readiness: bool = True,
     ) -> JobSubmissionResponse:
         ContextLogger.debug(
             self._logger_key,
             "Submitting job using host = [%s]..." % host,
         )
 
-        if not self.wait_for_model_readiness(model_id, request_id, host):
+        if wait_for_readiness and not self.wait_for_model_readiness(
+            model_id, request_id, host
+        ):
             error_str = "model failed readiness - model [%s], request_id [%s]" % (
                 model_id,
                 request_id,
@@ -221,19 +224,25 @@ class ModelIntegrationController:
                 ModelIntegrationController.instance()._logger_key,
                 error_str,
             )
-            traceback.print_exc(file=stdout)
 
             raise Exception(error_str)
 
     def submit_job_sync(
-        self, model_id: str, request_id: str, host: str, entries: List[str]
+        self,
+        model_id: str,
+        request_id: str,
+        host: str,
+        entries: List[str],
+        wait_for_readiness: bool = True,
     ) -> Tuple[JobStatus, str, JobResult]:
         ContextLogger.debug(
             self._logger_key,
             "Submitting SYNC job using host = [%s]..." % host,
         )
 
-        if not self.wait_for_model_readiness(model_id, request_id, host):
+        if wait_for_readiness and not self.wait_for_model_readiness(
+            model_id, request_id, host
+        ):
             error_str = "model failed readiness - model [%s], request_id [%s]" % (
                 model_id,
                 request_id,
@@ -285,7 +294,6 @@ class ModelIntegrationController:
                 ModelIntegrationController.instance()._logger_key,
                 error_str,
             )
-            traceback.print_exc(file=stdout)
 
             return (
                 JobStatus.FAILED,
