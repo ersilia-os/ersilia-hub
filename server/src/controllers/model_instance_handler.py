@@ -28,6 +28,7 @@ from objects.instance import ModelInstance
 from objects.k8s import ErsiliaAnnotations, K8sPod
 from objects.model import ModelUpdate
 from objects.model_integration import JobStatus
+from python_framework.advanced_threading import synchronized_method
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
@@ -167,6 +168,7 @@ class ModelInstanceHandler(Thread):
 
         ModelController.instance().update_model(model_update)
 
+    @synchronized_method
     def _cache_pod_logs(self):
         _latest_logs: str | None = None
 
@@ -179,6 +181,14 @@ class ModelInstanceHandler(Thread):
 
         if _latest_logs is not None:
             self._pod_logs = _latest_logs
+
+    def get_pod_logs(self) -> str | None:
+        if self._pod_logs is not None:
+            return self._pod_logs
+
+        self._cache_pod_logs()
+
+        return self._pod_logs
 
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
@@ -851,6 +861,9 @@ class ModelInstanceController:
             active_instances.append(ModelInstance(handler.k8s_pod, metrics))
 
         return active_instances
+
+    def persist_instance_state(self, instance: ModelInstance):
+        pass
 
     def load_persisted_instances(
         self,
