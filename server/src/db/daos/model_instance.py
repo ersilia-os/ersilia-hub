@@ -1,13 +1,8 @@
-from enum import Enum
 from typing import Dict, Union
 
 import python_framework.db.dao.dao as BaseDAO
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
-
-
-class ModelInstanceQuery(Enum):
-    SELECT_FILTERED = "SELECT_FILTERED"
 
 
 class ModelInstanceRecord(DAORecord):
@@ -200,6 +195,8 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
     limit: int
     date_from: str | None
     date_to: str | None
+    instance_states: list[str] | None
+    not_instance_states: list[str] | None
 
     def __init__(
         self,
@@ -209,6 +206,8 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
         limit: int = 100,
         date_from: str | None = None,
         date_to: str | None = None,
+        instance_states: list[str] | None = None,
+        not_instance_states: list[str] | None = None,
     ):
         super().__init__(ModelInstanceExtendedRecord)
 
@@ -218,6 +217,8 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
         self.date_from = date_from
         self.date_to = date_to
         self.limit = limit
+        self.instance_states = instance_states
+        self.not_instance_states = not_instance_states
 
     def to_sql(self):
         field_map = {}
@@ -225,48 +226,76 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
 
         if self.model_ids is not None and len(self.model_ids) > 0:
             custom_filters.append(
-                "ModelId IN (%s)" % ",".join(map(lambda x: "'%s'" % x, self.model_ids))
+                "ModelInstance.ModelId IN (%s)"
+                % ",".join(map(lambda x: "'%s'" % x, self.model_ids))
             )
 
         if self.work_request_ids is not None and len(self.work_request_ids) > 0:
             custom_filters.append(
-                "WorkRequestId IN (%s)"
+                "ModelInstance.WorkRequestId IN (%s)"
                 % ",".join(map(lambda x: "'%s'" % x, self.work_request_ids))
             )
 
         if self.instance_ids is not None and len(self.instance_ids) > 0:
             custom_filters.append(
-                "InstanceId IN (%s)"
+                "ModelInstance.InstanceId IN (%s)"
                 % ",".join(map(lambda x: "'%s'" % x, self.instance_ids))
             )
 
         if self.date_from is not None and self.date_to is not None:
             custom_filters.append(
-                "LastUpdated BETWEEN :query_DateFrom AND :query_DateTo"
+                "ModelInstance.LastUpdated BETWEEN :query_DateFrom AND :query_DateTo"
             )
             field_map["query_DateFrom"] = self.date_from
             field_map["query_DateTo"] = self.date_to
         elif self.date_from is not None:
-            custom_filters.append("Timestamp >= :query_DateFrom")
+            custom_filters.append("ModelInstance.LastUpdated >= :query_DateFrom")
             field_map["query_DateFrom"] = self.date_from
         elif self.date_to is not None:
-            custom_filters.append("Timestamp <= :query_DateTo")
+            custom_filters.append("ModelInstance.LastUpdated <= :query_DateTo")
             field_map["query_DateTo"] = self.date_to
 
-        # TODO: copy-paste all fields from insert query
-        # TODO: left join log -> row_to_json(log)
-        # TODO: left join workrequest -> row_to_json
+        if self.instance_states is not None and len(self.instance_states) > 0:
+            custom_filters.append(
+                "ModelInstance.State IN (%s)"
+                % ",".join(map(lambda x: "'%s'" % x, self.instance_states))
+            )
+
+        if self.not_instance_states is not None and len(self.not_instance_states) > 0:
+            custom_filters.append(
+                "ModelInstance.State NOT IN (%s)"
+                % ",".join(map(lambda x: "'%s'" % x, self.not_instance_states))
+            )
+
         sql = """
             SELECT
-                ModelId,
-                InstanceId,
-                CorrelationId,
-                InstanceDetails::text,
-                LogEvent,
-                LogTimestamp::text
-            FROM ModelInstanceLog
+                ModelInstance.ModelId,
+                ModelInstance.WorkRequestId,
+                ModelInstance.InstanceId,
+                ModelInstance.InstanceDetails::text,
+                ModelInstance.State,
+                ModelInstance.TerminationReason,
+                ModelInstance.JobSubmissionDetails::text,
+                ModelInstance.LastUpdated::text,
+                row_to_json(wr) AS workrequest,
+                row_to_json(log) AS lastevent
+            FROM ModelInstance
+            LEFT JOIN WorkRequest wr
+                ON ModelInstance.ModelId = wr.ModelId
+                AND ModelInstance.WorkRequestId = wr.id
+            LEFT JOIN LATERAL (
+                SELECT *
+                FROM ModelInstanceLog log
+                WHERE ModelInstance.ModelId = log.ModelId
+                AND (
+                    ModelInstance.WorkRequestId = log.CorrelationId
+                    OR ModelInstance.InstanceId = log.InstanceId
+                )
+                ORDER BY log.LogTimestamp DESC
+                LIMIT 1
+            ) lastevent
             %s
-            ORDER BY LogTimestamp DESC, InstanceId ASC
+            ORDER BY ModelInstance.LastUpdated DESC
             LIMIT %d
         """ % (
             "" if len(custom_filters) == 0 else "WHERE " + " AND ".join(custom_filters),
@@ -279,5 +308,5 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
 class ModelInstanceDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.UPSERT_QUERY_KEY: ModelInstanceUpsertQuery,
-        ModelInstanceQuery.SELECT_FILTERED: ModelInstanceSelectFilteredQuery,
+        BaseDAO.SELECT_ALL_QUERY_KEY: ModelInstanceSelectFilteredQuery,
     }

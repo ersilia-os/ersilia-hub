@@ -1,13 +1,8 @@
-from enum import Enum
 from typing import Dict, List, Union
 
 import python_framework.db.dao.dao as BaseDAO
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
-
-
-class ModelInstanceLogQuery(Enum):
-    SELECT_FILTERED = "SELECT_FILTERED"
 
 
 class ModelInstanceLogRecord(DAORecord):
@@ -190,5 +185,5 @@ class ModelInstanceLogSelectFilteredQuery(DAOQuery):
 class ModelInstanceLogDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.INSERT_QUERY_KEY: ModelInstanceLogInsertQuery,
-        ModelInstanceLogQuery.SELECT_FILTERED: ModelInstanceLogSelectFilteredQuery,
+        BaseDAO.SELECT_ALL_QUERY_KEY: ModelInstanceLogSelectFilteredQuery,
     }

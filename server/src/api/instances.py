@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from library.api_utils import api_handler
 from library.fastapi_root import FastAPIRoot
 from objects.instance import (
+    ExtendedModelInstance,
     InstanceAction,
     InstanceActionModel,
     InstancesLoadFilters,
@@ -17,6 +18,7 @@ from objects.instance import (
 )
 from objects.k8s import ErsiliaLabels
 from objects.rbac import Permission
+from src.controllers.model_instance_log import ModelInstanceLogController
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -44,7 +46,9 @@ def load_instances(
         api_request, required_permissions=[Permission.ADMIN]
     )
 
-    instances: List[ModelInstance] = []
+    instances: List[ExtendedModelInstance] = []
+
+    # TODO: [instances ui v2] - update API (hydrate recommendations ?)
 
     if filters.active:
         instances.extend(
@@ -153,3 +157,26 @@ def instance_actions(
         return {"result": "Instance termination requested"}
 
     raise HTTPException(400, detail=f"Unknown action {action.action}")
+
+@router.get("history")
+def load_instance_history(
+    filters: Annotated[InstancesLoadFilters, Query()],
+    api_request: Request,
+):
+    auth_details, tracking_details = api_handler(
+        api_request, required_permissions=[Permission.ADMIN]
+    )
+
+    if filters.instance_id is None or filters.model_id is None:
+        raise HTTPException(400, detail="Missing instance_id or model_id filter")
+
+    try:
+
+        instance_log = ModelInstanceLogController.instance().
+    except:
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(500, detail="Failed to load logs for instance")
+
+    return {"logs": logs}
+
