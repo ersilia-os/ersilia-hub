@@ -106,12 +106,20 @@ class ModelInstanceModel(BaseModel):
 
 
 class InstancesLoadFilters(BaseModel):
-    active: bool | None = True
-    persisted: bool | None = False
+    states: list[str] | None = None
+    not_states: list[str] | None = None
     model_id: str | None = None
+    work_request_id: str | None = None
     instance_id: str | None = None
     load_resource_profiles: bool | None = False
     load_recommendations: bool | None = False
+
+
+class InstanceLogsFilters(BaseModel):
+    model_id: str | None = None
+    work_request_id: str | None = None
+    tail: int | None = None
+    head: int | None = None
 
 
 class InstanceAction(Enum):
@@ -120,7 +128,7 @@ class InstanceAction(Enum):
 
 class InstanceActionModel(BaseModel):
     model_id: str | None = None
-    instance_id: str | None = None
+    work_request_id: str | None = None
     action: str
 
 

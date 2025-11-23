@@ -873,7 +873,7 @@ class ModelInstanceController:
         del self.model_instance_handlers[key]
 
     def get_instance(
-        self, model_id: str, work_request_id: int
+        self, model_id: str, work_request_id: int | str
     ) -> Union[ModelInstanceHandler, None]:
         key = f"{model_id}_{work_request_id}"
 

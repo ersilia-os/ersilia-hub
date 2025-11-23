@@ -1,15 +1,13 @@
+import traceback
 from json import loads
 from math import ceil, floor
 from sys import exc_info, stdout
 from threading import Event, Lock, Thread
-import traceback
 from typing import Dict, List, Tuple, Union
-from python_framework.graceful_killer import GracefulKiller, KillInstance
-from python_framework.thread_safe_cache import ThreadSafeCache
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.time import utc_now, is_date_in_range_from_now, TimeWindow, Time
-from python_framework.config_utils import load_environment_variable
 
+from controllers.model import ModelController
+from controllers.model_instance_handler import ModelInstanceController
+from objects.instance import ExtendedModelInstance
 from objects.instance_recommendations import (
     ModelInstanceRecommendations,
     ModelInstanceResourceProfile,
@@ -21,12 +19,14 @@ from objects.instance_recommendations import (
     ResourceProfileState,
     ResourceRecommendation,
 )
-from objects.metrics import InstanceMetrics, PersistedInstanceMetrics, RunningAverages
 from objects.k8s import K8sPodResources
-from controllers.model import ModelController
-from controllers.model_instance_handler import ModelInstanceController
+from objects.metrics import InstanceMetrics, PersistedInstanceMetrics, RunningAverages
 from objects.model import Model, ModelUpdate
-from objects.instance import ModelInstance
+from python_framework.config_utils import load_environment_variable
+from python_framework.graceful_killer import GracefulKiller, KillInstance
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_cache import ThreadSafeCache
+from python_framework.time import Time, TimeWindow, is_date_in_range_from_now, utc_now
 
 PROFILE_CONFIGS = """
 [
@@ -164,7 +164,6 @@ class RecommendationEngineKillInstance(KillInstance):
 
 
 class RecommendationEngine(Thread):
-
     _instance: "RecommendationEngine" = None
     _logger_key: str = None
     _kill_event: Event
@@ -478,19 +477,19 @@ class RecommendationEngine(Thread):
             current_profiles = recommendations.extract_resource_profiles()
 
             #  update profile values
-            current_profiles[ResourceId.CPU].min_allocatable = (
-                new_k8s_resources.cpu_request
-            )
-            current_profiles[ResourceId.CPU].max_allocatable = (
-                new_k8s_resources.cpu_limit
-            )
+            current_profiles[
+                ResourceId.CPU
+            ].min_allocatable = new_k8s_resources.cpu_request
+            current_profiles[
+                ResourceId.CPU
+            ].max_allocatable = new_k8s_resources.cpu_limit
             current_profiles[ResourceId.CPU].calculate()
-            current_profiles[ResourceId.MEMORY].min_allocatable = (
-                new_k8s_resources.memory_request
-            )
-            current_profiles[ResourceId.MEMORY].max_allocatable = (
-                new_k8s_resources.memory_limit
-            )
+            current_profiles[
+                ResourceId.MEMORY
+            ].min_allocatable = new_k8s_resources.memory_request
+            current_profiles[
+                ResourceId.MEMORY
+            ].max_allocatable = new_k8s_resources.memory_limit
             current_profiles[ResourceId.CPU].calculate()
 
             recommendations.cpu_min = self._calculate_profile_recommendations(
@@ -554,8 +553,8 @@ class RecommendationEngine(Thread):
         self.model_recommendation_locks[model_id].release()
 
     def _filter_profilable_instances(
-        self, instances: List[ModelInstance]
-    ) -> List[ModelInstance]:
+        self, instances: List[ExtendedModelInstance]
+    ) -> List[ExtendedModelInstance]:
         filtered_instances = []
 
         for instance in instances:
@@ -576,7 +575,9 @@ class RecommendationEngine(Thread):
 
         try:
             instances = self._filter_profilable_instances(
-                ModelInstanceController.instance().load_persisted_instances([model_id])
+                ModelInstanceController.instance().load_instances(
+                    model_ids=[model_id], extended_state=True
+                )
             )
 
             if len(instances) == 0:
@@ -657,7 +658,7 @@ class RecommendationEngine(Thread):
         )
 
         if recommendations.model_id is None:
-            error_str = f"Missing model_id on recommendatons"
+            error_str = "Missing model_id on recommendatons"
             ContextLogger.error(self._logger_key, error_str)
             raise Exception(error_str)
 
@@ -757,10 +758,10 @@ class RecommendationEngine(Thread):
             # - always refresh if not refreshed previously
             # - don't refresh if refreshed in the last 2 hours
             # - only refresh within time window
-            if (
-                self.last_updated is None or (
-                    not is_date_in_range_from_now(self.last_updated, "-2h")
-                    and self.refresh_window.is_time_in_window(Time.from_utc_timestamp(utc_now()))
+            if self.last_updated is None or (
+                not is_date_in_range_from_now(self.last_updated, "-2h")
+                and self.refresh_window.is_time_in_window(
+                    Time.from_utc_timestamp(utc_now())
                 )
             ):
                 self.refresh_all_recommendations()
