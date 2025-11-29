@@ -1,6 +1,6 @@
 import { K8sPod } from "./k8s";
 import { ModelInstanceRecommendations, ModelInstanceResourceProfile } from "./recommendations";
-import { Request } from "./request.ts"
+import { Request } from "./request"
 
 export interface ModelInstanceFilters {
   states?: (string | ModelInstanceState)[];
@@ -21,6 +21,19 @@ export enum ModelInstanceState {
   TERMINATING = "TERMINATING",
   TERMINATED = "TERMINATED"
 }
+
+export const ACTIVE_STATES: (ModelInstanceState | string)[] = [
+  ModelInstanceState.REQUESTED,
+  ModelInstanceState.INITIALIZING,
+  ModelInstanceState.WAITING_FOR_READINESS,
+  ModelInstanceState.ACTIVE,
+  ModelInstanceState.SHOULD_TERMINATE,
+]
+
+export const TERMINATED_STATES: (ModelInstanceState | string)[] = [
+  ModelInstanceState.TERMINATING,
+  ModelInstanceState.TERMINATED,
+]
 
 export enum ModelInstanceTerminationReason {
   COMPLETED = "COMPLETED",

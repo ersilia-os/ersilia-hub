@@ -9,11 +9,10 @@ from db.daos.model_instance_log import (
     ModelInstanceLogDAO,
     ModelInstanceLogRecord,
 )
+from objects.instance import InstanceLogEntry
 from objects.k8s import ErsiliaAnnotations, ErsiliaLabels, K8sPod
 from python_framework.config_utils import load_environment_variable
 from python_framework.logger import ContextLogger, LogLevel
-
-from src.objects.instance import InstanceLogEntry
 
 
 class ModelInstanceLogEvent(Enum):

@@ -17,9 +17,8 @@ from objects.metrics import (
     InstanceMetrics,
     InstanceMetricsModel,
 )
+from objects.work_request import WorkRequest, WorkRequestModel
 from pydantic import BaseModel
-
-from src.objects.work_request import WorkRequest, WorkRequestModel
 
 
 class ModelInstance:
@@ -158,15 +157,26 @@ class InstanceLogEntry:
 
     @staticmethod
     def from_record(record: ModelInstanceLogRecord) -> "InstanceLogEntry":
+        instance_details: K8sPod | None = None
+
+        try:
+            if record.instance_details is not None and isinstance(
+                record.instance_details, str
+            ):
+                instance_details = K8sPod.from_object(loads(record.instance_details))
+            elif record.instance_details is not None and isinstance(
+                record.instance_details, dict
+            ):
+                instance_details = K8sPod.from_object(record.instance_details)
+        except:
+            # possibly null or '{}'
+            pass
+
         return InstanceLogEntry(
             model_id=record.modelid,
             instance_id=record.instanceid,
             correlation_id=record.correlationid,
-            instance_details=(
-                None
-                if record.instance_details is None or len(record.instance_details) <= 5
-                else K8sPod.from_object(loads(record.instance_details))
-            ),
+            instance_details=instance_details,
             log_event=record.log_event,
             log_timestamp=record.log_timestamp,
         )

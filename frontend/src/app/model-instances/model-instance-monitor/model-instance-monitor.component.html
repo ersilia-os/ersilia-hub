@@ -1,0 +1,155 @@
+<div class="dialog-container">
+<div class="info-row">
+  <div class="info-block mat-elevation-z8">
+    <div class="info-block-title">
+      Details
+    </div>
+    <div class="info-block-details">
+      <div class="detail">
+        <div class="name">Model</div>
+        <div class="value">{{ instance().model_instance.model_id }}</div>
+      </div>
+      <div class="detail">
+        <div class="name">Request Id</div>
+        <div class="value">{{ instance().model_instance.work_request_id }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-block mat-elevation-z8">
+    <div class="info-block-title">
+      State
+    </div>
+    <div class="info-block-details">
+      <div class="detail">
+        <div class="name">State</div>
+        <div class="value">{{ instance().model_instance.state }}</div>
+      </div>
+      @if (instance().model_instance.termination_reason != null) {
+      <div class="detail">
+        <div class="name">Termination Reason</div>
+        <div class="value">{{ instance().model_instance.termination_reason }}</div>
+      </div>
+      }
+      @if (instance() != null && instance().last_event != null) {
+      <div class="detail">
+        <div class="name">Last Event Type</div>
+        <div class="value">{{ instance().last_event!.log_event }}</div>
+      </div>
+      <div class="detail">
+        <div class="name">Last Event Time</div>
+        <div class="value">{{ instance().last_event!.log_timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+      </div>
+      }
+    </div>
+  </div>
+
+  <div class="info-block mat-elevation-z8">
+    <div class="info-block-title">
+      Job State
+    </div>
+    <div class="info-block-details">
+      @if (instance().model_instance.job_submission_process != null) {
+      <div class="detail">
+        <div class="name">State</div>
+        <div class="value">{{ instance().model_instance.job_submission_process!.job_status }}</div>
+      </div>
+      <div class="detail">
+        <div class="name">Job Submission Timestamp</div>
+        <div class="value">{{ instance().model_instance.job_submission_process!.job_submission_timestamp | date:'yyyy-MM-dd
+          HH:mm:ss' }}</div>
+      </div>
+      <div class="detail">
+        <div class="name">Job Completion Timestamp</div>
+        <div class="value">{{ instance().model_instance.job_submission_process!.job_completion_timestamp | date:'yyyy-MM-dd
+          HH:mm:ss' }}</div>
+      </div>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="info-row">
+  <div class="info-block mat-elevation-z8">
+    <div class="info-block-title">
+      CPU Metrics
+    </div>
+    <div class="info-block-details">
+      <div class="detail">
+        <div class="name">Max</div>
+        <div class="value">
+          <model-instance-resource [instance]="instance()" [resourceProfileId]="'CPU_MAX'"></model-instance-resource>
+        </div>
+      </div>
+      <div class="detail">
+        <div class="name">Min</div>
+        <div class="value">
+          <model-instance-resource [instance]="instance()" [resourceProfileId]="'CPU_MIN'"></model-instance-resource>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-block mat-elevation-z8">
+    <div class="info-block-title">
+      Memory Metrics
+    </div>
+    <div class="info-block-details">
+      <div class="detail">
+        <div class="name">Max</div>
+        <div class="value">
+          <model-instance-resource [instance]="instance()" [resourceProfileId]="'MEMORY_MAX'"></model-instance-resource>
+        </div>
+      </div>
+      <div class="detail">
+        <div class="name">Min</div>
+        <div class="value">
+          <model-instance-resource [instance]="instance()" [resourceProfileId]="'MEMORY_MIN'"></model-instance-resource>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<mat-expansion-panel [expanded]="loadHistory()" (opened)="loadHistory.set(true)" (closed)="loadHistory.set(false)">
+    <mat-expansion-panel-header>
+      <mat-panel-title> Instance History </mat-panel-title>
+    </mat-expansion-panel-header>
+
+    <table mat-table [dataSource]="history()" class="mat-elevation-z8" [trackBy]="trackBy">
+        @for (column of instanceHistoryDisplayedColumns; track column) {
+        <ng-container [matColumnDef]="column">
+            <th mat-header-cell *matHeaderCellDef>
+              {{instanceHistoryColumnHeaders[column]}}
+            </th>
+
+            <td mat-cell *matCellDef="let element">
+                @if (column == 'instance_details') {
+                  <div class="instance-details-container" [innerHtml]="instance_details_summary(element[column])"></div>
+                } @else if (column == 'log_timestamp') {
+                  {{ element[column] | date:'yyyy-MM-dd HH:mm:ss' }}
+                } @else {
+                  {{ element[column] }}
+                }
+            </td>
+        </ng-container>
+        }
+
+        <tr mat-header-row *matHeaderRowDef="instanceHistoryDisplayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: instanceHistoryDisplayedColumns;"></tr>
+    </table>
+</mat-expansion-panel>
+
+
+<!-- TODO: create job logs expand section, toggle section = toggle loading -->
+<mat-expansion-panel [expanded]="loadJobLogs()" (opened)="loadJobLogs.set(true)" (closed)="loadJobLogs.set(false)">
+    <mat-expansion-panel-header>
+      <mat-panel-title> Job Logs </mat-panel-title>
+    </mat-expansion-panel-header>
+
+    TODO - head + tail select input
+
+    TODO - text block
+
+</mat-expansion-panel>
+</div>

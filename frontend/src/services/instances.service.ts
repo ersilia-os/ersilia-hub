@@ -37,11 +37,6 @@ export class InstancesService {
         }),
         catchError(error => {
           const errorString = mapHttpError(error);
-          const submissionResult = {
-            success: false,
-            error: errorString
-          };
-
           // Return an observable with a user-facing error message.
           return throwError(() => new Error(errorString));
         })
@@ -56,11 +51,26 @@ export class InstancesService {
         }),
         catchError(error => {
           const errorString = mapHttpError(error);
-          const submissionResult = {
-            success: false,
-            error: errorString
-          };
+          // Return an observable with a user-facing error message.
+          return throwError(() => new Error(errorString));
+        })
+      );
+  }
 
+  loadInstance(filters: ModelInstanceFilters): Observable<ExtendedModelInstance | undefined> {
+    return this.http.get<APIList<ExtendedModelInstance>>(`${environment.apiHost}/api/instances`, { params: APIFiltersMap(filters) })
+      .pipe(
+        map((response: APIList<ExtendedModelInstance>) => {
+          const items = response.items.map(ExtendedModelInstanceFromApi);
+
+          if (items.length >= 1) {
+            return items[0];
+          }
+
+          return undefined;
+        }),
+        catchError(error => {
+          const errorString = mapHttpError(error);
           // Return an observable with a user-facing error message.
           return throwError(() => new Error(errorString));
         })

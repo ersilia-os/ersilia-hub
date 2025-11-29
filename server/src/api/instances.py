@@ -101,7 +101,7 @@ def load_instances(
     return {"items": list(map(ExtendedModelInstanceModel.from_object, instances))}
 
 
-@router.get("job-logs")
+@router.get("/job-logs")
 def load_instance_job_logs(
     filters: Annotated[InstanceLogsFilters, Query()],
     api_request: Request,
@@ -147,7 +147,7 @@ def load_instance_job_logs(
     return {"logs": logs}
 
 
-@router.post("actions")
+@router.post("/actions")
 def instance_actions(
     action: InstanceActionModel,
     api_request: Request,
@@ -174,7 +174,7 @@ def instance_actions(
     raise HTTPException(400, detail=f"Unknown action {action.action}")
 
 
-@router.get("history")
+@router.get("/history")
 def load_instance_history(
     filters: Annotated[InstancesLoadFilters, Query()],
     api_request: Request,

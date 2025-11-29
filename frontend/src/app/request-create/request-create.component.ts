@@ -49,7 +49,6 @@ export class RequestsCreateComponent implements OnInit {
 
   private _selectedModel: string | undefined;
 
-  // TODO: getter + setter, in setter update canOptInToCache signal
   get selectedModel() {
     return this._selectedModel;
   }

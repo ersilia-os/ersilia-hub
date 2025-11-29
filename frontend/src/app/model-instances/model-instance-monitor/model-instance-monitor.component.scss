@@ -1,0 +1,73 @@
+@import '../../../styles/colour-palette.scss';
+
+.dialog-container {
+  overflow-y: auto;
+  max-height: 900px;
+
+  .info-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    padding: 8px;
+    margin-bottom: 5px;
+  }
+
+  .info-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    padding: 0px 10px;
+    margin: 0px 15px;
+    border-radius: 8px;
+
+    .info-block-title {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+
+      width: 100%;
+      margin-bottom: 5px;
+      border-bottom: 1px solid $ersilia-purple;
+      padding: 3px;
+      color: $ersilia-purple;
+    }
+
+    .info-block-details {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: flex-start;
+      padding: 5px 10px;
+
+      .detail {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        padding: 3px;
+        margin-bottom: 3px;
+
+        .name {
+          font-weight: bold;
+          font-size: 15px;
+          color: $ersilia-purple;
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+
+  .mat-expansion-panel {
+    margin: 0px 25px 10px;
+  }
+}
+
+.instance-details-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+}

@@ -19,6 +19,11 @@ from controllers.model_instance_log import (
 )
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from db.daos.model_instance import (
+    ModelInstanceDAO,
+    ModelInstanceExtendedRecord,
+    ModelInstanceRecord,
+)
 from objects.instance import ExtendedModelInstance
 from objects.k8s import ErsiliaAnnotations, K8sPod
 from objects.model import ModelUpdate
@@ -29,12 +34,6 @@ from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
 from python_framework.time import utc_now
-
-from src.db.daos.model_instance import (
-    ModelInstanceDAO,
-    ModelInstanceExtendedRecord,
-    ModelInstanceRecord,
-)
 
 ###
 # The ModelInstanceHandler should control the entire life-cycle of a Model Instance
@@ -56,11 +55,39 @@ class ModelInstanceState(Enum):
     TERMINATING = "TERMINATING"
     TERMINATED = "TERMINATED"
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
+
 
 class ModelInstanceTerminationReason(Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     OOMKILLED = "OOMKILLED"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
 
 
 class ModelInstanceControllerStub:
@@ -669,8 +696,8 @@ class ModelInstanceHandler(Thread):
                 instance_details=(
                     None if self.k8s_pod is None else dumps(self.k8s_pod.to_object())
                 ),
-                state=self.state,
-                termination_reason=self.termination_reason,
+                state=str(self.state),
+                termination_reason=str(self.termination_reason),
                 job_submission_process=(
                     None
                     if self.job_submission_process is None

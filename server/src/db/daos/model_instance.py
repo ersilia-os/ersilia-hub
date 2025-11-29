@@ -150,7 +150,7 @@ class ModelInstanceUpsertQuery(DAOQuery):
                 InstanceDetails,
                 State,
                 TerminationReason,
-                JobSubmissionDetails,
+                JobSubmissionProcess,
                 LastUpdated
             )
             VALUES (
@@ -163,26 +163,26 @@ class ModelInstanceUpsertQuery(DAOQuery):
                 :query_JobSubmissionProcess,
                 CURRENT_TIMESTAMP
             )
-            ON CONFLICT
-            UPDATE ModelInstance
+            ON CONFLICT (ModelId, WorkRequestId)
+            DO UPDATE
             SET InstanceId = EXCLUDED.InstanceId,
                 InstanceDetails = EXCLUDED.InstanceDetails,
                 State = EXCLUDED.State,
                 TerminationReason = EXCLUDED.TerminationReason,
                 JobSubmissionProcess = EXCLUDED.JobSubmissionProcess,
                 LastUpdated = EXCLUDED.LastUpdated
-            WHERE ModelId = EXCLUDED.ModelId
-            AND WorkRequestId = EXCLUDED.WorkRequestId
-            AND LastUpdated = :query_ExpectedLastUpdated
+            WHERE ModelInstance.ModelId = EXCLUDED.ModelId
+            AND ModelInstance.WorkRequestId = EXCLUDED.WorkRequestId
+            AND ModelInstance.LastUpdated = :query_ExpectedLastUpdated
             RETURNING
-                ModelId,
-                WorkRequestId,
-                InstanceId,
-                InstanceDetails::text,
-                State,
-                TerminationReason,
-                JobSubmissionDetails::text,
-                LastUpdated::text
+                ModelInstance.ModelId,
+                ModelInstance.WorkRequestId,
+                ModelInstance.InstanceId,
+                ModelInstance.InstanceDetails::text,
+                ModelInstance.State,
+                ModelInstance.TerminationReason,
+                ModelInstance.JobSubmissionProcess::text,
+                ModelInstance.LastUpdated::text
         """
 
         return sql, field_map
@@ -275,10 +275,10 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
                 ModelInstance.InstanceDetails::text,
                 ModelInstance.State,
                 ModelInstance.TerminationReason,
-                ModelInstance.JobSubmissionDetails::text,
+                ModelInstance.JobSubmissionProcess::text,
                 ModelInstance.LastUpdated::text,
-                row_to_json(wr) AS workrequest,
-                row_to_json(log) AS lastevent
+                row_to_json(wr)::text AS workrequest,
+                row_to_json(lt)::text AS lastevent
             FROM ModelInstance
             LEFT JOIN WorkRequest wr
                 ON ModelInstance.ModelId = wr.ModelId
@@ -288,12 +288,12 @@ class ModelInstanceSelectFilteredQuery(DAOQuery):
                 FROM ModelInstanceLog log
                 WHERE ModelInstance.ModelId = log.ModelId
                 AND (
-                    ModelInstance.WorkRequestId = log.CorrelationId
+                    ModelInstance.WorkRequestId::text = log.CorrelationId
                     OR ModelInstance.InstanceId = log.InstanceId
                 )
                 ORDER BY log.LogTimestamp DESC
                 LIMIT 1
-            ) lastevent
+            ) lt ON TRUE
             %s
             ORDER BY ModelInstance.LastUpdated DESC
             LIMIT %d
