@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { catchError, map, Observable, Subscription, throwError } from 'rxjs';
 import { environment } from '../environments/environment';
-import { ExtendedModelInstance, ExtendedModelInstanceFromApi, InstanceLogEntry, InstanceLogEntryFromApi, JobLogsFilters, ModelInstance, ModelInstanceFilters, ModelInstanceFromApi } from '../objects/instance';
+import { ExtendedModelInstance, ExtendedModelInstanceFromApi, InstanceAction, InstanceLogEntry, InstanceLogEntryFromApi, JobLogsFilters, ModelInstance, ModelInstanceFilters, ModelInstanceFromApi } from '../objects/instance';
 import { APIFiltersMap, APIList } from '../objects/common';
 import { mapHttpError } from '../app/utils/api';
 
@@ -77,7 +77,19 @@ export class InstancesService {
       );
   }
 
-  // TODO: [instanes v2] - /actions api
+  executeInstanceAction(action: InstanceAction): Observable<string> {
+    return this.http.post<{ result: string }>(`${environment.apiHost}/api/instances/actions`, action)
+      .pipe(
+        map((response: { result: string }) => {
+          return response.result
+        }),
+        catchError(error => {
+          const errorString = mapHttpError(error);
+          // Return an observable with a user-facing error message.
+          return throwError(() => new Error(errorString));
+        })
+      );
+  }
 
   getInstancesSignal(): Signal<ExtendedModelInstance[]> {
     return computed(() => this.instances());

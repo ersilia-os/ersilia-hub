@@ -169,6 +169,12 @@
               <div class="ersilia-button icon-only" (click)="viewDetailedInstance(instance)">
                   <mat-icon>info</mat-icon>
               </div>
+
+              @if (instance.model_instance.state != 'TERMINATED') {
+                <div class="ersilia-button icon-only" (click)="stopInstance(instance)">
+                    <mat-icon>cancel</mat-icon>
+                </div>
+              }
             </div>
         </div>
     </div>

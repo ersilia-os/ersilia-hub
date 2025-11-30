@@ -104,6 +104,7 @@ export class ModelInstanceMonitorComponent implements OnDestroy {
               this.instance.set(result);
             }
 
+            this.loadingInstance.set(false);
           },
           error: (err: Error) => {
             this.loadingInstance.set(false);

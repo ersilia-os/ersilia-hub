@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
 import { InstancesService } from '../../services/instances.service';
-import { ACTIVE_STATES, ExtendedModelInstance, ModelInstance, ModelInstanceFilters, ModelInstanceState, TERMINATED_STATES } from '../../objects/instance';
+import { ACTIVE_STATES, ExtendedModelInstance, InstanceActionEnum, ModelInstance, ModelInstanceFilters, ModelInstanceState, TERMINATED_STATES } from '../../objects/instance';
 import { ModelInstanceResourceComponent } from '../model-instance-resource/model-instance-resource.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
@@ -16,6 +16,7 @@ import { Model } from '../../objects/model';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ModelInstanceMonitorComponent } from './model-instance-monitor/model-instance-monitor.component';
+import { NotificationsService, Notification } from '../notifications/notifications.service';
 
 @Component({
   selector: 'app-model-instances',
@@ -35,6 +36,7 @@ export class ModelInstancesComponent implements OnDestroy, OnInit {
 
   private instancesService = inject(InstancesService);
   private modelsService = inject(ModelsService);
+  private notificationsService = inject(NotificationsService);
   private refreshTimer$: Subscription | undefined;
   private instanceFilters: ModelInstanceFilters = {
     states: [...ACTIVE_STATES],
@@ -192,5 +194,22 @@ export class ModelInstancesComponent implements OnDestroy, OnInit {
         instance: instance
       }
     });
+  }
+
+  stopInstance(instance: ExtendedModelInstance) {
+    this.instancesService.executeInstanceAction(
+      {
+        model_id: instance.model_instance.model_id,
+        work_request_id: `${instance.model_instance.work_request_id}`,
+        action: InstanceActionEnum.STOP_INSTANCE
+      }
+    ).subscribe({
+      next: result => {
+        this.notificationsService.pushNotification(Notification('SUCCESS', `Requested instance termination`));
+      },
+      error: err => {
+        this.notificationsService.pushNotification(Notification('ERROR', `Failed to request instance termination`));
+      }
+    })
   }
 }
