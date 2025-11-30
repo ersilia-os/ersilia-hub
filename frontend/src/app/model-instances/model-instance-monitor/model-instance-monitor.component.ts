@@ -1,5 +1,5 @@
 
-import { Component, inject, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,20 +23,21 @@ import { ModelInstanceResourceComponent } from '../../model-instance-resource/mo
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTableModule } from '@angular/material/table';
 import { K8sPod } from '../../../objects/k8s';
+import { MatSelectModule } from '@angular/material/select';
 
 @Component({
   standalone: true,
   imports: [
     MatButtonModule, CommonModule, MatIconModule, MatProgressBarModule,
     MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent,
-    MatExpansionModule, MatTableModule,
+    MatExpansionModule, MatTableModule, MatSelectModule,
     MatFormFieldModule, ErsiliaLoaderComponent,
     ModelInstanceResourceComponent
   ],
   templateUrl: './model-instance-monitor.component.html',
   styleUrl: './model-instance-monitor.component.scss'
 })
-export class ModelInstanceMonitorComponent {
+export class ModelInstanceMonitorComponent implements OnDestroy {
   readonly instanceHistoryDisplayedColumns: string[] = ['log_event', 'log_timestamp', 'instance_details'];
   readonly instanceHistoryColumnHeaders: { [column: string]: string } = {
     log_event: 'Event',
@@ -113,8 +114,7 @@ export class ModelInstanceMonitorComponent {
 
     if (this.jobLogsRefreshTimer$ == null) {
       this.jobLogsRefreshTimer$ = timer(0, 3000).subscribe(_ => {
-        if (!this.loadJobLogs() || this.loadingJobLogs() || this.instance().model_instance
-          .state == ModelInstanceState.TERMINATED) {
+        if (!this.loadJobLogs() || this.loadingJobLogs()) {
           return;
         }
 
@@ -124,6 +124,8 @@ export class ModelInstanceMonitorComponent {
             if (result != null) {
               this.jobLogs.set(result);
             }
+
+            this.loadingJobLogs.set(false);
           },
           error: (err: Error) => {
             this.loadingJobLogs.set(false);
@@ -144,6 +146,8 @@ export class ModelInstanceMonitorComponent {
             if (result != null) {
               this.history.set(result);
             }
+
+            this.loadingHistory.set(false);
           },
           error: (err: Error) => {
             this.loadingHistory.set(false);
@@ -159,7 +163,7 @@ export class ModelInstanceMonitorComponent {
 
   set jobLogsTail(value: string) {
     if (value == null || value == 'ALL') {
-      this.jobLogsFilters.tail = undefined;
+      delete this.jobLogsFilters['tail'];
     } else {
       this.jobLogsFilters.tail = Number.parseInt(value);
     }
@@ -171,7 +175,7 @@ export class ModelInstanceMonitorComponent {
 
   set jobLogsHead(value: string) {
     if (value == null || value == 'ALL') {
-      this.jobLogsFilters.head = undefined;
+      delete this.jobLogsFilters['head'];
     } else {
       this.jobLogsFilters.head = Number.parseInt(value);
     }
@@ -186,12 +190,12 @@ export class ModelInstanceMonitorComponent {
     return `${item.log_event}_${item.log_timestamp}`;
   };
 
-  instance_details_summary = (details: K8sPod | undefined) => {
+  instanceDetailsSummary = (details: K8sPod | undefined) => {
     if (details == null) {
       return '';
     }
 
-    const template = '<span><span style="font-weight: bold; margin-right: 4px;">LABEL: </span><span>VALUE</span></span>';
+    const template = '<span><span>LABEL: </span><span>VALUE</span></span>';
 
     let summary = '';
     summary += template.replace('LABEL', 'name').replace('VALUE', details.name);
@@ -201,4 +205,6 @@ export class ModelInstanceMonitorComponent {
 
     return summary;
   };
+
+
 }

@@ -594,7 +594,7 @@ class RecommendationEngine(Thread):
             resource_recommendations = self.calculate_recommendations(resource_profile)
             resource_recommendations.model_id = model_id
             resource_recommendations.profiled_instances = list(
-                map(lambda x: x.k8s_pod.name, instances)
+                map(lambda x: x.model_instance.instance_details.name, instances)
             )
 
             self.model_recommendations[model_id] = resource_recommendations

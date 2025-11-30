@@ -55,12 +55,12 @@
         <div class="value">{{ instance().model_instance.job_submission_process!.job_status }}</div>
       </div>
       <div class="detail">
-        <div class="name">Job Submission Timestamp</div>
+        <div class="name">Submission Timestamp</div>
         <div class="value">{{ instance().model_instance.job_submission_process!.job_submission_timestamp | date:'yyyy-MM-dd
           HH:mm:ss' }}</div>
       </div>
       <div class="detail">
-        <div class="name">Job Completion Timestamp</div>
+        <div class="name">Completion Timestamp</div>
         <div class="value">{{ instance().model_instance.job_submission_process!.job_completion_timestamp | date:'yyyy-MM-dd
           HH:mm:ss' }}</div>
       </div>
@@ -70,7 +70,7 @@
 </div>
 
 <div class="info-row">
-  <div class="info-block mat-elevation-z8">
+  <div class="info-block metrics mat-elevation-z8">
     <div class="info-block-title">
       CPU Metrics
     </div>
@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <div class="info-block mat-elevation-z8">
+  <div class="info-block metrics mat-elevation-z8">
     <div class="info-block-title">
       Memory Metrics
     </div>
@@ -125,7 +125,7 @@
 
             <td mat-cell *matCellDef="let element">
                 @if (column == 'instance_details') {
-                  <div class="instance-details-container" [innerHtml]="instance_details_summary(element[column])"></div>
+                  <div class="instance-details-container" [innerHtml]="instanceDetailsSummary(element[column])"></div>
                 } @else if (column == 'log_timestamp') {
                   {{ element[column] | date:'yyyy-MM-dd HH:mm:ss' }}
                 } @else {
@@ -140,16 +140,35 @@
     </table>
 </mat-expansion-panel>
 
-
-<!-- TODO: create job logs expand section, toggle section = toggle loading -->
 <mat-expansion-panel [expanded]="loadJobLogs()" (opened)="loadJobLogs.set(true)" (closed)="loadJobLogs.set(false)">
     <mat-expansion-panel-header>
       <mat-panel-title> Job Logs </mat-panel-title>
     </mat-expansion-panel-header>
 
-    TODO - head + tail select input
+    <div class="job-logs-filters">
+            <mat-form-field>
+                <mat-label>Head rows</mat-label>
+                <mat-select [(value)]="jobLogsHead">
+                    <mat-option value="ALL">ALL</mat-option>
+                    <mat-option value="50">50</mat-option>
+                    <mat-option value="100">100</mat-option>
+                </mat-select>
+            </mat-form-field>
 
-    TODO - text block
+            <mat-form-field>
+                <mat-label>Tail rows</mat-label>
+                <mat-select [(value)]="jobLogsTail">
+                    <mat-option value="ALL">ALL</mat-option>
+                    <mat-option value="50">50</mat-option>
+                    <mat-option value="100">100</mat-option>
+                </mat-select>
+            </mat-form-field>
+    </div>
 
+    <div class="job-logs">
+      @for (line of jobLogs(); track $index) {
+        <div class="line">{{ line }}</div>
+      }
+    </div>
 </mat-expansion-panel>
 </div>

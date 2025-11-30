@@ -51,7 +51,7 @@
 <div class="model-instances-container">
     @for (instance of instances(); track trackBy($index, instance)) {
     <div class="model-instance mat-elevation-z8">
-        <div class="info-block">
+        <div class="info-block details">
             <div class="info-block-title">
                 Details
             </div>
@@ -67,7 +67,7 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block state">
             <div class="info-block-title">
                 State
             </div>
@@ -95,7 +95,7 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block job-state">
             <div class="info-block-title">
                 Job State
             </div>
@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block metrics">
             <div class="info-block-title">
                 CPU Metrics
             </div>
@@ -139,7 +139,7 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block metrics">
             <div class="info-block-title">
                 Memory Metrics
             </div>
@@ -161,14 +161,14 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block actions">
             <div class="info-block-title">
                 Actions
             </div>
             <div class="info-block-details">
-                <div class="action-button" (click)="viewDetailedInstance(instance)">
-                    <mat-icon>info</mat-icon>
-                </div>
+              <div class="ersilia-button icon-only" (click)="viewDetailedInstance(instance)">
+                  <mat-icon>info</mat-icon>
+              </div>
             </div>
         </div>
     </div>

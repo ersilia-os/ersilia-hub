@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, Signal, TrackByFunction } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -31,7 +31,7 @@ import { ModelInstanceMonitorComponent } from './model-instance-monitor/model-in
   templateUrl: './model-instances.component.html',
   styleUrl: './model-instances.component.scss'
 })
-export class ModelInstancesComponent implements OnDestroy {
+export class ModelInstancesComponent implements OnDestroy, OnInit {
 
   private instancesService = inject(InstancesService);
   private modelsService = inject(ModelsService);
@@ -78,7 +78,11 @@ export class ModelInstancesComponent implements OnDestroy {
       })
     } else {
       this.instanceFilters.states = this.instanceFilters.states?.filter(state => !ACTIVE_STATES.includes(state))
+      this.refreshTimer$?.unsubscribe()
+      this.refreshTimer$ = undefined;
     }
+
+    this.instancesService.loadInstances(this.instanceFilters);
   }
 
   get filtersLoadTerminated(): boolean {
@@ -95,6 +99,8 @@ export class ModelInstancesComponent implements OnDestroy {
     } else {
       this.instanceFilters.states = this.instanceFilters.states?.filter(state => !TERMINATED_STATES.includes(state))
     }
+
+    this.instancesService.loadInstances(this.instanceFilters);
   }
 
   get filtersLoadMetrics(): boolean {
@@ -104,14 +110,22 @@ export class ModelInstancesComponent implements OnDestroy {
   set filtersLoadMetrics(value: boolean) {
     this.instanceFilters.load_recommendations = value;
     this.instanceFilters.load_resource_profiles = value;
+
+    this.instancesService.loadInstances(this.instanceFilters);
   }
 
   get filtersModel() {
     return this.instanceFilters.model_id;
   }
 
-  set selectedModel(value: string | undefined) {
+  set filtersModel(value: string | undefined) {
     this.instanceFilters.model_id = value;
+
+    this.instancesService.loadInstances(this.instanceFilters);
+  }
+
+  ngOnInit(): void {
+    this.modelsService.loadModels();
   }
 
   ngOnDestroy() {

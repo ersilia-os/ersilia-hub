@@ -98,7 +98,7 @@
     display: flex;
     flex-direction: row;
     align-items: flex-start;
-    justify-content: flex-start;
+    justify-content: space-between;
 
     width: 85%;
     min-width: 1300px;
@@ -115,8 +115,27 @@
       justify-content: flex-start;
       align-items: flex-start;
 
-      padding: 0px 10px;
-      margin: 0px 15px;
+      padding: 0px 13px;
+
+      &.details {
+        width: 140px;
+        max-width: 140px;
+      }
+
+      &.state {
+        width: 220px;
+        max-width: 220px;
+      }
+
+      &.job-state {
+        width: 220px;
+        max-width: 220px;
+      }
+
+      &.metrics {
+        width: 200px;
+        max-width: 200px;
+      }
 
       .info-block-title {
         font-size: 18px;

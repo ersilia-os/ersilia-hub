@@ -22,6 +22,8 @@
     padding: 0px 10px;
     margin: 0px 15px;
     border-radius: 8px;
+    width: 210px;
+    max-width: 210px;
 
     .info-block-title {
       font-size: 18px;
@@ -70,4 +72,25 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
+}
+
+.job-logs-filters {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.job-logs {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+
+  border-radius: 7px;
+  background-color: #e9e9e9;
+  padding: 8px;
+
+  .line {
+    color: $ersilia-purple;
+  }
 }

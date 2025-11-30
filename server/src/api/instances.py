@@ -135,9 +135,9 @@ def load_instance_job_logs(
 
         logs = _logs_str.split("\n")
 
-        if filters.tail is not None and filters.tail > 0:
+        if filters.tail is not None and filters.tail > 0 and len(logs) > filters.tail:
             logs = logs[len(logs) - filters.tail :]
-        elif filters.head is not None and filters.head > 0:
+        elif filters.head is not None and filters.head > 0 and len(logs) > filters.head:
             logs = logs[: filters.head]
     except:
         traceback.print_exc(file=stdout)
