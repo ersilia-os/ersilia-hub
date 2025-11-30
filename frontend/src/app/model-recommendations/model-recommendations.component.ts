@@ -1,4 +1,4 @@
-import { Component, inject, Signal, TrackByFunction } from '@angular/core';
+import { Component, inject, OnInit, Signal, TrackByFunction } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,7 +17,7 @@ import { ModelInstanceRecommendations } from '../../objects/recommendations';
   templateUrl: './model-recommendations.component.html',
   styleUrl: './model-recommendations.component.scss'
 })
-export class ModelRecommendationsComponent {
+export class ModelRecommendationsComponent implements OnInit {
 
   private recommendationsService = inject(RecommendationsService);
 
@@ -30,6 +30,10 @@ export class ModelRecommendationsComponent {
     );
 
     this.recommendations = this.recommendationsService.getRecommendations();
+  }
+
+  ngOnInit(): void {
+    this.load();
   }
 
   load() {

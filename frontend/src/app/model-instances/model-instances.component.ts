@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, Signal, TrackByFunction } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -6,63 +6,103 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
 import { InstancesService } from '../../services/instances.service';
-import { ModelInstance, ModelInstanceFilters } from '../../objects/instance';
+import { ACTIVE_STATES, ExtendedModelInstance, InstanceActionEnum, ModelInstance, ModelInstanceFilters, ModelInstanceState, TERMINATED_STATES } from '../../objects/instance';
 import { ModelInstanceResourceComponent } from '../model-instance-resource/model-instance-resource.component';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ModelsService } from '../../services/models.service';
+import { Model } from '../../objects/model';
+import { MatSelectModule } from '@angular/material/select';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { ModelInstanceMonitorComponent } from './model-instance-monitor/model-instance-monitor.component';
+import { NotificationsService, Notification } from '../notifications/notifications.service';
 
 @Component({
   selector: 'app-model-instances',
   standalone: true,
-  imports: [MatButtonModule, FormsModule, MatFormFieldModule, CommonModule, MatIconModule, MatCheckboxModule,
+  imports: [
+    MatButtonModule,
+    FormsModule,
+    MatFormFieldModule,
+    CommonModule,
+    MatIconModule, MatCheckboxModule, MatSelectModule,
+    MatProgressBarModule,
     ErsiliaLoaderComponent, ModelInstanceResourceComponent],
   templateUrl: './model-instances.component.html',
   styleUrl: './model-instances.component.scss'
 })
-export class ModelInstancesComponent implements OnDestroy {
+export class ModelInstancesComponent implements OnDestroy, OnInit {
 
   private instancesService = inject(InstancesService);
+  private modelsService = inject(ModelsService);
+  private notificationsService = inject(NotificationsService);
   private refreshTimer$: Subscription | undefined;
   private instanceFilters: ModelInstanceFilters = {
-    active: true,
-    persisted: false,
+    states: [...ACTIVE_STATES],
     load_resource_profiles: true,
     load_recommendations: true
   };
 
   readonly dialog = inject(MatDialog);
 
-  instances: Signal<ModelInstance[]>;
+  instances: Signal<ExtendedModelInstance[]>;
   loading: Signal<boolean>;
+  models: Signal<Model[]>
+  modelsLoading: Signal<boolean>;
 
   constructor() {
-
     this.loading = this.instancesService.computeInstancesLoadingSignal<boolean>(
       _loading => this.instances == null || (this.instances().length == 0 && _loading)
     );
 
     this.instances = this.instancesService.getInstancesSignal();
+    this.models = this.modelsService.computeModelsSignal(models => models.filter(m => m.enabled));
+    this.modelsLoading = this.modelsService.computeModelsLoadingSignal(_loading => {
+      return this.models == null || _loading
+    });
 
-    if (this.autoRefreshEnabled()) {
+    if (this.shouldEnableAutoRefresh()) {
       this.startRefreshTimer();
     }
   }
 
   get filtersLoadActive(): boolean {
-    return this.instanceFilters.active ?? false;
+    return this.instanceFilters.states!.includes(ModelInstanceState.ACTIVE);
   }
 
   set filtersLoadActive(value: boolean) {
-    this.instanceFilters.active = value;
+    if (value) {
+      ACTIVE_STATES.forEach(state => {
+        if (!this.instanceFilters.states!.includes(state)) {
+          this.instanceFilters.states?.push(state);
+        }
+      })
+    } else {
+      this.instanceFilters.states = this.instanceFilters.states?.filter(state => !ACTIVE_STATES.includes(state))
+      this.refreshTimer$?.unsubscribe()
+      this.refreshTimer$ = undefined;
+    }
+
+    this.instancesService.loadInstances(this.instanceFilters);
   }
 
-  get filtersLoadPersisted(): boolean {
-    return this.instanceFilters.persisted ?? false;
+  get filtersLoadTerminated(): boolean {
+    return this.instanceFilters.states!.includes(ModelInstanceState.TERMINATED);
   }
 
-  set filtersLoadPersisted(value: boolean) {
-    this.instanceFilters.persisted = value;
+  set filtersLoadTerminated(value: boolean) {
+    if (value) {
+      TERMINATED_STATES.forEach(state => {
+        if (!this.instanceFilters.states!.includes(state)) {
+          this.instanceFilters.states?.push(state);
+        }
+      })
+    } else {
+      this.instanceFilters.states = this.instanceFilters.states?.filter(state => !TERMINATED_STATES.includes(state))
+    }
+
+    this.instancesService.loadInstances(this.instanceFilters);
   }
 
   get filtersLoadMetrics(): boolean {
@@ -72,10 +112,27 @@ export class ModelInstancesComponent implements OnDestroy {
   set filtersLoadMetrics(value: boolean) {
     this.instanceFilters.load_recommendations = value;
     this.instanceFilters.load_resource_profiles = value;
+
+    this.instancesService.loadInstances(this.instanceFilters);
+  }
+
+  get filtersModel() {
+    return this.instanceFilters.model_id;
+  }
+
+  set filtersModel(value: string | undefined) {
+    this.instanceFilters.model_id = value;
+
+    this.instancesService.loadInstances(this.instanceFilters);
+  }
+
+  ngOnInit(): void {
+    this.modelsService.loadModels();
   }
 
   ngOnDestroy() {
     this.refreshTimer$?.unsubscribe();
+    this.refreshTimer$ = undefined;
   }
 
   startRefreshTimer() {
@@ -98,9 +155,13 @@ export class ModelInstancesComponent implements OnDestroy {
     return this.instances != null && this.instances().length > 0;
   }
 
-  autoRefreshEnabled(): boolean {
+  shouldEnableAutoRefresh(): boolean {
     // fluffy logic based on filters
-    return !this.instanceFilters.persisted && this.refreshTimer$ != null;
+    return !this.instanceFilters.states!.includes(ModelInstanceState.TERMINATED);
+  }
+
+  autoRefreshEnabled(): boolean {
+    return this.refreshTimer$ != null;
   }
 
   load() {
@@ -108,7 +169,7 @@ export class ModelInstancesComponent implements OnDestroy {
       return;
     }
 
-    if (!this.instanceFilters.persisted) {
+    if (this.shouldEnableAutoRefresh()) {
       this.startRefreshTimer();
       return;
     }
@@ -116,40 +177,39 @@ export class ModelInstancesComponent implements OnDestroy {
     this.instancesService.loadInstances(this.instanceFilters);
   }
 
-  trackBy: TrackByFunction<ModelInstance> = (index: number, item: ModelInstance) => {
-    return `${item.k8s_pod.name}_${item.resource_profile == null}_${item.resource_recommendations == null ? '' : item.resource_recommendations.last_updated}`;
+  trackBy: TrackByFunction<ExtendedModelInstance> = (index: number, item: ExtendedModelInstance) => {
+    return `${item.model_instance.model_id}_${item.model_instance.work_request_id}_${item.model_instance.last_updated}`;
   };
 
-  /**
-   * TODO: open dialog for model recommendations ?? -> load for specific model
-   */
+  viewDetailedInstance(instance: ExtendedModelInstance) {
+    if (this.dialog != null && this.dialog.openDialogs.length > 0) {
+      return;
+    }
 
-  /**
-   * TODO: open model for model management (enable / disable, change request / limits, etc.)
-   */
+    this.dialog.open(ModelInstanceMonitorComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel-large',
+      data: {
+        instance: instance
+      }
+    });
+  }
 
-  // openCreateRequestDialog(): void {
-  //   if (this.dialog != null && this.dialog.openDialogs.length > 0) {
-  //     return;
-  //   }
-
-  //   this.dialog.open(RequestsCreateComponent, {
-  //     enterAnimationDuration: '300ms',
-  //     exitAnimationDuration: '300ms',
-  //     panelClass: 'dialog-panel'
-  //   });
-  // }
-
-  // viewRequest(request: RequestDisplay) {
-  //   this.dialog.open(RequestViewComponent, {
-  //     enterAnimationDuration: '300ms',
-  //     exitAnimationDuration: '300ms',
-  //     panelClass: 'dialog-panel',
-  //     data: request,
-  //   });
-  // }
-
-  /**
-   * TODO: instance actions (remove / logs ??)
-   */
+  stopInstance(instance: ExtendedModelInstance) {
+    this.instancesService.executeInstanceAction(
+      {
+        model_id: instance.model_instance.model_id,
+        work_request_id: `${instance.model_instance.work_request_id}`,
+        action: InstanceActionEnum.STOP_INSTANCE
+      }
+    ).subscribe({
+      next: result => {
+        this.notificationsService.pushNotification(Notification('SUCCESS', `Requested instance termination`));
+      },
+      error: err => {
+        this.notificationsService.pushNotification(Notification('ERROR', `Failed to request instance termination`));
+      }
+    })
+  }
 }

@@ -9,6 +9,7 @@ from db.daos.model_instance_log import (
     ModelInstanceLogDAO,
     ModelInstanceLogRecord,
 )
+from objects.instance import InstanceLogEntry
 from objects.k8s import ErsiliaAnnotations, ErsiliaLabels, K8sPod
 from python_framework.config_utils import load_environment_variable
 from python_framework.logger import ContextLogger, LogLevel
@@ -142,3 +143,28 @@ class ModelInstanceLogController:
                 "Failed to insert ModelInstanceLog, error = [%s]" % (repr(exc_info()),),
             )
             traceback.print_exc(file=stdout)
+
+    def load_instance_logs(
+        self, model_id: str, correlation_id: int | str
+    ) -> list[InstanceLogEntry]:
+        try:
+            results: list[ModelInstanceLogRecord] = (
+                ModelInstanceLogDAO.execute_select_all(
+                    ApplicationConfig.instance().database_config,
+                    model_ids=[model_id],
+                    correlation_ids=[correlation_id],
+                )
+            )
+
+            if results is None or len(results) <= 0:
+                return []
+
+            return list(map(InstanceLogEntry.from_record, results))
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to insert ModelInstanceLog, error = [%s]" % (repr(exc_info()),),
+            )
+            traceback.print_exc(file=stdout)
+
+            return []

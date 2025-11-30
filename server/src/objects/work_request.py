@@ -157,17 +157,32 @@ class WorkRequest:
 
     @staticmethod
     def init_from_record(record: WorkRequestRecord) -> "WorkRequest":
+        request_payload: WorkRequestPayload | None = None
+        metadata: WorkRequestMetadata | None = None
+
+        if record.request_payload is not None and isinstance(
+            record.request_payload, str
+        ):
+            request_payload = WorkRequestPayload.from_object(
+                loads(record.request_payload)
+            )
+        elif record.request_payload is not None and isinstance(
+            record.request_payload, dict
+        ):
+            request_payload = WorkRequestPayload.from_object(record.request_payload)
+
+        if record.metadata is not None and isinstance(record.metadata, str):
+            metadata = WorkRequestMetadata.from_object(loads(record.metadata))
+        elif record.metadata is not None and isinstance(record.metadata, dict):
+            metadata = WorkRequestMetadata.from_object(record.metadata)
+
         return WorkRequest(
             record.id,
             record.model_id,
             record.user_id,
-            (
-                None
-                if record.request_payload is None
-                else WorkRequestPayload.from_object(loads(record.request_payload))
-            ),
+            request_payload,
             record.request_date,
-            WorkRequestMetadata.from_object(loads(record.metadata)),
+            metadata,
             record.request_status,
             record.request_status_reason,
             record.model_job_id,

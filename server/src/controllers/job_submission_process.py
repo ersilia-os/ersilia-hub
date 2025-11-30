@@ -2,6 +2,7 @@ import traceback
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
+from typing import Any
 
 from controllers.model import ModelController
 from controllers.model_integration import ModelIntegrationController
@@ -277,3 +278,21 @@ class JobSubmissionProcess(Thread):
             traceback.print_exc(file=stdout)
 
         ContextLogger.debug(self._logger_key, "Process completed")
+
+    def to_object(self) -> dict[str, Any]:
+        return {
+            "model_id": self.model_id,
+            "work_request_id": self.work_request_id,
+            "id": self.id,
+            "job_entries": self.job_entries,
+            "retry_count": self.retry_count,
+            "model_execution_mode": str(self.model_execution_mode),
+            "job_result": (None if self.job_result is None else self.job_result),
+            "job_id": self.job_id,
+            "job_status": (None if self.job_status is None else str(self.job_status)),
+            "job_status_reason": (
+                None if self.job_status_reason is None else str(self.job_status_reason)
+            ),
+            "job_submission_timestamp": self.job_submission_timestamp,
+            "job_completion_timestamp": self.job_completion_timestamp,
+        }

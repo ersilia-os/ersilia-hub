@@ -5,19 +5,33 @@
 <div class="component-toolbar">
 
     <div class="filters">
+        <div class="filter model">
+            @if (modelsLoading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
+            <mat-form-field>
+                <mat-label>Select a Model</mat-label>
+                <mat-select [(value)]="filtersModel">
+                    @for (model of models(); track model) {
+                    <mat-option [value]="model.id">
+                      <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{ model.details.description }}</span>
+                    </mat-option>
+                    }
+                </mat-select>
+            </mat-form-field>
+        </div>
+
         <div class="filter">
             <mat-checkbox [(ngModel)]="filtersLoadActive">Active Instances</mat-checkbox>
         </div>
 
         <div class="filter">
-            <mat-checkbox [(ngModel)]="filtersLoadPersisted">Persisted Instances</mat-checkbox>
+            <mat-checkbox [(ngModel)]="filtersLoadTerminated">Terminated Instances</mat-checkbox>
         </div>
 
         <div class="filter">
             <mat-checkbox [(ngModel)]="filtersLoadMetrics">Resource Metrics</mat-checkbox>
         </div>
-
-        <!-- TODO: add models filter -->
 
         <div class="spacer"></div>
 
@@ -32,63 +46,78 @@
             </div>
         </div>
     </div>
-
 </div>
 
 <div class="model-instances-container">
     @for (instance of instances(); track trackBy($index, instance)) {
     <div class="model-instance mat-elevation-z8">
-        <div class="info-block">
+        <div class="info-block details">
             <div class="info-block-title">
                 Details
             </div>
             <div class="info-block-details">
                 <div class="detail">
-                    <div class="name">Type</div>
-                    <div class="value">{{ instance.is_model ? "Model" : "Hub Service" }}</div>
-                </div>
-                @if (instance.is_model) {
-                <div class="detail">
                     <div class="name">Model</div>
-                    <div class="value">{{ instance.model_id }}</div>
+                    <div class="value">{{ instance.model_instance.model_id }}</div>
                 </div>
-                }
                 <div class="detail">
-                    <div class="name">Name</div>
-                    <div class="value">{{ instance.k8s_pod.name }}</div>
+                    <div class="name">Request Id</div>
+                    <div class="value">{{ instance.model_instance.work_request_id }}</div>
                 </div>
-                @if (instance.is_model) {
-                <div class="detail">
-                    <div class="name">Request ID</div>
-                    <div class="value">{{ instance.request_id }}</div>
-                </div>
-                }
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block state">
             <div class="info-block-title">
-                Status
+                State
             </div>
             <div class="info-block-details">
                 <div class="detail">
                     <div class="name">State</div>
-                    <div class="value">{{ instance.instance_state }}</div>
+                    <div class="value">{{ instance.model_instance.state }}</div>
                 </div>
-                @if (instance.instance_state_reason != null) {
+                @if (instance.model_instance.termination_reason != null) {
                 <div class="detail">
-                    <div class="name">State Reason</div>
-                    <div class="value">{{ instance.instance_state_reason }}</div>
+                    <div class="name">Termination Reason</div>
+                    <div class="value">{{ instance.model_instance.termination_reason }}</div>
                 </div>
                 }
+                @if (instance.last_event != null) {
                 <div class="detail">
-                    <div class="name">Start Time</div>
-                    <div class="value">{{ instance.k8s_pod.state.state_times["running"] }}</div>
+                    <div class="name">Last Event Type</div>
+                    <div class="value">{{ instance.last_event!.log_event }}</div>
                 </div>
+                <div class="detail">
+                    <div class="name">Last Event Time</div>
+                    <div class="value">{{ instance.last_event!.log_timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+                </div>
+                }
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block job-state">
+            <div class="info-block-title">
+                Job State
+            </div>
+            <div class="info-block-details">
+                @if (instance.model_instance.job_submission_process != null) {
+                  <div class="detail">
+                      <div class="name">State</div>
+                      <div class="value">{{ instance.model_instance.job_submission_process!.job_status }}</div>
+                  </div>
+                  <div class="detail">
+                      <div class="name">Job Submission Timestamp</div>
+                      <div class="value">{{ instance.model_instance.job_submission_process!.job_submission_timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+                  </div>
+                  <div class="detail">
+                      <div class="name">Job Completion Timestamp</div>
+                      <div class="value">{{ instance.model_instance.job_submission_process!.job_completion_timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</div>
+                  </div>
+                }
+            </div>
+        </div>
+
+        <div class="info-block metrics">
             <div class="info-block-title">
                 CPU Metrics
             </div>
@@ -110,7 +139,7 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block metrics">
             <div class="info-block-title">
                 Memory Metrics
             </div>
@@ -132,11 +161,20 @@
             </div>
         </div>
 
-        <div class="info-block">
+        <div class="info-block actions">
             <div class="info-block-title">
                 Actions
             </div>
             <div class="info-block-details">
+              <div class="ersilia-button icon-only" (click)="viewDetailedInstance(instance)">
+                  <mat-icon>info</mat-icon>
+              </div>
+
+              @if (instance.model_instance.state != 'TERMINATED') {
+                <div class="ersilia-button icon-only" (click)="stopInstance(instance)">
+                    <mat-icon>cancel</mat-icon>
+                </div>
+              }
             </div>
         </div>
     </div>

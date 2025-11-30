@@ -1,12 +1,12 @@
 import traceback
 from datetime import datetime
 from enum import Enum
-from json import loads
+from json import dumps
 from math import floor
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
-from typing import Dict, List, Union
+from typing import Union
 
 from config.application_config import ApplicationConfig
 from controllers.instance_metrics import InstanceMetricsController
@@ -19,15 +19,16 @@ from controllers.model_instance_log import (
 )
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
-from db.daos.model_instance_log import (
-    ModelInstanceLogDAO,
-    ModelInstanceLogQuery,
-    ModelInstanceLogRecord,
+from db.daos.model_instance import (
+    ModelInstanceDAO,
+    ModelInstanceExtendedRecord,
+    ModelInstanceRecord,
 )
-from objects.instance import ModelInstance
+from objects.instance import ExtendedModelInstance
 from objects.k8s import ErsiliaAnnotations, K8sPod
 from objects.model import ModelUpdate
 from objects.model_integration import JobStatus
+from python_framework.advanced_threading import synchronized_method
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
@@ -54,11 +55,39 @@ class ModelInstanceState(Enum):
     TERMINATING = "TERMINATING"
     TERMINATED = "TERMINATED"
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
+
 
 class ModelInstanceTerminationReason(Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     OOMKILLED = "OOMKILLED"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif self.__class__ is other.__class__:
+            return self.value == other.value
+
+        return self.value == other
+
+    def __str__(self):
+        return self.name
+
+    def __hash__(self):
+        return str(self.name).__hash__()
 
 
 class ModelInstanceControllerStub:
@@ -84,6 +113,7 @@ class ModelInstanceHandler(Thread):
 
     state: ModelInstanceState
     termination_reason: ModelInstanceTerminationReason | None
+    last_persisted_timestamp: str | None
 
     job_submission_process: JobSubmissionProcess | None
     job_submission_entries: list[str] | None
@@ -111,6 +141,7 @@ class ModelInstanceHandler(Thread):
 
         self.state = ModelInstanceState.REQUESTED
         self.termination_reason = None
+        self.last_persisted_timestamp = None
 
         self.job_submission_process = None
         self.job_submission_entries = job_submission_entries
@@ -167,6 +198,7 @@ class ModelInstanceHandler(Thread):
 
         ModelController.instance().update_model(model_update)
 
+    @synchronized_method
     def _cache_pod_logs(self):
         _latest_logs: str | None = None
 
@@ -180,8 +212,17 @@ class ModelInstanceHandler(Thread):
         if _latest_logs is not None:
             self._pod_logs = _latest_logs
 
+    def get_pod_logs(self) -> str | None:
+        if self._pod_logs is not None:
+            return self._pod_logs
+
+        self._cache_pod_logs()
+
+        return self._pod_logs
+
     def _on_terminated(self):
         self.state = ModelInstanceState.TERMINATING
+        self.persist_state()
 
         InstanceMetricsController.instance().persist_metrics(
             "eos-models", self.pod_name
@@ -222,6 +263,7 @@ class ModelInstanceHandler(Thread):
             model_id=self.model_id,
             work_request_id=self.work_request_id,
         )
+        self.persist_state()
 
     def _finalize(self):
         ContextLogger.info(self._logger_key, "Handler finalized")
@@ -644,6 +686,37 @@ class ModelInstanceHandler(Thread):
             in [JobStatus.COMPLETED, JobStatus.FAILED]
         )
 
+    def persist_state(self):
+        try:
+            results: list[ModelInstanceRecord] = ModelInstanceDAO.execute_upsert(
+                ApplicationConfig.instance().database_config,
+                model_id=self.model_id,
+                work_request_id=self.work_request_id,
+                instance_id=self.pod_name,
+                instance_details=(
+                    None if self.k8s_pod is None else dumps(self.k8s_pod.to_object())
+                ),
+                state=str(self.state),
+                termination_reason=str(self.termination_reason),
+                job_submission_process=(
+                    None
+                    if self.job_submission_process is None
+                    else dumps(self.job_submission_process.to_object())
+                ),
+                expected_last_updated=self.last_persisted_timestamp,
+            )
+
+            if results is None or len(results) == 0:
+                raise Exception("Upsert returned zero records")
+
+            self.last_persisted_timestamp = results[0].last_updated
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                f"Failed to persist ModelInstance state, error = [{exc_info()!r}]",
+            )
+            traceback.print_exc(file=stdout)
+
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
 
@@ -655,6 +728,7 @@ class ModelInstanceHandler(Thread):
                     model_id=self.model_id,
                     work_request_id=self.work_request_id,
                 )
+                self.persist_state()
 
                 while True:
                     if self._wait_or_kill(5):
@@ -664,6 +738,8 @@ class ModelInstanceHandler(Thread):
 
                     if self.state == ModelInstanceState.SHOULD_TERMINATE:
                         break
+
+                    self.persist_state()
 
                     if self.job_submission_process is None:
                         # only submit job once pod is created and in READY state
@@ -824,7 +900,7 @@ class ModelInstanceController:
         del self.model_instance_handlers[key]
 
     def get_instance(
-        self, model_id: str, work_request_id: int
+        self, model_id: str, work_request_id: int | str
     ) -> Union[ModelInstanceHandler, None]:
         key = f"{model_id}_{work_request_id}"
 
@@ -833,66 +909,60 @@ class ModelInstanceController:
 
         return None
 
-    def load_active_instances(
-        self, model_ids: List[str] = None, work_request_id: Union[str, None] = None
-    ) -> List[ModelInstance]:
-        active_instances: List[ModelInstance] = []
-
-        for handler in self.model_instance_handlers.values():
-            # TODO: apply filters
-
-            if handler.k8s_pod is None:
-                continue
-
-            metrics = InstanceMetricsController.instance().get_instance(
-                handler.k8s_pod.namespace, handler.k8s_pod.name
-            )
-
-            active_instances.append(ModelInstance(handler.k8s_pod, metrics))
-
-        return active_instances
-
-    def load_persisted_instances(
+    def load_instances(
         self,
-        model_ids: List[str] = None,
-        work_request_id: Union[str, None] = None,
-        instance_id: Union[str, None] = None,
-    ) -> List[ModelInstance]:
-        instances: Dict[str, ModelInstance] = {}
-        log_model_ids: List[str] = []
-        log_instance_ids: List[str] = []
+        model_ids: list[str] | None = None,
+        work_request_ids: list[str] | None = None,
+        instance_ids: list[str] | None = None,
+        extended_state: bool = False,
+        states: list[str] | None = None,
+        not_states: list[str] | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        limit: int = 100,
+    ) -> list[ExtendedModelInstance]:
+        instances_by_instanceid: dict[str, ExtendedModelInstance] = {}
+        instances: list[ExtendedModelInstance] = []
+        loaded_model_ids: list[str] = []
+        loaded_instance_ids: list[str] = []
 
         try:
-            instance_log_records: List[ModelInstanceLogRecord] = (
-                ModelInstanceLogDAO.execute_query(
-                    ModelInstanceLogQuery.SELECT_FILTERED,
+            instance_records: list[ModelInstanceExtendedRecord] = (
+                ModelInstanceDAO.execute_select_all(
                     ApplicationConfig.instance().database_config,
-                    query_kwargs={
-                        "model_ids": model_ids,
-                        "instance_ids": None if instance_id is None else [instance_id],
-                        "correlation_ids": (
-                            None if work_request_id is None else [work_request_id]
-                        ),
-                        "log_events": ["INSTANCE_CREATED"],
-                    },
+                    model_ids=model_ids,
+                    work_request_ids=work_request_ids,
+                    instance_ids=instance_ids,
+                    limit=limit,
+                    date_from=date_from,
+                    date_to=date_to,
+                    instance_states=states,
+                    not_instance_states=not_states,
                 )
             )
 
-            if instance_log_records is None or len(instance_log_records) == 0:
+            if instance_records is None or len(instance_records) <= 0:
                 return []
 
-            for record in instance_log_records:
-                instances[record.instanceid] = ModelInstance(
-                    K8sPod.from_object(loads(record.instance_details)), None
-                )
+            instances = list(
+                map(ExtendedModelInstance.from_extended_record, instance_records)
+            )
 
-                if record.instanceid not in log_instance_ids:
-                    log_instance_ids.append(record.instanceid)
+            if not extended_state:
+                return instances
 
-                if record.modelid not in log_model_ids:
-                    log_model_ids.append(record.modelid)
+            for record in instances:
+                if (
+                    record.model_instance.instance_id is not None
+                    and record.model_instance.instance_id not in loaded_instance_ids
+                ):
+                    instances_by_instanceid[record.model_instance.instance_id] = record
+                    loaded_instance_ids.append(record.model_instance.instance_id)
+
+                if record.model_instance.model_id not in loaded_model_ids:
+                    loaded_model_ids.append(record.model_instance.model_id)
         except:
-            error_str = "Failed to load ModelInstanceLogs, error = [%s]" % (
+            error_str = "Failed to load ModelInstances, error = [%s]" % (
                 repr(exc_info()),
             )
             ContextLogger.error(self._logger_key, error_str)
@@ -902,14 +972,14 @@ class ModelInstanceController:
 
         try:
             instance_metrics = InstanceMetricsController.instance().load_persisted(
-                log_model_ids, log_instance_ids
+                loaded_model_ids, loaded_instance_ids
             )
 
             for metrics in instance_metrics:
-                if metrics.instance_id not in instances:
+                if metrics.instance_id not in instances_by_instanceid:
                     continue
 
-                instances[metrics.instance_id].metrics = metrics
+                instances_by_instanceid[metrics.instance_id].metrics = metrics
         except:
             error_str = "Failed to load InstanceMetrics from DB, error = [%s]" % (
                 repr(exc_info())
@@ -917,7 +987,7 @@ class ModelInstanceController:
             ContextLogger.error(self._logger_key, error_str)
             traceback.print_exc(file=stdout)
 
-        return list(instances.values())
+        return instances
 
     def ensure_instance_terminated(
         self, model_id: str, work_request_id: int, wait: bool = False

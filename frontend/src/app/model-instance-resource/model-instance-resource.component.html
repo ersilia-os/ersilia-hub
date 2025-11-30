@@ -1,4 +1,4 @@
-@if (instance != null) {
+@if (instance != null && render) {
 <div class="usage" [ngClass]="ngClass">
     <div class="value">{{ usageValue == null ? 0 : usageValue | number:'.0-1' }}</div>
     @if (allocationValue != null) {
@@ -15,7 +15,7 @@
 }
 }
 
-@else if (recommendation != null) {
+@else if (recommendation != null && render) {
 <div class="usage" [ngClass]="ngClass">
     @if (allocationValue != null) {
     <div class="allocation" style="margin-bottom: 8px;">{{ allocationValue | number:'.0-1' }}
