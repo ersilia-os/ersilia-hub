@@ -1,13 +1,11 @@
+import logging
 from types import ModuleType
-from fastapi import FastAPI
-
-from python_framework.dynamic_loader import load_submodules
-from python_framework.logger import ContextLogger, LogLevel
-from fastapi.middleware.cors import CORSMiddleware
 
 import uvicorn
-
-import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from python_framework.dynamic_loader import load_submodules
+from python_framework.logger import ContextLogger, LogLevel
 
 
 class EndpointFilter(logging.Filter):
@@ -45,7 +43,6 @@ DEFAULT_LOG_FILTERED_ENDPOINTS = ["/healthz", "/readyz", "/livez"]
 
 
 class FastAPIRoot(object):
-
     _instance: "FastAPIRoot" = None
 
     application_name: str
@@ -83,7 +80,11 @@ class FastAPIRoot(object):
         ContextLogger.sys_log(LogLevel.INFO, "[FastAPIRoot] initializing...")
 
         FastAPIRoot._instance = FastAPIRoot(application_name, host, port)
-        FastAPIRoot._instance.app = FastAPI(title=application_name)
+        FastAPIRoot._instance.app = FastAPI(
+            title=application_name,
+            openapi_url="/api/v1/openapi.json",
+            docs_url="/api/v1/docs",
+        )
         FastAPIRoot._instance.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],

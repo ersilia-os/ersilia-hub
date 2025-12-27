@@ -18,6 +18,6 @@ jobs:
     uses: './.github/workflows/docker-publish.yaml'
     with:
       image: 'ersilia-hub-server'
-      version: '0.0.18' # TODO: move this to release-please later
+      version: '0.0.19' # TODO: move this to release-please later
       working_directory: 'server'
     secrets: inherit
