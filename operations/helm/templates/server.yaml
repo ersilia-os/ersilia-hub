@@ -24,7 +24,7 @@ spec:
     rollingUpdate:
       maxUnavailable: 50%
       maxSurge: 1
-  minReadySeconds: 60
+  minReadySeconds: 30
   revisionHistoryLimit: 3
   progressDeadlineSeconds: 600
   template:
@@ -39,6 +39,9 @@ spec:
           image: ersiliaos/ersilia-hub-server:{{ .Values.server.version }}
           imagePullPolicy: IfNotPresent
           env:
+            - name: LOAD_K8S_IN_CLUSTER
+              value: 'true'
+            
             - name: DATABASE_HOST
               value: {{ .Values.application.name }}-postgresql
             - name: DATABASE_PORT
@@ -47,28 +50,6 @@ spec:
               value: public
             - name: DATABASE_MIGRATIONS_PATH
               value: /app/src/db/migrations
-
-            - name: LOG_LEVEL_ModelController
-              value: {{ .Values.server.env.logLevelModelController }}
-            - name: LOG_LEVEL_ModelIntegrationController
-              value: {{ .Values.server.env.logLevelModelIntegrationController }}
-            - name: LOG_LEVEL_K8sController
-              value: {{ .Values.server.env.logLevelK8sController }}
-            - name: LOG_LEVEL_K8sProxyController
-              value: {{ .Values.server.env.logLevelK8sProxyController }}
-            - name: LOG_LEVEL_ScalingWorker
-              value: {{ .Values.server.env.logLevelScalingWorker }}
-            - name: LOG_LEVEL_WorkRequestController
-              value: {{ .Values.server.env.logLevelWorkRequestController }}
-            - name: LOG_LEVEL_WorkRequestWorker
-              value: {{ .Values.server.env.logLevelWorkRequestWorker }}
-            - name: LOG_LEVEL_JobSubmissionTask
-              value: {{ .Values.server.env.logLevelJobSubmissionTask }}
-            - name: LOG_LEVEL_S3IntegrationController
-              value: {{ .Values.server.env.logLevelS3IntegrationController }}
-            - name: LOG_LEVEL_AuthController
-              value: {{ .Values.server.env.logLevelAuthController }}
-            
             - name: DATABASE_NAME
               valueFrom:
                 secretKeyRef:
@@ -85,44 +66,44 @@ spec:
                   name: {{ .Values.application.name }}
                   key: pgUserPassword
 
+            - name: MAX_CONCURRENT_MODEL_INSTANCES
+              value: {{ .Values.server.env.MAX_CONCURRENT_MODEL_INSTANCES | squote }}
+            - name: WORK_REQUEST_WORKER_POD_READY_TIMEOUT
+              value: {{ .Values.server.env.WORK_REQUEST_WORKER_POD_READY_TIMEOUT | squote }}
+
             - name: MODELS_NAMESPACE
               value: eos-models
             - name: MODEL_COLLECTION_NAME
               value: eos
-            - name: LOAD_K8S_IN_CLUSTER
-              value: 'true'
 
             - name: MODEL_S3_BUCKET_NAME
               value: ersilia-hub
             - name: MODEL_S3_DATA_PATH
               value: model-data
 
-            - name: MODEL_INTEGRATION_MOCK_SUCCESS_ID
-              value: ""
-            - name: MODEL_INTEGRATION_MOCK_FAIL_ID
-              value: ""
-            - name: MODEL_INTEGRATION_PROXY_IDS
-              value: ""
-
             - name: PASSWORD_SALT
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.application.name }}
                   key: serverPasswordSalt
+
+            {{- range $key, $value := .Values.server.env.logs }}
+            - name: LOG_LEVEL_{{ $key }}
+              value: {{ $value }}
+            {{- end }}
           ports:
             - containerPort: 8080
               protocol: TCP
           resources: 
-            requests:
-              cpu: 10m
-              memory: 100Mi
             limits:
-              cpu: 1000m
-              memory: 600Mi
+              memory: 900Mi
+            requests:
+              cpu: 50m
+              memory: 750Mi
           livenessProbe:
             initialDelaySeconds: 15
             timeoutSeconds: 20
-            periodSeconds: 15
+            periodSeconds: 10
             failureThreshold: 10
             httpGet:
               path: /livez
@@ -130,15 +111,13 @@ spec:
           readinessProbe:
             initialDelaySeconds: 15
             timeoutSeconds: 20
-            periodSeconds: 15
+            periodSeconds: 10
             failureThreshold: 10
             httpGet:
               path: /readyz
               port: 8080
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
-          # TODO: volume mounts
-          # TODO: security context
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst

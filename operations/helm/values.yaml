@@ -1,92 +1,32 @@
 application:
   name: ersilia-hub
-  modelsNamespace: eos-models
-
-secret:
-  pgDatabase: ""
-  pgAdminPassword: ""
-  pgUserUsername: ""
-  pgUserPassword: ""
-  serverPasswordSalt: ""
 
 server:
-  version: 0.0.8
+  version: 0.0.19
   replicas: 1
 
   env:
-    logLevelModelController: INFO
-    logLevelModelIntegrationController: INFO
-    logLevelK8sController: INFO
-    logLevelK8sProxyController: INFO
-    logLevelScalingWorker: INFO
-    logLevelWorkRequestController: INFO
-    logLevelWorkRequestWorker: INFO
-    logLevelJobSubmissionTask: INFO
-    logLevelS3IntegrationController: INFO
-    logLevelAuthController: INFO
+    MAX_CONCURRENT_MODEL_INSTANCES: '100'
+    WORK_REQUEST_WORKER_POD_READY_TIMEOUT: '900'
+    logs:
+      ModelController: INFO
+      ModelIntegrationController: TRACE
+      K8sController: ERROR
+      K8sProxyController: INFO
+      ScalingManager: INFO
+      ScalingWorker: INFO
+      WorkRequestController: INFO
+      WorkRequestWorker: INFO
+      JobSubmissionTask: TRACE
+      S3IntegrationController: INFO
+      AuthController: INFO
+      NodeMonitor: ERROR
+      ServerController: INFO
+      FailedServerHandler: INFO
+      ModelInstanceHandler: DEBUG
+      JobSubmissionProcess: DEBUG
 
 frontend:
-  version: 0.0.6
+  version: 0.0.12
   replicas: 1
 
-aws:
-  serverRoleARN: ""
-
-postgresql:
-  storageSize: 20Gi
-
-  image:
-    registry: docker.io
-    repository: bitnami/postgresql
-    tag: 16.2.0-debian-12-r18
-    pullPolicy: IfNotPresent
-
-  fullNameOverride: ersilia-hub-postgresql
-
-  commonLabels:
-    app.kubernetes.io/instance: ersilia-hub
-    app.kubernetes.io/name: ersilia-hub-postgresql
-
-  auth:
-    enablePostgresUser: true
-    existingSecret: ersilia-hub
-    username: ""
-    database: ""
-    secretKeys:
-      adminPasswordKey: pgAdminPassword
-      userPasswordKey: pgUserPassword
-    usePasswordFiles: true
-
-  architecture: standalone
-
-  primary:
-    labels:
-      app.kubernetes.io/instance: ersilia-hub
-      app.kubernetes.io/name: ersilia-hub-postgresql
-
-    resources:
-      limits:
-        cpu: 200m
-        memory: 1Gi
-      requests:
-        cpu: 20m
-        memory: 256Mi
-
-    networkPolicy:
-      enabled: false
-
-    persistence:
-      enabled: true
-      existingClaim: ersilia-hub-postgresql
-
-    nodeAffinityPreset:
-      type: hard
-      key: ersilia.workload
-      values:
-        - core
-
-    tolerations:
-      - effect: NoSchedule
-        key: ersilia.workload
-        operator: Equal
-        value: core

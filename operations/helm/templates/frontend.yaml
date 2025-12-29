@@ -24,7 +24,7 @@ spec:
     rollingUpdate:
       maxUnavailable: 50%
       maxSurge: 1
-  minReadySeconds: 60
+  minReadySeconds: 20
   revisionHistoryLimit: 3
   progressDeadlineSeconds: 600
   template:
