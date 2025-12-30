@@ -1,17 +1,15 @@
 from threading import Event, Thread
 
-from python_framework.thread_safe_cache import ThreadSafeCache
+from controllers.instance_metrics import InstanceMetricsController
+from controllers.k8s import K8sController
+from objects.k8s import K8sNode
+from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
-
-from controllers.k8s import K8sController
-from controllers.instance_metrics import InstanceMetricsController
-from objects.k8s import K8sNode
+from python_framework.thread_safe_cache import ThreadSafeCache
 
 
 class NodeMonitor(Thread):
-
     node: K8sNode
     metrics_collection_rate: int
     _logger_key: str
@@ -31,7 +29,7 @@ class NodeMonitor(Thread):
             self._logger_key,
             LogLevel.from_string(
                 load_environment_variable(
-                    f"LOG_LEVEL_NodeMonitor", default=LogLevel.INFO.name
+                    "LOG_LEVEL_NodeMonitor", default=LogLevel.INFO.name
                 )
             ),
         )
@@ -80,7 +78,6 @@ class NodeMonitorControllerKillInstance(KillInstance):
 
 
 class NodeMonitorController(Thread):
-
     _instance: "NodeMonitorController" = None
     _logger_key: str = None
     _kill_event: Event
@@ -139,7 +136,7 @@ class NodeMonitorController(Thread):
             node_monitor.start()
 
         # remove terminated nodes
-        for node in self.node_monitors.values():
+        for node in list(self.node_monitors.values()):
             node_found = False
 
             for new_node in new_nodes:

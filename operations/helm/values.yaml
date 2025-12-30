@@ -2,7 +2,7 @@ application:
   name: ersilia-hub
 
 server:
-  version: 0.0.19
+  version: 0.0.20
   replicas: 1
 
   env:
@@ -13,8 +13,6 @@ server:
       ModelIntegrationController: TRACE
       K8sController: ERROR
       K8sProxyController: INFO
-      ScalingManager: INFO
-      ScalingWorker: INFO
       WorkRequestController: INFO
       WorkRequestWorker: INFO
       JobSubmissionTask: TRACE
@@ -25,6 +23,7 @@ server:
       FailedServerHandler: INFO
       ModelInstanceHandler: DEBUG
       JobSubmissionProcess: DEBUG
+      InstanceMetricsController: ERROR
 
 frontend:
   version: 0.0.12
