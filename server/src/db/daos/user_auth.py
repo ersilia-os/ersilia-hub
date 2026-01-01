@@ -41,7 +41,6 @@ class UserAuthRecord(DAORecord):
 
 
 class UserAuthCheckRecord(DAORecord):
-
     userid: str
     password_hash: str
     valid: bool
@@ -127,8 +126,37 @@ class UserAuthInsertQuery(DAOQuery):
         return sql, field_map
 
 
+class UserAuthUpdateQuery(DAOQuery):
+    def __init__(
+        self,
+        userid: str,
+        password_hash: str,
+    ):
+        super().__init__(UserAuthRecord)
+
+        self.userid = userid
+        self.password_hash = password_hash
+
+    def to_sql(self):
+        field_map = {
+            "query_UserId": self.userid,
+            "query_PasswordHash": self.password_hash,
+        }
+
+        sql = """
+            UPDATE UserAuth
+            SET PasswordHash = :query_PasswordHash
+            WHERE UserId = :query_UserId
+            RETURNING
+                UserId
+        """
+
+        return sql, field_map
+
+
 class UserAuthDAO(BaseDAO.DAO):
     queries = {
         UserAuthQuery.CHECK: UserAuthCheckQuery,
         BaseDAO.INSERT_QUERY_KEY: UserAuthInsertQuery,
+        BaseDAO.UPDATE_QUERY_KEY: UserAuthUpdateQuery,
     }

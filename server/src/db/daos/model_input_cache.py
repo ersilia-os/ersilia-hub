@@ -1,6 +1,7 @@
 from typing import Dict, Union
 
 import python_framework.db.dao.dao as BaseDAO
+from db.daos.shared_record import CountRecord
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
 
@@ -142,8 +143,33 @@ class ModelInputCacheInsertQuery(DAOQuery):
         return sql, field_map
 
 
+class ModelInputCacheDeleteByUserQuery(DAOQuery):
+    def __init__(
+        self,
+        user_id: str,
+    ):
+        super().__init__(CountRecord)
+
+        self.user_id = user_id
+
+    def to_sql(self):
+        field_map = {
+            "query_UserId": self.user_id,
+        }
+
+        sql = """
+            DELETE FROM ModelInputCache
+            WHERE UserId = :query_UserId
+            RETURNING
+                COUNT(*) as count
+        """
+
+        return sql, field_map
+
+
 class ModelInputCacheDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: ModelInputCacheSelectBatchQuery,
         BaseDAO.INSERT_QUERY_KEY: ModelInputCacheInsertQuery,
+        BaseDAO.DELETE_QUERY_KEY: ModelInputCacheDeleteByUserQuery,
     }

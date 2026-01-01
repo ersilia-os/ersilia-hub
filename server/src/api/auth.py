@@ -1,17 +1,14 @@
 from sys import exc_info
 
-from fastapi import APIRouter, HTTPException, Request
-
-from library.fastapi_root import FastAPIRoot
-
-from library.api_utils import api_handler, validate_session_id
 from controllers.auth import AuthController
-from objects.user import User, UserModel, UserSession, UserSignUpModel
-from python_framework.logger import ContextLogger, LogLevel
-
+from controllers.user_admin import UserAdminController
+from fastapi import APIRouter, HTTPException, Request
+from library.api_utils import api_handler, validate_session_id
+from library.fastapi_root import FastAPIRoot
 from objects.api import AuthType, EncodedAuthModel, LoginResponseModel
 from objects.rbac import UserPermission
-
+from objects.user import User, UserModel, UserSession, UserSignUpModel
+from python_framework.logger import ContextLogger, LogLevel
 
 ###############################################################################
 ## API REGISTRATION                                                          ##
@@ -40,7 +37,7 @@ def signup(
     has_existing_user = False
 
     try:
-        existing_user = AuthController.instance().load_user_by_name(
+        existing_user = UserAdminController.instance().load_user_by_name(
             user_signup.user.username
         )
         has_existing_user = existing_user is not None
@@ -56,7 +53,7 @@ def signup(
     new_user: User = None
 
     try:
-        new_user = AuthController.instance().create_user(
+        new_user = UserAdminController.instance().create_user(
             user_signup.user.to_object(), user_signup.password
         )
     except:
@@ -135,7 +132,7 @@ def login(
     existing_user: User = None
 
     try:
-        existing_user = AuthController.instance().load_user_by_name(username)
+        existing_user = UserAdminController.instance().load_user_by_name(username)
     except:
         ContextLogger.sys_log(
             LogLevel.ERROR, f"Failed to load user, error = [{repr(exc_info())}]"
@@ -201,7 +198,7 @@ def logout(
     ):
         ContextLogger.sys_log(
             LogLevel.ERROR,
-            f"Failed to logout since there is no session details",
+            "Failed to logout since there is no session details",
         )
         raise HTTPException(400, detail="Failed to logout")
 

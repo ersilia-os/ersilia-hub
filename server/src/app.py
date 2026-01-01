@@ -35,6 +35,8 @@ from python_framework.db.postgresutils import (
 from python_framework.graceful_killer import GracefulKiller
 from python_framework.logger import ContextLogger, LogLevel
 
+from src.controllers.user_admin import UserAdminController
+
 
 def init_configs():
     ApplicationConfig.initialize()
@@ -89,6 +91,7 @@ def init():
     WorkRequestController.initialize()
     S3IntegrationController.initialize()
     K8sProxyController.initialize()
+    UserAdminController.initialize()
     AuthController.initialize()
     RecommendationEngine.initialize()
 

@@ -2,12 +2,14 @@ from enum import Enum
 from typing import Dict, List, Union
 
 import python_framework.db.dao.dao as BaseDAO
+from db.daos.shared_record import CountMapRecord
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
 
 
 class WorkRequestQuery(Enum):
     SELECT_FILTERED = "SELECT_FILTERED"
+    DELETE_BY_USER = "DELETE_BY_USER"
 
 
 class WorkRequestRecord(DAORecord):
@@ -201,15 +203,23 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
                 'WorkRequest.Metadata @> \'{"sessionId": "%s"}\'' % self.session_id
             )
 
-         
         if self.server_ids is not None:
-            has_null_server = any(map(lambda s: s == 'NULL', self.server_ids))
-            other_server_ids = list(map(lambda sm: f"'{sm}'", filter(lambda s: s != 'NULL', self.server_ids)))
+            has_null_server = any(map(lambda s: s == "NULL", self.server_ids))
+            other_server_ids = list(
+                map(
+                    lambda sm: f"'{sm}'", filter(lambda s: s != "NULL", self.server_ids)
+                )
+            )
 
             if has_null_server:
-                custom_filters.append("(WorkRequest.ServerId IS NULL OR WorkRequest.ServerId IN (%s))" % ",".join(other_server_ids))
+                custom_filters.append(
+                    "(WorkRequest.ServerId IS NULL OR WorkRequest.ServerId IN (%s))"
+                    % ",".join(other_server_ids)
+                )
             else:
-                custom_filters.append("WorkRequest.ServerId IN (%s)" % ",".join(other_server_ids))
+                custom_filters.append(
+                    "WorkRequest.ServerId IN (%s)" % ",".join(other_server_ids)
+                )
 
         sql = """
             SELECT
@@ -389,7 +399,7 @@ class WorkRequestUpdateQuery(DAOQuery):
         job_submission_timestamp: str,
         processed_timestamp: str,
         server_id: str,
-        expected_server_id: str | None = None
+        expected_server_id: str | None = None,
     ):
         super().__init__(WorkRequestRecord)
 
@@ -420,7 +430,7 @@ class WorkRequestUpdateQuery(DAOQuery):
         custom_filters = []
 
         if self.expected_server_id is not None:
-            if self.expected_server_id == 'NULL':
+            if self.expected_server_id == "NULL":
                 custom_filters.append("ServerId IS NULL")
             else:
                 custom_filters.append(f"ServerId = '{self.expected_server_id}'")
@@ -477,8 +487,71 @@ class WorkRequestUpdateQuery(DAOQuery):
             LEFT JOIN WorkRequestData
                 ON WorkRequestUpdate.Id = WorkRequestData.RequestId
         """ % (
-                "" if len(custom_filters) == 0 else "AND " + " AND ".join(custom_filters)
+            "" if len(custom_filters) == 0 else "AND " + " AND ".join(custom_filters)
+        )
+
+        return sql, field_map
+
+
+class WorkRequestDeleteByUserQuery(DAOQuery):
+    def __init__(
+        self,
+        user_id: str,
+    ):
+        super().__init__(CountMapRecord)
+
+        self.user_id = user_id
+
+    def to_sql(self):
+        field_map = {
+            "query_UserId": self.user_id,
+        }
+
+        sql = """
+            WITH WorkRequestsToDelete AS (
+                SELECT Id, UserId
+                FROM WorkRequest
+                WHERE UserId = :query_UserId
+            ),
+
+            DeletedWRData AS (
+                DELETE FROM WorkRequestData
+                WHERE RequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING
+                    COUNT(*) as count_data
+            ),
+
+            DeletedWRCache AS (
+                DELETE FROM WorkRequestResultCacheTemp
+                WHERE WorkRequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING
+                    COUNT(*) as count_cache
+            ),
+
+            DeletedWR AS (
+                DELETE FROM WorkRequest
+                WHERE Id IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING
+                    COUNT(*) as count_requests
             )
+
+            SELECT UNION
+            (
+                SELECT * FROM DeleteWRData
+            ),
+            (
+                SELECT * FROM DeleteWRCache
+            ),
+            (
+                SELECT * FROM DeleteWR
+            )
+        """
 
         return sql, field_map
 
@@ -488,5 +561,6 @@ class WorkRequestDAO(BaseDAO.DAO):
         BaseDAO.SELECT_ALL_QUERY_KEY: WorkRequestSelectAllQuery,
         BaseDAO.INSERT_QUERY_KEY: WorkRequestInsertQuery,
         BaseDAO.UPDATE_QUERY_KEY: WorkRequestUpdateQuery,
+        BaseDAO.DELETE_QUERY_KEY: WorkRequestDeleteByUserQuery,
         WorkRequestQuery.SELECT_FILTERED: WorkRequestSelectFilteredQuery,
     }

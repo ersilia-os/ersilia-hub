@@ -1,38 +1,32 @@
-from random import choices, randint
-from string import ascii_lowercase, ascii_uppercase, digits
-from sys import exc_info, stdout
 import traceback
-from typing import List, Tuple, Union
+from sys import exc_info, stdout
+from threading import Event, Thread
+from typing import List, Tuple
 from uuid import uuid4
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
-from library.process_lock import ProcessLock
-from threading import Thread, Event
-from python_framework.graceful_killer import GracefulKiller, KillInstance
-from python_framework.time import date_from_string
 
-from python_framework.thread_safe_cache import ThreadSafeCache
-
+import library.auth_utils as AuthUtils
 from config.application_config import ApplicationConfig
 from config.auth_config import AuthConfig
-from db.daos.user import UserDAO, UserQuery, UserRecord
+from controllers.user_admin import UserAdminController
 from db.daos.user_auth import (
     UserAuthCheckRecord,
     UserAuthDAO,
     UserAuthQuery,
-    UserAuthRecord,
 )
+from db.daos.user_permission import UserPermissionDAO, UserPermissionRecord
 from db.daos.user_session import (
     UserSessionCheckRecord,
     UserSessionDAO,
     UserSessionQuery,
     UserSessionRecord,
 )
+from library.process_lock import ProcessLock
+from objects.rbac import Permission, UserPermission
 from objects.user import AuthType, User, UserSession
-from hashlib import md5
-
-from db.daos.user_permission import UserPermissionDAO, UserPermissionRecord
-from objects.rbac import Permission, UserPermission, UserPermissionModel
+from python_framework.config_utils import load_environment_variable
+from python_framework.graceful_killer import GracefulKiller, KillInstance
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_cache import ThreadSafeCache
 
 
 class AuthControllerKillInstance(KillInstance):
@@ -41,7 +35,6 @@ class AuthControllerKillInstance(KillInstance):
 
 
 class AuthController(Thread):
-
     CACHE_REFRESH_WAIT_TIME = 30
 
     _instance: "AuthController" = None
@@ -97,99 +90,6 @@ class AuthController(Thread):
     def _acquire_lock(self, lock_id: str, timeout: float = -1) -> bool:
         return self._process_lock.acquire_lock(lock_id, timeout=timeout)
 
-    # NOTE: used for validation + login
-    def load_user_by_name(self, username: str) -> Union[User, None]:
-        ContextLogger.debug(
-            self._logger_key, f"Loading user with name [{username}] from DB..."
-        )
-        results: List[UserRecord] = UserDAO.execute_query(
-            UserQuery.SELECT_FILTERED,
-            ApplicationConfig.instance().database_config,
-            query_kwargs={"username": username},
-        )
-
-        if len(results) == 0:
-            ContextLogger.debug(
-                self._logger_key, f"No user found with name [{username}]."
-            )
-
-            return None
-        else:
-            ContextLogger.debug(self._logger_key, f"User found with name [{username}].")
-
-            return User.init_from_record(results[0])
-
-    def _generate_password_hash(self, user: User, password: str) -> str:
-        user_datepart = date_from_string(user.sign_up_date).strftime("%Y-%m-%dT%H")
-        digest = md5(
-            f"{user.username}_{password}_{user_datepart}_{AuthConfig.instance().password_salt}".encode()
-        )
-
-        return digest.hexdigest()
-
-    def create_user(self, user: User, password: str) -> Union[User, None]:
-        ContextLogger.debug(
-            self._logger_key, f"Creating user with name [{user.username}]..."
-        )
-
-        lock_acquired: bool = False
-
-        try:
-            lock_acquired = self._acquire_lock(user.username, timeout=10)
-        except:
-            pass
-
-        if not lock_acquired:
-            ContextLogger.warn(
-                self._logger_key,
-                f"Failed to acquire lock for user creation, username = [{user.username}]",
-            )
-
-            return None
-
-        user.id = str(uuid4())
-
-        persisted_user: User = None
-
-        try:
-            results: List[UserRecord] = UserDAO.execute_insert(
-                ApplicationConfig.instance().database_config,
-                **user.to_record().generate_insert_query_args(),
-            )
-
-            if len(results) == 0:
-                raise Exception("No record inserted")
-
-            persisted_user = User.init_from_record(results[0])
-        except:
-            error = f"Failed to create user with id = [{user.id}], name = [{user.username}], error = [{repr(exc_info())}]"
-            ContextLogger.error(self._logger_key, error)
-            traceback.print_exc(file=stdout)
-
-            raise Exception(error)
-
-        try:
-            results: List[UserAuthRecord] = UserAuthDAO.execute_insert(
-                ApplicationConfig.instance().database_config,
-                **UserAuthRecord.init(
-                    userid=persisted_user.id,
-                    passwordhash=self._generate_password_hash(persisted_user, password),
-                ).generate_insert_query_args(),
-            )
-
-            if len(results) == 0:
-                raise Exception("No record inserted")
-        except:
-            error = f"Failed to persist user auth details for userid = [{user.id}], name = [{user.username}], error = [{repr(exc_info())}]"
-            ContextLogger.error(self._logger_key, error)
-            traceback.print_exc(file=stdout)
-
-            raise Exception(error)
-        finally:
-            self._release_lock(user.username)
-
-        return persisted_user
-
     def validate_user_password(self, user: User, password: str) -> bool:
         try:
             ContextLogger.trace(
@@ -201,7 +101,7 @@ class AuthController(Thread):
                 ApplicationConfig.instance().database_config,
                 query_kwargs={
                     "userid": user.id,
-                    "password_hash": self._generate_password_hash(user, password),
+                    "password_hash": AuthUtils.generate_password_hash(user, password),
                 },
             )
 
@@ -216,19 +116,6 @@ class AuthController(Thread):
 
             return False
 
-    def _generate_session_token(self, userid: str) -> str:
-        random_token = "".join(
-            choices(ascii_uppercase + digits + ascii_lowercase, k=24)
-        )
-        digest = md5(f"{userid}_{random_token}".encode())
-
-        return digest.hexdigest()
-
-    def get_random_anonymous_userid(self) -> str:
-        anon_user_number = randint(0, AuthConfig.instance().total_anonymous_users)
-
-        return "%s00000-0000-0000-0000-000000000000" % ("%03d" % anon_user_number)
-
     def _new_user_session(
         self,
         userid: str,
@@ -242,7 +129,7 @@ class AuthController(Thread):
                 **UserSessionRecord.init(
                     userid=userid,
                     sessionid=str(uuid4()) if session_id is None else session_id,
-                    sessiontoken=self._generate_session_token(userid),
+                    sessiontoken=AuthUtils.generate_session_token(userid),
                     authtype=str(auth_type),
                     sessionmaxageseconds=session_max_age_seconds,
                 ).generate_insert_query_args(),
@@ -277,25 +164,6 @@ class AuthController(Thread):
 
             raise Exception(error)
 
-    def load_user(self, userid: str) -> Union[None, User]:
-        try:
-            results: List[UserRecord] = UserDAO.execute_select(
-                ApplicationConfig.instance().database_config,
-                id=userid,
-            )
-
-            if results is None or len(results) == 0:
-                return None
-
-            return User.init_from_record(results[0])
-        except:
-            error = (
-                f"Failed to load user with id [{userid}], error = [{repr(exc_info())}]"
-            )
-            ContextLogger.error(self._logger_key, error)
-
-            raise Exception(error)
-
     def create_anonymous_session(self, session_id: str) -> Tuple[User, UserSession]:
         existing_sessions = self._load_user_sessions(session_id=session_id)
 
@@ -303,7 +171,7 @@ class AuthController(Thread):
         user: User = None
 
         if len(existing_sessions) == 0:
-            userid = self.get_random_anonymous_userid()
+            userid = AuthUtils.get_random_anonymous_userid()
             new_session = self._new_user_session(
                 userid,
                 auth_type=AuthType.ErsiliaAnonymous,
@@ -313,7 +181,7 @@ class AuthController(Thread):
         else:
             new_session = self.refresh_session(existing_sessions[0])
 
-        user = self.load_user(new_session.userid)
+        user = UserAdminController.instance().load_user(new_session.userid)
 
         return user, new_session
 
@@ -493,7 +361,7 @@ class AuthController(Thread):
             )
 
         try:
-            session.session_token = self._generate_session_token(session.userid)
+            session.session_token = AuthUtils.generate_session_token(session.userid)
             session.session_max_age_seconds = (
                 AuthConfig.instance().user_session_max_age_seconds
                 if session.auth_type == AuthType.ErsiliaUser
@@ -567,8 +435,6 @@ class AuthController(Thread):
 
     def _update_caches(self):
         self._update_permissions_cache()
-
-        # TODO: eventually add session cache
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")
