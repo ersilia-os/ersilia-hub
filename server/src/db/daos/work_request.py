@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Dict, List, Union
 
 import python_framework.db.dao.dao as BaseDAO
-from db.daos.shared_record import CountMapRecord
+from db.daos.shared_record import MapRecord
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
 
@@ -498,7 +498,7 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
         self,
         user_id: str,
     ):
-        super().__init__(CountMapRecord)
+        super().__init__(MapRecord)
 
         self.user_id = user_id
 
@@ -519,8 +519,7 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 WHERE RequestId IN (
                     SELECT Id FROM WorkRequestsToDelete
                 )
-                RETURNING
-                    COUNT(*) as count_data
+                RETURNING RequestId
             ),
 
             DeletedWRCache AS (
@@ -528,8 +527,7 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 WHERE WorkRequestId IN (
                     SELECT Id FROM WorkRequestsToDelete
                 )
-                RETURNING
-                    COUNT(*) as count_cache
+                RETURNING WorkRequestId
             ),
 
             DeletedWR AS (
@@ -537,20 +535,17 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 WHERE Id IN (
                     SELECT Id FROM WorkRequestsToDelete
                 )
-                RETURNING
-                    COUNT(*) as count_requests
+                RETURNING Id
             )
 
-            SELECT UNION
-            (
-                SELECT * FROM DeleteWRData
-            ),
-            (
-                SELECT * FROM DeleteWRCache
-            ),
-            (
-                SELECT * FROM DeleteWR
-            )
+            SELECT WorkRequestsToDelete.Id as id
+            FROM WorkRequestsToDelete
+            LEFT JOIN DeletedWRData 
+                ON WorkRequestsToDelete.Id = DeletedWRData.RequestId
+            LEFT JOIN DeletedWRCache
+                ON WorkRequestsToDelete.Id = DeletedWRCache.WorkRequestId
+            LEFT JOIN DeletedWR
+                ON WorkRequestsToDelete.Id = DeletedWR.Id
         """
 
         return sql, field_map

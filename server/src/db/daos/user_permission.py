@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Dict, Union
 
 import python_framework.db.dao.dao as BaseDAO
@@ -43,7 +42,7 @@ class UserPermissionRecord(DAORecord):
         }
 
 
-class UserPermissionInsertQuery(DAOQuery):
+class UserPermissionUpsertQuery(DAOQuery):
     def __init__(
         self,
         userid: str,
@@ -71,42 +70,15 @@ class UserPermissionInsertQuery(DAOQuery):
                 :query_Permissions,
                 CURRENT_TIMESTAMP
             )
+            ON CONFLICT (UserId)
+            DO UPDATE
+            SET Permissions = EXCLUDED.Permissions,
+                LastUpdated = EXCLUDED.LastUpdated
+            WHERE UserId = :query_UserId
             RETURNING
-                UserId,
-                Permissions::text,
-                LastUpdated::text
-        """
-
-        return sql, field_map
-
-
-class UserPermissionUpdateQuery(DAOQuery):
-    def __init__(
-        self,
-        userid: str,
-        permissions: str,
-    ):
-        super().__init__(UserPermissionRecord)
-
-        self.userid = userid
-        self.permissions = permissions
-
-    def to_sql(self):
-        field_map = {
-            "query_UserId": self.userid,
-            "query_Permissions": self.permissions,
-        }
-
-        sql = """
-            UPDATE UserPermission 
-            SET Permissions = :query_Permissions,
-                LastUpdated = CURRENT_TIMESTAMP
-            WHERE
-                UserId = :query_UserId
-            RETURNING
-                UserId,
-                Permissions::text,
-                LastUpdated::text
+                UserPermission.UserId,
+                UserPermission.Permissions::text,
+                UserPermission.LastUpdated::text
         """
 
         return sql, field_map
@@ -133,9 +105,7 @@ class UserPermissionSelectQuery(DAOQuery):
                 LastUpdated::text
             FROM UserPermission 
             %s
-        """ % (
-            "" if len(where_clause) == 0 else "WHERE " + " AND ".join(where_clause)
-        )
+        """ % ("" if len(where_clause) == 0 else "WHERE " + " AND ".join(where_clause))
 
         return sql, field_map
 
@@ -166,7 +136,6 @@ class UserPermissionDeleteQuery(DAOQuery):
 class UserPermissionDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_QUERY_KEY: UserPermissionSelectQuery,
-        BaseDAO.INSERT_QUERY_KEY: UserPermissionInsertQuery,
-        BaseDAO.UPDATE_QUERY_KEY: UserPermissionUpdateQuery,
+        BaseDAO.UPSERT_QUERY_KEY: UserPermissionUpsertQuery,
         BaseDAO.DELETE_QUERY_KEY: UserPermissionDeleteQuery,
     }

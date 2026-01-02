@@ -436,6 +436,30 @@ class AuthController(Thread):
     def _update_caches(self):
         self._update_permissions_cache()
 
+    def upsert_user_permissions(self, userid: str, permissions: list[Permission]):
+        ContextLogger.debug(
+            self._logger_key, "Updating user permissions for [%s]..." % userid
+        )
+
+        try:
+            results: List[UserPermissionRecord] = UserPermissionDAO.execute_upsert(
+                ApplicationConfig.instance().database_config,
+                userid=userid,
+                permissions=list(map(str, permissions)),
+            )
+
+            if results is None or len(results) == 0:
+                return
+
+            self._user_permissions[userid] = UserPermission.init_from_record(results[0])
+        except:
+            error = f"Failed to upsert UserPermissions for userid = [{userid}], error = [{repr(exc_info())}]"
+            ContextLogger.error(self._logger_key, error)
+
+            raise Exception(error)
+
+        ContextLogger.debug(self._logger_key, "User Permissions updated.")
+
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")
 

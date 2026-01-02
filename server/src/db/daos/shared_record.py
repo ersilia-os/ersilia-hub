@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 from python_framework.db.dao.objects import DAORecord
 
@@ -24,19 +24,16 @@ class CountRecord(DAORecord):
         return super().generate_delete_query_args()
 
 
-class CountMapRecord(DAORecord):
-    counts: dict[str, int]
+class MapRecord(DAORecord):
+    result: dict[str, Any]
 
-    def __init__(self, result: dict[str, int]):
+    def __init__(self, result: dict[str, Any]):
         super().__init__(result)
 
-        self.counts = {}
+        self.result = {}
 
         for key, value in result:
-            if key.startswith("count_"):
-                self.counts[key.replace("count_", "")] = int(value)
-            elif type(value) == int:
-                self.counts[key] = int(value)
+            self.result[key] = value
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
         return super().generate_insert_query_args()

@@ -1,4 +1,3 @@
-from csv import Error
 from enum import Enum
 from typing import Dict, Union
 
@@ -242,7 +241,7 @@ class UserDeleteQuery(DAOQuery):
         elif self.username is not None and len(self.username) > 0:
             delete_filter = f"Username = '{self.username}'"
         else:
-            raise Error("missing 'id' or 'username' field")
+            raise Exception("missing 'id' or 'username' field")
 
         sql = (
             """
