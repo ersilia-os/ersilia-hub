@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import Any, Dict, Union
 
-from pydantic import BaseModel
 from db.daos.user import UserRecord
 from db.daos.user_auth import UserAuthRecord
 from db.daos.user_session import UserSessionRecord
+from pydantic import BaseModel
 
 
 class User:
@@ -70,7 +70,6 @@ class User:
 
 
 class UserModel(BaseModel):
-
     id: str | None = None
     username: str
     first_name: str
@@ -104,13 +103,11 @@ class UserModel(BaseModel):
 
 
 class UserSignUpModel(BaseModel):
-
     user: UserModel
     password: str
 
 
 class AuthType(Enum):
-
     ErsiliaAnonymous = "ErsiliaAnonymous"
     ErsiliaUser = "ErsiliaUser"
 
@@ -130,7 +127,6 @@ class AuthType(Enum):
 
 
 class UserAuth:
-
     userid: str
     password_hash: str
 
@@ -157,7 +153,6 @@ class UserAuth:
 
 
 class UserSessionModel(BaseModel):
-
     userid: str
     session_id: str
     session_token: str
@@ -167,7 +162,6 @@ class UserSessionModel(BaseModel):
 
 
 class UserSession:
-
     userid: str
     session_id: str
     session_token: str
@@ -249,3 +243,21 @@ class UserSession:
             session_max_age_seconds=self.session_max_age_seconds,
             session_start_time=self.session_start_time,
         )
+
+
+class UsersFilterModel(BaseModel):
+    username: str | None = None
+    firstname_prefix: str | None = None
+    lastname_prefix: str | None = None
+    username_prefix: str | None = None
+    email_prefix: str | None = None
+
+
+class UserPasswordUpdateModel(BaseModel):
+    new_password: str
+    current_password: str | None = None
+    force: bool = False
+
+
+class UserPermissionsUpdateModel(BaseModel):
+    permissions: list[str] | None = None
