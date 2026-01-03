@@ -37,6 +37,9 @@ export function userLoginAuth(username: string, password: string): EncodedAuth {
 }
 
 export type Permission = 'ADMIN';
+export const PermissionsList: Permission[] = [
+  'ADMIN'
+];
 
 export interface LoginResponse {
   user: User;

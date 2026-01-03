@@ -73,19 +73,19 @@
 }
 
 .mat-column-username {
-  width: 100px;
+  width: 200px;
 }
 
 .mat-column-first_name {
-  width: 110px;
+  width: 150px;
 }
 
 .mat-column-last_name {
-  width: 110px;
+  width: 150px;
 }
 
 .mat-column-email {
-  width: 160px;
+  width: 250px;
 }
 
 .mat-column-actions {
@@ -99,6 +99,14 @@
 .table {
   width: calc(100% - 40px);
   overflow: auto;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  width: 100px;
 }
 
 .action-button {

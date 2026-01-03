@@ -12,6 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from "@angular/forms";
+import { UserInfoPopupComponent } from '../info-popup/info-popup.component';
 
 @Component({
   selector: 'app-user-admin',
@@ -120,7 +121,18 @@ export class UserAdminComponent {
   };
 
   openUserDialog(user: User) {
-    // this.dialog.open(UserInfoDialogComponent, {
+    this.dialog.open(UserInfoPopupComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: user,
+    });
+  }
+
+  openDeleteDialog(user: User) {
+    // TODO: check if there is a callback to trigger on close ??
+
+    // this.dialog.open(UserDeleteDialogComponent, {
     //   enterAnimationDuration: '300ms',
     //   exitAnimationDuration: '300ms',
     //   panelClass: 'dialog-panel',

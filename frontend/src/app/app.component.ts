@@ -11,6 +11,8 @@ import { Clipboard } from '@angular/cdk/clipboard';
 import { NotificationsService, Notification } from './notifications/notifications.service';
 import { MenuComponent } from './menu/menu.component';
 import { User } from '../objects/user';
+import { MatDialog } from '@angular/material/dialog';
+import { UserInfoPopupComponent } from './user/info-popup/info-popup.component';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +30,7 @@ export class AppComponent implements OnInit {
   private authService = inject(AuthService);
   private clipboard = inject(Clipboard);
   private notificationsService = inject(NotificationsService);
+  readonly dialog = inject(MatDialog);
 
   sessionDetails: Signal<SessionDetails>;
   user: Signal<User | undefined>;
@@ -77,6 +80,15 @@ export class AppComponent implements OnInit {
 
   toggleMenu() {
     this.menuExpanded = !this.menuExpanded;
+  }
+
+  openUserDialog() {
+    this.dialog.open(UserInfoPopupComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: this.user()!,
+    });
   }
 }
 

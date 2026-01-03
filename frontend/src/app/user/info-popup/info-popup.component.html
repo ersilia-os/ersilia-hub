@@ -1,0 +1,81 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        <div class="title">
+          User Details
+        </div>
+
+        @if (isOwnUser) {
+        <div class="ersilia-button logout" (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            Logout
+        </div>
+        }
+    </div>
+
+  @if (user != undefined) {
+  <div class="details">
+    <div class="column">
+        <div class="detail">
+            <div class="label">ID</div>
+            <div class="contents">{{ user.id }}</div>
+        </div>
+
+        <div class="detail">
+            <div class="label">Username</div>
+            <div class="contents">{{ user.username }}</div>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="detail">
+            <div class="label">Firstname</div>
+            <div class="contents">{{ user.first_name }}</div>
+        </div>
+
+        <div class="detail">
+            <div class="label">Lastname</div>
+            <div class="contents">{{ user.last_name }}</div>
+        </div>
+
+        <div class="detail">
+            <div class="label">Email</div>
+            <div class="contents">{{ user.email }}</div>
+        </div>
+    </div>
+  </div>
+
+    @if (canEdit()) {
+    <!-- TODO: update password -->
+
+    <!-- TODO: permissions (if admin) -->
+
+    <div class="danger-zone">
+      <div class="danger-zone-title">Danger Zone</div>
+
+      <div class="delete-row">
+        <div class="ersilia-button delete" (click)="clearContributions()" [ngClass]="{'disabled': !canSubmit()}">
+            <mat-icon>delete</mat-icon>
+            Clear Contributions
+        </div>
+
+        <div class="ersilia-button delete" (click)="clearData()" [ngClass]="{'disabled': !canSubmit()}">
+            <mat-icon>delete</mat-icon>
+            Clear Data
+        </div>
+
+        <div class="ersilia-button delete" (click)="deleteUser()" [ngClass]="{'disabled': !canSubmit()}">
+            <mat-icon>delete</mat-icon>
+            Delete User
+        </div>
+      </div>
+    </div>
+    }
+  }
+
+  <div class="dialog-actions">
+      <div class="ersilia-button cancel" (click)="close()">
+          <mat-icon>close</mat-icon>
+          Close
+      </div>
+  </div>
+</div>

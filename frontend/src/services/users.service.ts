@@ -48,11 +48,11 @@ export class UsersService {
       );
   }
 
-  clearUserContributions(userId: string): Observable<boolean> {
+  clearUserContributions(userId: string): Observable<void> {
     return this.http.delete(`${environment.apiHost}/api/users/${userId}/contributions`)
       .pipe(
         map(response => {
-          return true;
+          return;
         }),
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(mapHttpError(error)));
@@ -60,11 +60,11 @@ export class UsersService {
       );
   }
 
-  clearUserData(userId: string): Observable<boolean> {
+  clearUserData(userId: string): Observable<void> {
     return this.http.delete(`${environment.apiHost}/api/users/${userId}/data`)
       .pipe(
         map(response => {
-          return true;
+          return;
         }),
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(mapHttpError(error)));
@@ -72,11 +72,11 @@ export class UsersService {
       );
   }
 
-  deleteUser(userId: string): Observable<boolean> {
+  deleteUser(userId: string): Observable<void> {
     return this.http.delete(`${environment.apiHost}/api/users/${userId}`)
       .pipe(
         map(response => {
-          return true;
+          return;
         }),
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(mapHttpError(error)));
@@ -84,11 +84,11 @@ export class UsersService {
       );
   }
 
-  updateUserPermissions(userId: string, permissions: Permission[]): Observable<boolean> {
+  updateUserPermissions(userId: string, permissions: Permission[]): Observable<void> {
     return this.http.put(`${environment.apiHost}/api/users/${userId}/permissions`, { permissions: permissions })
       .pipe(
         map(response => {
-          return true;
+          return;
         }),
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(mapHttpError(error)));
@@ -96,7 +96,7 @@ export class UsersService {
       );
   }
 
-  updateUserPassword(userId: string, newPassword: string, currentPassword?: string, force?: boolean): Observable<boolean> {
+  updateUserPassword(userId: string, newPassword: string, currentPassword?: string, force?: boolean): Observable<void> {
     return this.http.put(`${environment.apiHost}/api/users/${userId}/password`, {
       new_password: newPassword,
       current_password: currentPassword,
@@ -104,7 +104,7 @@ export class UsersService {
     })
       .pipe(
         map(response => {
-          return true;
+          return;
         }),
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(mapHttpError(error)));

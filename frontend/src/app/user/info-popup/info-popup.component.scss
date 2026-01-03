@@ -1,0 +1,150 @@
+@import '../../../styles/colour-palette.scss';
+
+:host {
+  padding: 20px;
+}
+
+.dialog-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+
+  padding: 20px;
+
+  .dialog-header {
+    width: 100%;
+    font-size: 26px;
+    padding: 10px;
+    margin-bottom: 25px;
+
+    color: $ersilia-purple;
+    border-bottom: 1px solid $ersilia-purple;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .title {
+    flex: 1;
+  }
+
+  .logout {
+    font-size: 16px;
+  }
+
+  .dialog-actions {
+    width: 100%;
+    margin-top: 15px;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+
+    .ersilia-button {
+      &.cancel {
+        background-color: $pastel-red;
+        color: #000000cc;
+
+        .mat-icon {
+          color: #000000cc;
+        }
+      }
+
+      &.submit {
+        ersilia-loader {
+          margin-right: 5px;
+        }
+      }
+    }
+  }
+}
+
+.details {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: flex-start;
+
+  .column {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    width: 320px;
+  }
+
+  .detail {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    height: 50px;
+
+    &.input {
+      width: 100%;
+      flex: 1;
+    }
+
+    .label {
+      font-size: 20px;
+      color: $ersilia-purple;
+      width: fit-content;
+      margin-right: 16px;
+    }
+
+    .contents {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+
+      .ersilia-button {
+        margin-right: 15px;
+      }
+    }
+
+  }
+}
+
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  border: 2px solid $alert-red;
+  border-radius: 8px;
+  background-color: rgba($alert-red, 0.2);
+
+  .danger-zone-title {
+    font-size: 22px;
+    color: $alert-red;
+    font-weight: bold;
+
+    padding: 8px;
+  }
+
+  .delete-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 100%;
+    padding: 8px;
+
+    .ersilia-button.delete {
+      background-color: $alert-red;
+      color: #202020cf;
+      border: 1px solid #03000057;
+
+      .mat-icon {
+        color: #202020cf;
+      }
+    }
+  }
+}
