@@ -158,10 +158,13 @@ class ModelInputCacheDeleteByUserQuery(DAOQuery):
         }
 
         sql = """
-            DELETE FROM ModelInputCache
-            WHERE UserId = :query_UserId
-            RETURNING
-                COUNT(*) as count
+            WITH DeletedRecords AS (
+                DELETE FROM ModelInputCache
+                WHERE UserId = :query_UserId
+                RETURNING ModelId, InputHash
+            )
+            SELECT count(*) as count
+            FROM DeletedRecords
         """
 
         return sql, field_map

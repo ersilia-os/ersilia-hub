@@ -66,14 +66,16 @@ class UserAdminController:
                 WorkRequestQuery.DELETE_BY_USER,
                 ApplicationConfig.instance().database_config,
                 query_kwargs={
-                    "userid": user_id,
+                    "user_id": user_id,
                 },
             )
 
             if len(results) == 0:
-                raise Exception("No records deleted")
+                ContextLogger.debug(self._logger_key, "No records found to delete")
 
-            deleted_workrequest_ids = list(map(lambda r: r["id"], results))
+                return 0
+
+            deleted_workrequest_ids = list(map(lambda r: r.result["id"], results))
         except:
             error = f"Failed to clear user data for userid = [{user_id}], error = [{repr(exc_info())}]"
             ContextLogger.error(self._logger_key, error)
@@ -92,8 +94,10 @@ class UserAdminController:
                 user_id=user_id,
             )
 
-            if len(results) == 0:
-                raise Exception("No records deleted")
+            if len(results) == 0 or results[0].count == 0:
+                ContextLogger.debug(self._logger_key, "No records found to delete")
+
+                return 0
 
             return results[0].count
         except:
@@ -108,6 +112,7 @@ class UserAdminController:
 
         try:
             ContextLogger.info(self._logger_key, f"Deleting user [{user_id}] data...")
+            self.clear_user_data(user_id)
         except:
             raise Exception(exc_info())
 
@@ -115,6 +120,7 @@ class UserAdminController:
             ContextLogger.info(
                 self._logger_key, f"Deleting user [{user_id}] contributions..."
             )
+            self.clear_user_contributions(user_id)
         except:
             raise Exception(exc_info())
 

@@ -1,6 +1,7 @@
 from typing import Any, Dict, Union
 
 from python_framework.db.dao.objects import DAORecord
+from sqlalchemy.engine.row import LegacyRow
 
 
 class CountRecord(DAORecord):
@@ -27,12 +28,12 @@ class CountRecord(DAORecord):
 class MapRecord(DAORecord):
     result: dict[str, Any]
 
-    def __init__(self, result: dict[str, Any]):
+    def __init__(self, result: LegacyRow):
         super().__init__(result)
 
         self.result = {}
 
-        for key, value in result:
+        for key, value in result.items():
             self.result[key] = value
 
     def generate_insert_query_args(self) -> Dict[str, Union[str, int, bool, float]]:

@@ -530,6 +530,14 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 RETURNING WorkRequestId
             ),
 
+            DeletedModelInstance AS (
+                DELETE FROM ModelInstance
+                WHERE WorkRequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING WorkRequestId
+            ),
+
             DeletedWR AS (
                 DELETE FROM WorkRequest
                 WHERE Id IN (
@@ -544,6 +552,8 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 ON WorkRequestsToDelete.Id = DeletedWRData.RequestId
             LEFT JOIN DeletedWRCache
                 ON WorkRequestsToDelete.Id = DeletedWRCache.WorkRequestId
+            LEFT JOIN DeletedModelInstance
+                ON WorkRequestsToDelete.Id = DeletedModelInstance.WorkRequestId
             LEFT JOIN DeletedWR
                 ON WorkRequestsToDelete.Id = DeletedWR.Id
         """
@@ -556,6 +566,6 @@ class WorkRequestDAO(BaseDAO.DAO):
         BaseDAO.SELECT_ALL_QUERY_KEY: WorkRequestSelectAllQuery,
         BaseDAO.INSERT_QUERY_KEY: WorkRequestInsertQuery,
         BaseDAO.UPDATE_QUERY_KEY: WorkRequestUpdateQuery,
-        BaseDAO.DELETE_QUERY_KEY: WorkRequestDeleteByUserQuery,
+        WorkRequestQuery.DELETE_BY_USER: WorkRequestDeleteByUserQuery,
         WorkRequestQuery.SELECT_FILTERED: WorkRequestSelectFilteredQuery,
     }

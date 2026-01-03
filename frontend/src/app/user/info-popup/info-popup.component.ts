@@ -110,6 +110,7 @@ export class UserInfoPopupComponent implements OnInit {
     this.usersService.clearUserContributions(this.user?.id!).subscribe({
       next: result => {
         this.submitting.set(false);
+        this.notificationsService.pushNotification(Notification("SUCCESS", "Successfully cleared contributions"));
       },
       error: (err: Error) => {
         this.notificationsService.pushNotification(Notification("ERROR", "Failed to clear user contributions"));
@@ -128,6 +129,7 @@ export class UserInfoPopupComponent implements OnInit {
     this.usersService.clearUserData(this.user?.id!).subscribe({
       next: result => {
         this.submitting.set(false);
+        this.notificationsService.pushNotification(Notification("SUCCESS", "Successfully cleared data"));
       },
       error: (err: Error) => {
         this.notificationsService.pushNotification(Notification("ERROR", "Failed to clear user data"));
@@ -173,6 +175,7 @@ export class UserInfoPopupComponent implements OnInit {
         .subscribe(_ => {
           this.originalPermissionsList = permissionsToList(this.permissions);
           this.submitting.set(false);
+          this.notificationsService.pushNotification(Notification("SUCCESS", "Sucessfully updated permissions"));
         })
     } catch (e) {
       this.notificationsService.pushNotification(Notification("ERROR", "Failed to update permissions"));
