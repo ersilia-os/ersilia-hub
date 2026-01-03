@@ -1,0 +1,81 @@
+<div class="component-header">
+    User Admin
+</div>
+
+<div class="component-toolbar">
+    <div class="filters">
+        <div class="filter username_prefix">
+            <mat-form-field>
+                <mat-label>Username Prefix</mat-label>
+                <input matInput [(ngModel)]="filterUsernamePrefix">
+            </mat-form-field>
+        </div>
+
+        <div class="filter firstname_prefix">
+            <mat-form-field>
+                <mat-label>Firstname Prefix</mat-label>
+                <input matInput [(ngModel)]="filterFirstnamePrefix">
+            </mat-form-field>
+        </div>
+
+        <div class="filter lastname_prefix">
+            <mat-form-field>
+                <mat-label>Lastname Prefix</mat-label>
+                <input matInput [(ngModel)]="filterLastnamePrefix">
+            </mat-form-field>
+        </div>
+
+        <div class="filter email_prefix">
+            <mat-form-field>
+                <mat-label>Email Prefix</mat-label>
+                <input matInput [(ngModel)]="filterEmailPrefix">
+            </mat-form-field>
+        </div>
+
+
+        <div class="filter username">
+            <mat-form-field>
+                <mat-label>Username</mat-label>
+                <input matInput [(ngModel)]="filterUsername">
+            </mat-form-field>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="filter refresh">
+            <div class="ersilia-button icon-only refresh" (click)="load()"
+                [ngClass]="{'disabled': loading()}">
+                @if(loading()) {
+                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                } @else {
+                <mat-icon>refresh</mat-icon>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table">
+    <table mat-table [dataSource]="users()" class="mat-elevation-z8" [trackBy]="tableTrackBy">
+        @for (column of displayedColumns; track column) {
+        <ng-container [matColumnDef]="column">
+            <th mat-header-cell *matHeaderCellDef>
+              {{columnHeaders[column]}}
+            </th>
+            <td mat-cell *matCellDef="let element">
+                @if (column == 'actions') {
+                <!-- TODO actions -->
+                <div class="action-button" (click)="openUserDialog(element)">
+                    <mat-icon>visibility</mat-icon>
+                </div>
+                } @else {
+                {{element[column]}}
+                }
+            </td>
+        </ng-container>
+        }
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+</div>

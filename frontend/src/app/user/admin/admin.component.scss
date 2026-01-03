@@ -1,0 +1,118 @@
+@import '../../../styles/colour-palette.scss';
+
+:host {
+  width: 100%;
+  height: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.component-header {
+  font-size: 26px;
+  margin-bottom: 20px;
+  width: calc(100% - 30px);
+  color: $ersilia-purple;
+}
+
+.component-toolbar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+
+  width: calc(100% - 50px);
+  margin-bottom: 20px;
+
+
+  .filters {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    width: 100%;
+    flex: 1;
+
+    .filter {
+      margin-right: 10px;
+
+      &.refresh {
+        margin-right: 0px;
+      }
+
+      &.model {
+        width: 250px;
+
+        .mat-mdc-form-field {
+          width: 250px;
+        }
+
+      }
+    }
+
+    .spacer {
+      width: 100%;
+      flex: 1;
+    }
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+
+    width: 100%;
+    flex: 1;
+
+    margin-bottom: 20px;
+
+  }
+}
+
+.mat-column-username {
+  width: 100px;
+}
+
+.mat-column-first_name {
+  width: 110px;
+}
+
+.mat-column-last_name {
+  width: 110px;
+}
+
+.mat-column-email {
+  width: 160px;
+}
+
+.mat-column-actions {
+  width: 100px;
+}
+
+.mat-mdc-table {
+  background-color: #727272;
+}
+
+.table {
+  width: calc(100% - 40px);
+  overflow: auto;
+}
+
+.action-button {
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  padding: 4px;
+  background-color: $ersilia-purple;
+
+  .mat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 32px;
+    color: #ffffffcc;
+  }
+}
