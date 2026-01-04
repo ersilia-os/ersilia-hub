@@ -111,6 +111,18 @@
   }
 }
 
+.actions {
+  margin-top: 15px;
+  margin-bottom: 15px;
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+
+  width: 100%;
+}
+
 .danger-zone {
   display: flex;
   flex-direction: column;

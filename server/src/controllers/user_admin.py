@@ -204,7 +204,9 @@ class UserAdminController:
             results: list[UserAuthRecord] = UserAuthDAO.execute_insert(
                 ApplicationConfig.instance().database_config,
                 userid=persisted_user.id,
-                passwordhash=AuthUtils.generate_password_hash(persisted_user, password),
+                password_hash=AuthUtils.generate_password_hash(
+                    persisted_user, password
+                ),
             )
 
             if len(results) == 0:
@@ -306,7 +308,7 @@ class UserAdminController:
             results: list[UserAuthRecord] = UserAuthDAO.execute_update(
                 ApplicationConfig.instance().database_config,
                 userid=user_id,
-                passwordhash=AuthUtils.generate_password_hash(user, new_password),
+                password_hash=AuthUtils.generate_password_hash(user, new_password),
             )
 
             if len(results) == 0:

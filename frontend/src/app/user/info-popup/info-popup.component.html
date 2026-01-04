@@ -45,7 +45,13 @@
   </div>
 
     @if (canEdit()) {
-    <!-- TODO: update password -->
+    <div class="actions">
+        <div class="ersilia-button" (click)="openPasswordUpdateDialog()">
+            <mat-icon>lock</mat-icon>
+            Update Password
+        </div>
+    </div>
+
 
     <!-- TODO: permissions (if admin) -->
 

@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
   MAT_DIALOG_DATA,
+  MatDialog,
   MatDialogActions,
   MatDialogClose,
   MatDialogContent,
@@ -23,6 +24,8 @@ import { UsersService } from '../../../services/users.service';
 import { User } from '../../../objects/user';
 import { AuthService } from '../../../services/auth.service';
 import { Permission, PermissionsList } from '../../../objects/auth';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { UpdateUserPasswordComponent } from '../update-user-password/update-user-password.component';
 
 @Component({
   standalone: true,
@@ -38,6 +41,7 @@ import { Permission, PermissionsList } from '../../../objects/auth';
 export class UserInfoPopupComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<UserInfoPopupComponent>);
   readonly dialogData = inject(MAT_DIALOG_DATA);
+  readonly dialog = inject(MatDialog);
 
   busy: WritableSignal<boolean> = signal(true);
 
@@ -138,18 +142,13 @@ export class UserInfoPopupComponent implements OnInit {
     });
   }
 
-  canSubmitPasswordReset(): boolean {
-    return this.canSubmit()
-    //  &&
-    // TODO: validity / inputs check
-  }
-
-  updatePassword() {
-    if (!this.canSubmitPasswordReset()) {
-      return;
-    }
-    // TODO: if OWN user, curr + new password
-    // TODO: else force flag + new password
+  openPasswordUpdateDialog() {
+    this.dialog.open(UpdateUserPasswordComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: this.user,
+    });
   }
 
   deleteUser() {
@@ -170,17 +169,20 @@ export class UserInfoPopupComponent implements OnInit {
       return;
     }
 
-    try {
-      this.usersService.updateUserPermissions(this.user?.id!, permissionsToList(this.permissions))
-        .subscribe(_ => {
+    this.submitting.set(true);
+
+    this.usersService.updateUserPermissions(this.user?.id!, permissionsToList(this.permissions))
+      .subscribe({
+        next: result => {
           this.originalPermissionsList = permissionsToList(this.permissions);
           this.submitting.set(false);
-          this.notificationsService.pushNotification(Notification("SUCCESS", "Sucessfully updated permissions"));
-        })
-    } catch (e) {
-      this.notificationsService.pushNotification(Notification("ERROR", "Failed to update permissions"));
-      this.submitting.set(false);
-    }
+          this.notificationsService.pushNotification(Notification("SUCCESS", "Successfully updated user permissions"));
+        },
+        error: (err: Error) => {
+          this.notificationsService.pushNotification(Notification("ERROR", "Failed to update user permissions"));
+          this.submitting.set(false);
+        }
+      });
   }
 
   logout() {
@@ -220,4 +222,39 @@ function hasPermissionsChange(permissions: PermissionState[], originalPermission
   }
 
   return false;
+}
+
+export class MyErrorStateMatcher implements ErrorStateMatcher {
+  isErrorState(control: FormControl | null, form: FormGroupDirective | NgForm | null): boolean {
+    const isSubmitted = form && form.submitted;
+    return !!(control && control.invalid && (control.dirty || control.touched || isSubmitted));
+  }
+}
+
+function passwordFormControl(control: AbstractControl, passwordRegex: RegExp, comparison?: string | null) {
+  if (!control.dirty) {
+    return null;
+  }
+
+  const value = control.getRawValue();
+
+  if (value == null || value.length < 3) {
+    return {
+      'validation': 'Invalid password'
+    }
+  }
+
+  if (value.match(passwordRegex) == null) {
+    return {
+      'validation': `Password must match regex [${passwordRegex}]`
+    }
+  }
+
+  if (comparison != undefined && value !== comparison) {
+    return {
+      'validation': 'Does not match Password field'
+    }
+  }
+
+  return null;
 }
