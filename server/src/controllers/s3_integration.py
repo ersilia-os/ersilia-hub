@@ -1,14 +1,14 @@
-from json import loads
 import traceback
-from boto3 import client
+from json import loads
 from sys import exc_info, stdout
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
+
+from boto3 import client
 from objects.s3_integration import S3ResultObject
+from python_framework.config_utils import load_environment_variable
+from python_framework.logger import ContextLogger, LogLevel
 
 
 class S3IntegrationController:
-
     _instance: "S3IntegrationController" = None
 
     _logger_key: str = None
@@ -135,7 +135,6 @@ class S3IntegrationController:
     def upload_instance_logs(self, model_id: str, request_id: str, logs: str) -> bool:
         bucket_path = f"{self.model_data_path}/{model_id}/{request_id}/logs.txt"
 
-
         ContextLogger.debug(
             self._logger_key,
             "Uploading logs for [%s - %s] to S3 URI [%s/%s]..."
@@ -176,7 +175,6 @@ class S3IntegrationController:
 
             return False
 
-
     def download_instance_logs(self, model_id: str, request_id: str) -> str | None:
         bucket_path = f"{self.model_data_path}/{model_id}/{request_id}/logs.txt"
 
@@ -213,3 +211,46 @@ class S3IntegrationController:
             traceback.print_exc(file=stdout)
 
             return None
+
+    def delete_request_data(self, model_id: str, request_id: str) -> bool:
+        bucket_path_root = f"{self.model_data_path}/{model_id}/{request_id}"
+
+        ContextLogger.debug(
+            self._logger_key,
+            "Deleting all request data for [%s - %s] from S3 URI [%s/%s]..."
+            % (
+                model_id,
+                request_id,
+                self.bucket_name,
+                bucket_path_root,
+            ),
+        )
+
+        try:
+            result = self.s3_client.delete_objects(
+                Bucket=self.bucket_name,
+                Delete={
+                    "Objects": [
+                        {"Key": f"{bucket_path_root}/logs.txt"},
+                        {"Key": f"{bucket_path_root}/result.json"},
+                    ],
+                    "Quiet": True,
+                },
+            )
+
+            return True
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to delete request data [%s - %s] from S3 URI [%s/%s], error = [%s]"
+                % (
+                    model_id,
+                    request_id,
+                    self.bucket_name,
+                    bucket_path_root,
+                    repr(exc_info()),
+                ),
+            )
+            traceback.print_exc(file=stdout)
+
+            return False

@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import library.auth_utils as AuthUtils
 from config.application_config import ApplicationConfig
+from controllers.s3_integration import S3IntegrationController
 from db.daos.model_input_cache import ModelInputCacheDAO
 from db.daos.shared_record import CountRecord, MapRecord
 from db.daos.user import UserDAO, UserQuery, UserRecord
@@ -58,6 +59,7 @@ class UserAdminController:
 
     def clear_user_data(self, user_id: str) -> int:
         deleted_workrequest_ids = []
+        deleted_workrequests: list[tuple[int, str]] = []
 
         try:
             # NOTE: we should technically NOT commit this until we have deleted the S3 data, but for now it's fine
@@ -74,7 +76,11 @@ class UserAdminController:
 
                 return 0
 
-            deleted_workrequest_ids = list(map(lambda r: r.result["id"], results))
+            for result in results:
+                deleted_workrequest_ids.append(result.result["id"])
+                deleted_workrequests.append(
+                    (result.result["id"], result.result["modelid"])
+                )
         except:
             error = f"Failed to clear user data for userid = [{user_id}], error = [{repr(exc_info())}]"
             ContextLogger.error(self._logger_key, error)
@@ -82,7 +88,14 @@ class UserAdminController:
 
             raise Exception(error)
 
-        # TODO: clear s3 data
+        ContextLogger.debug(
+            self._logger_key, "Clearing S3 data for userid %s" % user_id
+        )
+
+        for work_request in deleted_workrequests:
+            S3IntegrationController.instance().delete_request_data(
+                work_request[1], str(work_request[0])
+            )
 
         return len(deleted_workrequest_ids)
 

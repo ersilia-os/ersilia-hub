@@ -509,7 +509,7 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
 
         sql = """
             WITH WorkRequestsToDelete AS (
-                SELECT Id, UserId
+                SELECT Id, UserId, ModelId
                 FROM WorkRequest
                 WHERE UserId = :query_UserId
             ),
@@ -557,7 +557,7 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 RETURNING Id
             )
 
-            SELECT WorkRequestsToDelete.Id as id
+            SELECT DISTINCT ON (WorkRequestsToDelete.Id) WorkRequestsToDelete.Id as id, WorkRequestsToDelete.ModelId as ModelId
             FROM WorkRequestsToDelete
             LEFT JOIN DeletedWRData 
                 ON WorkRequestsToDelete.Id = DeletedWRData.RequestId
