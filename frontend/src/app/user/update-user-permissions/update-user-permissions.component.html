@@ -1,0 +1,37 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        <div class="title">
+          User Permissions
+        </div>
+    </div>
+
+  @if (user != undefined && isUserAdmin) {
+    <div class="permissions">
+      @for (permission of permissions; track trackBy($index, permission)) {
+        <div class="permission">
+          <div class="name">{{ permission.permission }}</div>
+          <div class="state">
+            <mat-checkbox [checked]="permission.state" (change)="toggleState(permission, $event.checked)"
+                [disabled]="submitting()"></mat-checkbox>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <div class="dialog-actions">
+      <div class="ersilia-button cancel" (click)="close()">
+          <mat-icon>close</mat-icon>
+          Close
+      </div>
+
+      <div class="ersilia-button submit" (click)="updatePermissions()" [ngClass]="{'disabled': !canSubmitPermissionsUpdate()}">
+          @if (submitting()) {
+          <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+          } @else {
+          <mat-icon>edit</mat-icon>
+          }
+          Update Permissions
+      </div>
+  </div>
+</div>

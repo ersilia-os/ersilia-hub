@@ -535,7 +535,18 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 WHERE WorkRequestId IN (
                     SELECT Id FROM WorkRequestsToDelete
                 )
-                RETURNING WorkRequestId
+                RETURNING WorkRequestId, InstanceId
+            ),
+
+            DeletedModelInstanceLog AS (
+                DELETE FROM ModelInstanceLog
+                WHERE InstanceId IN (
+                    SELECT DISTINCT InstanceId FROM DeletedModelInstance
+                )
+                OR CorrelationId IN (
+                    SELECT Id::text FROM WorkRequestsToDelete
+                )
+                RETURNING InstanceId
             ),
 
             DeletedWR AS (
@@ -554,6 +565,8 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
                 ON WorkRequestsToDelete.Id = DeletedWRCache.WorkRequestId
             LEFT JOIN DeletedModelInstance
                 ON WorkRequestsToDelete.Id = DeletedModelInstance.WorkRequestId
+            LEFT JOIN DeletedModelInstanceLog
+                ON DeletedModelInstance.InstanceId = DeletedModelInstanceLog.InstanceId
             LEFT JOIN DeletedWR
                 ON WorkRequestsToDelete.Id = DeletedWR.Id
         """

@@ -108,9 +108,7 @@ export class AuthService {
     this.validateLocalSession();
   }
 
-  private clearSession() {
-    console.log("clearing cache...");
-
+  clearSession() {
     localStorage.removeItem("session");
     this.userSession.set(undefined);
 

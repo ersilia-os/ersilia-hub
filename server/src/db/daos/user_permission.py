@@ -74,7 +74,7 @@ class UserPermissionUpsertQuery(DAOQuery):
             DO UPDATE
             SET Permissions = EXCLUDED.Permissions,
                 LastUpdated = EXCLUDED.LastUpdated
-            WHERE UserId = :query_UserId
+            WHERE UserPermission.UserId = :query_UserId
             RETURNING
                 UserPermission.UserId,
                 UserPermission.Permissions::text,

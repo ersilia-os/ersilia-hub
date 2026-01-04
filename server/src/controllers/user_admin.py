@@ -8,7 +8,6 @@ from db.daos.model_input_cache import ModelInputCacheDAO
 from db.daos.shared_record import CountRecord, MapRecord
 from db.daos.user import UserDAO, UserQuery, UserRecord
 from db.daos.user_auth import UserAuthDAO, UserAuthRecord
-from db.daos.user_permission import UserPermissionDAO, UserPermissionRecord
 from db.daos.work_request import WorkRequestDAO, WorkRequestQuery
 from library.process_lock import ProcessLock
 from objects.user import User
@@ -123,19 +122,6 @@ class UserAdminController:
             self.clear_user_contributions(user_id)
         except:
             raise Exception(exc_info())
-
-        try:
-            ContextLogger.info(
-                self._logger_key, f"Deleting user [{user_id}] permissions..."
-            )
-            results: list[UserPermissionRecord] = UserPermissionDAO.execute_delete(
-                ApplicationConfig.instance().database_config,
-                userid=user_id,
-            )
-        except:
-            error = f"Failed to delete user permissions for [{user_id}], error = [{repr(exc_info())}]"
-            ContextLogger.error(self._logger_key, error)
-            raise Exception(error)
 
         try:
             ContextLogger.info(

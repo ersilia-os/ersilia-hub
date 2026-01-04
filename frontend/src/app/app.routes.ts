@@ -1,4 +1,4 @@
-import { ActivatedRouteSnapshot, CanActivateFn, RouterStateSnapshot, Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivateFn, Router, RouterStateSnapshot, Routes, UrlTree } from '@angular/router';
 import { RequestsListComponent } from './requests-list/requests-list.component';
 import { StatsComponent } from './stats/stats.component';
 import { inject } from '@angular/core';
@@ -13,10 +13,11 @@ export const routerGuardFunction: CanActivateFn = (
   state: RouterStateSnapshot
 ) => {
   const authService = inject(AuthService);
+  const router = inject(Router);
 
   // TODO: when more permissions added -> check next state's link and match with permissions
 
-  return authService.checkPermissions(['ADMIN']);
+  return authService.checkPermissions(['ADMIN']) ?? router.parseUrl("/");
 }
 
 export const routes: Routes = [

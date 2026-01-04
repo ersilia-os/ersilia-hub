@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from "@angular/forms";
 import { UserInfoPopupComponent } from '../info-popup/info-popup.component';
+import { DeleteUserComponent } from '../delete-user/delete-user.component';
 
 @Component({
   selector: 'app-user-admin',
@@ -24,7 +25,7 @@ import { UserInfoPopupComponent } from '../info-popup/info-popup.component';
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
 })
-export class UserAdminComponent {
+export class UserAdminComponent implements OnInit {
 
   private userAdminService = inject(UsersService);
   private usersFilters: UsersFilter = {
@@ -98,6 +99,10 @@ export class UserAdminComponent {
     this.load();
   }
 
+  ngOnInit(): void {
+    this.load();
+  }
+
   load() {
     if (this.loading()) {
       return;
@@ -130,13 +135,11 @@ export class UserAdminComponent {
   }
 
   openDeleteDialog(user: User) {
-    // TODO: check if there is a callback to trigger on close ??
-
-    // this.dialog.open(UserDeleteDialogComponent, {
-    //   enterAnimationDuration: '300ms',
-    //   exitAnimationDuration: '300ms',
-    //   panelClass: 'dialog-panel',
-    //   data: user,
-    // });
+    this.dialog.open(DeleteUserComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: user,
+    });
   }
 }

@@ -46,14 +46,20 @@
 
     @if (canEdit()) {
     <div class="actions">
+        <div class="actions-title">Actions</div>
+
         <div class="ersilia-button" (click)="openPasswordUpdateDialog()">
             <mat-icon>lock</mat-icon>
             Update Password
         </div>
+
+        @if (isUserAdmin) {
+          <div class="ersilia-button" (click)="openPermissionsUpdateDialog()">
+              <mat-icon>security</mat-icon>
+              Update Permissions
+          </div>
+        }
     </div>
-
-
-    <!-- TODO: permissions (if admin) -->
 
     <div class="danger-zone">
       <div class="danger-zone-title">Danger Zone</div>
@@ -69,7 +75,7 @@
             Clear Data
         </div>
 
-        <div class="ersilia-button delete" (click)="deleteUser()" [ngClass]="{'disabled': !canSubmit()}">
+        <div class="ersilia-button delete" (click)="openUserDeleteDialog()" [ngClass]="{'disabled': !canSubmit()}">
             <mat-icon>delete</mat-icon>
             Delete User
         </div>

@@ -120,6 +120,11 @@ class UserSelectFilteredQuery(DAOQuery):
         if self.email_prefix is not None:
             custom_filters.append(f"Email LIKE '{self.email_prefix}%'")
 
+        # filter for IGNORING anonymous users
+        custom_filters.append(
+            "NOT (Id LIKE '%00000-0000-0000-0000-000000000000' AND Username LIKE 'anonymous%')"
+        )
+
         sql = """
             SELECT
                 Id,
@@ -245,16 +250,61 @@ class UserDeleteQuery(DAOQuery):
 
         sql = (
             """
-            DELETE FROM ErsiliaUser
-            WHERE %s
-            RETURNING
-                Id,
-                Username,
-                FirstName,
-                LastName,
-                Email,
-                SignUpDate::text,
-                LastUpdated::text
+            WITH UserToDelete AS (
+                SELECT
+                    Id,
+                    Username,
+                    FirstName,
+                    LastName,
+                    Email,
+                    SignUpDate::text,
+                    LastUpdated::text
+                FROM ErsiliaUser
+                WHERE %s
+            ),
+
+            DeletedUserAuth AS (
+                DELETE FROM UserAuth
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUserPermission AS (
+                DELETE FROM UserPermission
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUserSession AS (
+                DELETE FROM UserSession
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUser AS (
+                DELETE FROM ErsiliaUser
+                WHERE Id IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING Id
+            )
+
+            SELECT UserToDelete.*
+            FROM UserToDelete
+            LEFT JOIN DeletedUserAuth
+                ON UserToDelete.Id = DeletedUserAuth.UserId
+            LEFT JOIN DeletedUserPermission
+                ON UserToDelete.Id = DeletedUserPermission.UserId
+            LEFT JOIN DeletedUserSession
+                ON UserToDelete.Id = DeletedUserSession.UserId
+            LEFT JOIN DeletedUser
+                ON UserToDelete.Id = DeletedUser.Id
         """
             % delete_filter
         )

@@ -23,9 +23,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { UsersService } from '../../../services/users.service';
 import { User } from '../../../objects/user';
 import { AuthService } from '../../../services/auth.service';
-import { Permission, PermissionsList } from '../../../objects/auth';
-import { ErrorStateMatcher } from '@angular/material/core';
 import { UpdateUserPasswordComponent } from '../update-user-password/update-user-password.component';
+import { UpdateUserPermissionsComponent } from '../update-user-permissions/update-user-permissions.component';
+import { DeleteUserComponent } from '../delete-user/delete-user.component';
 
 @Component({
   standalone: true,
@@ -49,9 +49,6 @@ export class UserInfoPopupComponent implements OnInit {
   isOwnUser: boolean = true;
   isUserAdmin: boolean = false;
 
-  permissions: PermissionState[];
-  originalPermissionsList: Permission[] = [];
-
   private usersService = inject(UsersService);
   private authService = inject(AuthService);
   private notificationsService = inject(NotificationsService);
@@ -59,12 +56,6 @@ export class UserInfoPopupComponent implements OnInit {
   submitting: WritableSignal<boolean> = signal(false);
 
   constructor() {
-    this.permissions = PermissionsList.map(p => {
-      return {
-        permission: p,
-        state: false
-      };
-    });
   }
 
   ngOnInit() {
@@ -77,18 +68,6 @@ export class UserInfoPopupComponent implements OnInit {
 
     this.isOwnUser = this.authService.computeUserSignal(user => user?.id === this.user?.id)();
     this.isUserAdmin = this.authService.computePermissionsSignal(permissions => permissions.includes("ADMIN"))();
-
-    if (this.isUserAdmin) {
-      this.permissions = this.authService.computePermissionsSignal(permissions => {
-        return PermissionsList.map(pl => {
-          return {
-            permission: pl,
-            state: permissions.includes(pl)
-          } as PermissionState;
-        })
-      })();
-      this.originalPermissionsList = this.permissions.filter(p => p.state).map(p => p.permission);
-    }
 
     this.busy.set(false);
   }
@@ -143,6 +122,10 @@ export class UserInfoPopupComponent implements OnInit {
   }
 
   openPasswordUpdateDialog() {
+    if (!this.canEdit()) {
+      return;
+    }
+
     this.dialog.open(UpdateUserPasswordComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
@@ -151,38 +134,32 @@ export class UserInfoPopupComponent implements OnInit {
     });
   }
 
-  deleteUser() {
-    if (!this.canSubmit()) {
-      return;
-    }
-    // TODO: additional dialog (does 2 dialogs work?)
-    // TODO: close THIS dialog on success
-  }
-
-  canSubmitPermissionsUpdate(): boolean {
-    return this.canSubmit()
-      && hasPermissionsChange(this.permissions, this.originalPermissionsList);
-  }
-
-  updatePermissions() {
-    if (!this.canSubmitPermissionsUpdate()) {
+  openPermissionsUpdateDialog() {
+    if (!this.isUserAdmin) {
       return;
     }
 
-    this.submitting.set(true);
+    this.dialog.open(UpdateUserPermissionsComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: this.user,
+    });
+  }
 
-    this.usersService.updateUserPermissions(this.user?.id!, permissionsToList(this.permissions))
-      .subscribe({
-        next: result => {
-          this.originalPermissionsList = permissionsToList(this.permissions);
-          this.submitting.set(false);
-          this.notificationsService.pushNotification(Notification("SUCCESS", "Successfully updated user permissions"));
-        },
-        error: (err: Error) => {
-          this.notificationsService.pushNotification(Notification("ERROR", "Failed to update user permissions"));
-          this.submitting.set(false);
-        }
-      });
+  openUserDeleteDialog() {
+    if (!this.isUserAdmin && !this.isOwnUser) {
+      return;
+    }
+
+    this.dialog.open(DeleteUserComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: this.user,
+    }).afterClosed().subscribe(_ => {
+      this.close();
+    })
   }
 
   logout() {
@@ -199,62 +176,3 @@ export class UserInfoPopupComponent implements OnInit {
   }
 }
 
-interface PermissionState {
-  permission: Permission;
-  state: boolean;
-}
-
-function permissionsToList(permissions: PermissionState[]): Permission[] {
-  return permissions.filter(p => p.state).map(p => p.permission);
-}
-
-function hasPermissionsChange(permissions: PermissionState[], originalPermissions: Permission[]): boolean {
-  for (const permission of permissions) {
-    // newly set true
-    if (permission.state && !originalPermissions.includes(permission.permission)) {
-      return true;
-    }
-
-    // newly set false
-    if (!permission.state && originalPermissions.includes(permission.permission)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-export class MyErrorStateMatcher implements ErrorStateMatcher {
-  isErrorState(control: FormControl | null, form: FormGroupDirective | NgForm | null): boolean {
-    const isSubmitted = form && form.submitted;
-    return !!(control && control.invalid && (control.dirty || control.touched || isSubmitted));
-  }
-}
-
-function passwordFormControl(control: AbstractControl, passwordRegex: RegExp, comparison?: string | null) {
-  if (!control.dirty) {
-    return null;
-  }
-
-  const value = control.getRawValue();
-
-  if (value == null || value.length < 3) {
-    return {
-      'validation': 'Invalid password'
-    }
-  }
-
-  if (value.match(passwordRegex) == null) {
-    return {
-      'validation': `Password must match regex [${passwordRegex}]`
-    }
-  }
-
-  if (comparison != undefined && value !== comparison) {
-    return {
-      'validation': 'Does not match Password field'
-    }
-  }
-
-  return null;
-}

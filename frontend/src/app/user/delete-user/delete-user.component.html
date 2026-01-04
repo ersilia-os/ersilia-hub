@@ -1,0 +1,29 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        <div class="title">
+          Delete User
+        </div>
+    </div>
+
+  @if (user != undefined && (isUserAdmin || isOwnUser)) {
+    <div class="confirmation">
+      Are you sure you want to delete user <span class="user">{{ user.username }}</span> ?
+    </div>
+  }
+
+  <div class="dialog-actions">
+      <div class="ersilia-button cancel" (click)="close()">
+          <mat-icon>close</mat-icon>
+          Close
+      </div>
+
+      <div class="ersilia-button submit" (click)="deleteUser()" [ngClass]="{'disabled': !canDeleteUser()}">
+          @if (submitting()) {
+          <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+          } @else {
+          <mat-icon>delete</mat-icon>
+          }
+          Delete User
+      </div>
+  </div>
+</div>
