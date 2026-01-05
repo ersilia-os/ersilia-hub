@@ -33,7 +33,7 @@ def register(fastapi_root: FastAPIRoot = None):
 ###############################################################################
 
 
-@router.get("/")
+@router.get("")
 def load_filtered(
     filters: Annotated[UsersFilterModel, Query()],
     api_request: Request,

@@ -2,7 +2,7 @@ application:
   name: ersilia-hub
 
 server:
-  version: 0.0.21
+  version: 0.0.22
   replicas: 1
 
   env:
