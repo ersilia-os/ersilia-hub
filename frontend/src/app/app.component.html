@@ -22,13 +22,15 @@
     <div class="account">
       @if (sessionDetails().authType==='ErsiliaAnonymous' ) {
       <div class="text">{{ sessionDetails().sessionId }}</div>
-      } @else {
-      <div class="text">{{ user()?.username }}</div>
-      }
       <div class="icon" [matMenuTriggerFor]="accountMenu">
-
         <mat-icon>account_circle</mat-icon>
       </div>
+      } @else {
+      <div class="text">{{ user()?.username }}</div>
+      <div class="icon" (click)="openUserDialog()">
+        <mat-icon>account_circle</mat-icon>
+      </div>
+      }
     </div>
   </div>
 

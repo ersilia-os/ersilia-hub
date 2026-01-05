@@ -19,6 +19,7 @@ from controllers.node_monitor import NodeMonitorController
 from controllers.recommendation_engine import RecommendationEngine
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from controllers.user_admin import UserAdminController
 from controllers.work_request import WorkRequestController
 from library.fastapi_root import FastAPIRoot
 from python_framework.config_utils import load_environment_variable
@@ -89,6 +90,7 @@ def init():
     WorkRequestController.initialize()
     S3IntegrationController.initialize()
     K8sProxyController.initialize()
+    UserAdminController.initialize()
     AuthController.initialize()
     RecommendationEngine.initialize()
 

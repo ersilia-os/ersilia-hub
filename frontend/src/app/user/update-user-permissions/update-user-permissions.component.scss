@@ -1,0 +1,96 @@
+@import '../../../styles/colour-palette.scss';
+
+:host {
+  padding: 20px;
+}
+
+.dialog-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+
+  padding: 20px;
+
+  .dialog-header {
+    width: 100%;
+    font-size: 26px;
+    padding: 10px;
+    margin-bottom: 25px;
+
+    color: $ersilia-purple;
+    border-bottom: 1px solid $ersilia-purple;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .title {
+    flex: 1;
+  }
+
+  .permissions {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    width: calc(100% - 30px);
+
+    .permission {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 8px;
+
+      border-bottom: 1px solid #ccc;
+
+      .name {
+        font-weight: bold;
+        margin-right: 8px;
+        width: 150px;
+        padding-top: 10px;
+      }
+
+      .state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 35px;
+        padding-bottom: 5px;
+      }
+    }
+  }
+
+  .dialog-actions {
+    width: 100%;
+    margin-top: 15px;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+
+    .ersilia-button {
+      &.cancel {
+        background-color: $pastel-red;
+        color: #000000cc;
+
+        .mat-icon {
+          color: #000000cc;
+        }
+      }
+
+      &.submit {
+        ersilia-loader {
+          margin-right: 5px;
+        }
+      }
+    }
+  }
+}

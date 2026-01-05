@@ -6,10 +6,13 @@ import { AuthService, hasPermission } from '../services/auth.service';
 import { LoginComponent } from './login/login.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { AppPermissions, AuthType, EmptyPermissions, User } from '../objects/auth';
+import { AppPermissions, AuthType, EmptyPermissions } from '../objects/auth';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { NotificationsService, Notification } from './notifications/notifications.service';
 import { MenuComponent } from './menu/menu.component';
+import { User } from '../objects/user';
+import { MatDialog } from '@angular/material/dialog';
+import { UserInfoPopupComponent } from './user/info-popup/info-popup.component';
 
 @Component({
   selector: 'app-root',
@@ -27,6 +30,7 @@ export class AppComponent implements OnInit {
   private authService = inject(AuthService);
   private clipboard = inject(Clipboard);
   private notificationsService = inject(NotificationsService);
+  readonly dialog = inject(MatDialog);
 
   sessionDetails: Signal<SessionDetails>;
   user: Signal<User | undefined>;
@@ -48,7 +52,8 @@ export class AppComponent implements OnInit {
         canViewMenu: hasPermission(p, ["ADMIN"]),
         canViewStats: hasPermission(p, ["ADMIN"]),
         canManageRequests: hasPermission(p, ["ADMIN"]),
-        canManageInstances: hasPermission(p, ["ADMIN"])
+        canManageInstances: hasPermission(p, ["ADMIN"]),
+        canManageUsers: hasPermission(p, ["ADMIN"])
       }
     });
   }
@@ -75,6 +80,15 @@ export class AppComponent implements OnInit {
 
   toggleMenu() {
     this.menuExpanded = !this.menuExpanded;
+  }
+
+  openUserDialog() {
+    this.dialog.open(UserInfoPopupComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel',
+      data: this.user()!,
+    });
   }
 }
 

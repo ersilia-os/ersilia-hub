@@ -2,7 +2,7 @@ application:
   name: ersilia-hub
 
 server:
-  version: 0.0.20
+  version: 0.0.21
   replicas: 1
 
   env:
@@ -26,6 +26,6 @@ server:
       InstanceMetricsController: ERROR
 
 frontend:
-  version: 0.0.12
+  version: 0.0.13
   replicas: 1
 

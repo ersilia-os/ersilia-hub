@@ -6,82 +6,89 @@ import { Router } from "@angular/router";
 
 
 @Component({
-    selector: 'app-menu',
-    standalone: true,
-    imports: [CommonModule, MatIconModule],
-    templateUrl: './menu.component.html',
-    styleUrl: './menu.component.scss'
+  selector: 'app-menu',
+  standalone: true,
+  imports: [CommonModule, MatIconModule],
+  templateUrl: './menu.component.html',
+  styleUrl: './menu.component.scss'
 })
 export class MenuComponent implements OnInit {
-    private router = inject(Router);
+  private router = inject(Router);
 
-    @Input() appPermissions: AppPermissions | undefined;
+  @Input() appPermissions: AppPermissions | undefined;
 
-    @Output() exit: EventEmitter<void> = new EventEmitter();
+  @Output() exit: EventEmitter<void> = new EventEmitter();
 
-    menu: MenuItem[] = [];
+  menu: MenuItem[] = [];
 
-    ngOnInit() {
-        this.menu = buildMenu(this.appPermissions!);
-    }
+  ngOnInit() {
+    this.menu = buildMenu(this.appPermissions!);
+  }
 
-    activateMenuItem(item: MenuItem) {
-        this.router.navigate([item.link])
-            .then(success => {
-                this.hideMenu()
-            })
-    }
+  activateMenuItem(item: MenuItem) {
+    this.router.navigate([item.link])
+      .then(success => {
+        this.hideMenu()
+      })
+  }
 
-    hideMenu() {
-        this.exit.emit();
-    }
+  hideMenu() {
+    this.exit.emit();
+  }
 }
 
 interface MenuItem {
-    text: string;
-    icon: string;
-    link: string;
+  text: string;
+  icon: string;
+  link: string;
 }
 
 function buildMenu(permissions: AppPermissions): MenuItem[] {
-    let menu: MenuItem[] = [];
+  let menu: MenuItem[] = [];
 
-    if (!permissions.canViewMenu) {
-        return menu;
-    }
-
-    menu.push({
-        text: 'Evaluations',
-        icon: 'science',
-        link: ''
-    });
-
-    if (permissions.canViewStats) {
-        menu.push({
-            text: 'Stats',
-            icon: 'analytics',
-            link: 'stats'
-        });
-    }
-
-    if (permissions.canManageInstances) {
-        menu.push({
-            text: 'Instances',
-            icon: 'developer_board',
-            link: 'instances'
-        });
-        menu.push({
-            text: 'Recommendations',
-            icon: 'published_with_changes',
-            link: 'recommendations'
-        });
-        menu.push({
-            text: 'Models',
-            icon: 'settings',
-            link: 'models'
-        })
-        // model management = database_upload
-    }
-
+  if (!permissions.canViewMenu) {
     return menu;
+  }
+
+  menu.push({
+    text: 'Evaluations',
+    icon: 'science',
+    link: ''
+  });
+
+  if (permissions.canViewStats) {
+    menu.push({
+      text: 'Stats',
+      icon: 'analytics',
+      link: 'stats'
+    });
+  }
+
+  if (permissions.canManageInstances) {
+    menu.push({
+      text: 'Instances',
+      icon: 'developer_board',
+      link: 'instances'
+    });
+    menu.push({
+      text: 'Recommendations',
+      icon: 'published_with_changes',
+      link: 'recommendations'
+    });
+    menu.push({
+      text: 'Models',
+      icon: 'settings',
+      link: 'models'
+    })
+  }
+
+  if (permissions.canManageUsers) {
+    menu.push({
+      text: 'User Admin',
+      icon: 'person_edit',
+      link: 'users'
+    });
+  }
+
+  return menu;
 }

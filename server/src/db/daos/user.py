@@ -54,7 +54,10 @@ class UserRecord(DAORecord):
         return super().generate_upsert_query_args()
 
     def generate_delete_query_args(self) -> Dict[str, Union[str, int, bool, float]]:
-        return super().generate_delete_query_args()
+        return {
+            "id": self.id,
+            "username": self.username,
+        }
 
 
 class UserSelectAllQuery(DAOQuery):
@@ -81,10 +84,21 @@ class UserSelectAllQuery(DAOQuery):
 
 
 class UserSelectFilteredQuery(DAOQuery):
-    def __init__(self, username: str = None):
+    def __init__(
+        self,
+        username: str = None,
+        username_prefix: str = None,
+        firstname_prefix: str = None,
+        lastname_prefix: str = None,
+        email_prefix: str = None,
+    ):
         super().__init__(UserRecord)
 
         self.username = username
+        self.username_prefix = username_prefix
+        self.firstname_prefix = firstname_prefix
+        self.lastname_prefix = lastname_prefix
+        self.email_prefix = email_prefix
 
     def to_sql(self):
         field_map = {}
@@ -93,6 +107,23 @@ class UserSelectFilteredQuery(DAOQuery):
         if self.username is not None:
             custom_filters.append("Username = :query_Username")
             field_map["query_Username"] = self.username
+
+        if self.username_prefix is not None:
+            custom_filters.append(f"Username LIKE '{self.username_prefix}%'")
+
+        if self.firstname_prefix is not None:
+            custom_filters.append(f"FirstName LIKE '{self.firstname_prefix}%'")
+
+        if self.lastname_prefix is not None:
+            custom_filters.append(f"LastName LIKE '{self.lastname_prefix}%'")
+
+        if self.email_prefix is not None:
+            custom_filters.append(f"Email LIKE '{self.email_prefix}%'")
+
+        # filter for IGNORING anonymous users
+        custom_filters.append(
+            "NOT (Id LIKE '%00000-0000-0000-0000-000000000000' AND Username LIKE 'anonymous%')"
+        )
 
         sql = """
             SELECT
@@ -196,10 +227,96 @@ class UserInsertQuery(DAOQuery):
         return sql, field_map
 
 
+class UserDeleteQuery(DAOQuery):
+    def __init__(
+        self,
+        id: str = None,
+        username: str = None,
+    ):
+        super().__init__(UserRecord)
+
+        self.id = id
+        self.username = username
+
+    def to_sql(self):
+        delete_filter = ""
+
+        if self.id is not None and len(self.id) > 0:
+            delete_filter = f"Id = '{self.id}'"
+        elif self.username is not None and len(self.username) > 0:
+            delete_filter = f"Username = '{self.username}'"
+        else:
+            raise Exception("missing 'id' or 'username' field")
+
+        sql = (
+            """
+            WITH UserToDelete AS (
+                SELECT
+                    Id,
+                    Username,
+                    FirstName,
+                    LastName,
+                    Email,
+                    SignUpDate::text,
+                    LastUpdated::text
+                FROM ErsiliaUser
+                WHERE %s
+            ),
+
+            DeletedUserAuth AS (
+                DELETE FROM UserAuth
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUserPermission AS (
+                DELETE FROM UserPermission
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUserSession AS (
+                DELETE FROM UserSession
+                WHERE UserId IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING UserId
+            ),
+
+            DeletedUser AS (
+                DELETE FROM ErsiliaUser
+                WHERE Id IN (
+                    SELECT Id FROM UserToDelete
+                )
+                RETURNING Id
+            )
+
+            SELECT UserToDelete.*
+            FROM UserToDelete
+            LEFT JOIN DeletedUserAuth
+                ON UserToDelete.Id = DeletedUserAuth.UserId
+            LEFT JOIN DeletedUserPermission
+                ON UserToDelete.Id = DeletedUserPermission.UserId
+            LEFT JOIN DeletedUserSession
+                ON UserToDelete.Id = DeletedUserSession.UserId
+            LEFT JOIN DeletedUser
+                ON UserToDelete.Id = DeletedUser.Id
+        """
+            % delete_filter
+        )
+
+        return sql, {}
+
+
 class UserDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: UserSelectAllQuery,
         BaseDAO.SELECT_QUERY_KEY: UserSelectQuery,
         BaseDAO.INSERT_QUERY_KEY: UserInsertQuery,
+        BaseDAO.DELETE_QUERY_KEY: UserDeleteQuery,
         UserQuery.SELECT_FILTERED: UserSelectFilteredQuery,
     }
