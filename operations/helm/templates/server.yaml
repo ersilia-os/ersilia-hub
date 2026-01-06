@@ -70,6 +70,12 @@ spec:
               value: {{ .Values.server.env.MAX_CONCURRENT_MODEL_INSTANCES | squote }}
             - name: WORK_REQUEST_WORKER_POD_READY_TIMEOUT
               value: {{ .Values.server.env.WORK_REQUEST_WORKER_POD_READY_TIMEOUT | squote }}
+            - name: MAX_WORK_REQUEST_INPUT_SIZE
+              value: {{ .Values.server.env.MAX_WORK_REQUEST_INPUT_SIZE | squote }}
+            - name: ANON_WORK_REQUEST_CLEANUP_AGE
+              value: {{ .Values.server.env.ANON_WORK_REQUEST_CLEANUP_AGE | squote }}
+            - name: ANON_WORK_REQUEST_CLEANUP_BATCH_SIZE
+              value: {{ .Values.server.env.ANON_WORK_REQUEST_CLEANUP_BATCH_SIZE | squote }}
 
             - name: MODELS_NAMESPACE
               value: eos-models

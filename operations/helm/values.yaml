@@ -2,12 +2,15 @@ application:
   name: ersilia-hub
 
 server:
-  version: 0.0.22
+  version: 0.0.23
   replicas: 1
 
   env:
     MAX_CONCURRENT_MODEL_INSTANCES: '100'
     WORK_REQUEST_WORKER_POD_READY_TIMEOUT: '900'
+    ANON_WORK_REQUEST_CLEANUP_AGE: '10080' # time in minutes to keep ANON work requests
+    ANON_WORK_REQUEST_CLEANUP_BATCH_SIZE: '1000' # batch size to clean anon work requests
+    MAX_WORK_REQUEST_INPUT_SIZE: '1000' # max molecules/lines input
     logs:
       ModelController: INFO
       ModelIntegrationController: TRACE

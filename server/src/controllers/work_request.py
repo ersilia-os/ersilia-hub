@@ -1,35 +1,33 @@
-from math import floor
+import traceback
 from random import shuffle
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
-import traceback
-from typing import Any, Dict, List, Tuple, Union
-
-from controllers.model import ModelController
-from controllers.work_request_worker import WorkRequestWorker
-from library.process_lock import ProcessLock
-from objects.work_request import WorkRequest, WorkRequestStatus
-from python_framework.graceful_killer import GracefulKiller, KillInstance
-
-from python_framework.thread_safe_list import ThreadSafeList
-from python_framework.logger import ContextLogger, LogLevel
-from python_framework.config_utils import load_environment_variable
+from typing import Any, List, Union
 
 from config.application_config import ApplicationConfig
+from controllers.model import ModelController
+from controllers.s3_integration import S3IntegrationController
+from controllers.server import ServerController
+from controllers.work_request_worker import WorkRequestWorker
+from db.daos.shared_record import MapRecord
 from db.daos.work_request import WorkRequestDAO, WorkRequestQuery, WorkRequestRecord
-from python_framework.time import utc_now, now_delta
-
 from db.daos.work_request_stats import (
     WorkRequestStatsDAO,
     WorkRequestStatsQuery,
     WorkRequestStatsRecord,
 )
+from library.process_lock import ProcessLock
+from objects.work_request import WorkRequest, WorkRequestStatus
 from objects.work_request_stats import (
     WorkRequestStatsFilterData,
     WorkRequestStatsModel,
 )
-from controllers.server import ServerController
+from python_framework.config_utils import load_environment_variable
+from python_framework.graceful_killer import GracefulKiller, KillInstance
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_list import ThreadSafeList
+from python_framework.time import datetime_delta, is_after, now_delta, utc_now
 
 
 class WorkRequestControllerKillInstance(KillInstance):
@@ -38,11 +36,13 @@ class WorkRequestControllerKillInstance(KillInstance):
 
 
 class WorkRequestController(Thread):
-
     WORKER_LOADBALANCE_WAIT_TIME = 20
+    ANON_WORK_REQUEST_AUTO_CLEANUP_WAIT_TIME = 300  # check every 5 minutes
     NUM_WORKERS = 4
 
     max_work_request_input_size: int
+    anon_work_request_cleanup_age: int  # age in minutes to keep anon work requests for
+    anon_work_request_cleanup_batch_size: int
 
     _instance: "WorkRequestController" = None
 
@@ -53,7 +53,6 @@ class WorkRequestController(Thread):
 
     _workers: ThreadSafeList[WorkRequestWorker]
 
-
     def __init__(self):
         Thread.__init__(self)
 
@@ -62,7 +61,17 @@ class WorkRequestController(Thread):
 
         self._process_lock = ProcessLock()
         self._workers = ThreadSafeList()
-        self.max_work_request_input_size = int(load_environment_variable("MAX_WORK_REQUEST_INPUT_SIZE", default="1000"))
+        self.max_work_request_input_size = int(
+            load_environment_variable("MAX_WORK_REQUEST_INPUT_SIZE", default="1000")
+        )
+        self.anon_work_request_cleanup_age = int(
+            load_environment_variable("ANON_WORK_REQUEST_CLEANUP_AGE", default="10080")
+        )
+        self.anon_work_request_cleanup_batch_size = int(
+            load_environment_variable(
+                "ANON_WORK_REQUEST_CLEANUP_BATCH_SIZE", default="1000"
+            )
+        )
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -99,11 +108,18 @@ class WorkRequestController(Thread):
         models = ModelController.instance().get_models()
 
         if not any(map(lambda x: x.id == work_request.model_id, models)):
-            return False, "Invalid request body - No model with id [%s]" % work_request.model_id
+            return (
+                False,
+                "Invalid request body - No model with id [%s]" % work_request.model_id,
+            )
 
-        if work_request.request_payload is None or work_request.request_payload.entries is None or len(work_request.request_payload.entries) == 0:
+        if (
+            work_request.request_payload is None
+            or work_request.request_payload.entries is None
+            or len(work_request.request_payload.entries) == 0
+        ):
             return False, "Invalid request body - Empty molecules payload"
-        
+
         if work_request.input_size > self.max_work_request_input_size:
             return False, "Invalid request body - Input Size Too Large"
 
@@ -140,7 +156,9 @@ class WorkRequestController(Thread):
 
         return None
 
-    def _update_request(self, work_request: WorkRequest, expected_server_id: str | None = None) -> Union[WorkRequest, None]:
+    def _update_request(
+        self, work_request: WorkRequest, expected_server_id: str | None = None
+    ) -> Union[WorkRequest, None]:
         ContextLogger.debug(
             self._logger_key,
             "Persisting WorkRequest update with id [%s]..." % work_request.id,
@@ -149,7 +167,7 @@ class WorkRequestController(Thread):
         results: List[WorkRequestRecord] = WorkRequestDAO.execute_update(
             ApplicationConfig.instance().database_config,
             **work_request.to_record().generate_update_query_args(),
-            expected_server_id=expected_server_id
+            expected_server_id=expected_server_id,
         )
 
         if results is None or len(results) == 0:
@@ -169,7 +187,7 @@ class WorkRequestController(Thread):
         work_request: WorkRequest,
         enforce_same_session_id: bool = False,
         enforce_same_server_id: bool = True,
-        expect_null_server_id: bool = False, # for first time update
+        expect_null_server_id: bool = False,  # for first time update
         retry_count: int = 0,
     ) -> Union[WorkRequest, None]:
         _attempts = 0
@@ -208,11 +226,13 @@ class WorkRequestController(Thread):
                 expected_server_id = None
 
                 if expect_null_server_id:
-                    expected_server_id = 'NULL'
+                    expected_server_id = "NULL"
                 elif enforce_same_server_id:
                     expected_server_id = ServerController.instance().server_id
 
-                new_work_request = self._update_request(work_request, expected_server_id=expected_server_id)
+                new_work_request = self._update_request(
+                    work_request, expected_server_id=expected_server_id
+                )
 
                 return new_work_request
             except:
@@ -357,38 +377,17 @@ class WorkRequestController(Thread):
         for worker in self._workers:
             worker.join()
 
-    def run(self):
-        ContextLogger.info(self._logger_key, "Controller started")
-
-        # initial wait for models cache to be populated
-        if self._wait_or_kill(20):
-            return
-
-        self._initialize_workers()
-
-        while True:
-            if self._wait_or_kill(WorkRequestController.WORKER_LOADBALANCE_WAIT_TIME):
-                break
-
-            try:
-                self._update_worker_models()
-            except:
-                error_str = "Failed to load balance workers, error = [%s]" % (
-                    repr(exc_info()),
-                )
-                ContextLogger.error(self._logger_key, error_str)
-                traceback.print_exc(file=stdout)
-
-        self._stop_workers()
-
-        ContextLogger.info(self._logger_key, "Controller stopped")
-
     def mark_workrequest_failed(
-        self, work_request: WorkRequest, enforce_same_server_id: bool = True, reason: Union[str, None] = None
+        self,
+        work_request: WorkRequest,
+        enforce_same_server_id: bool = True,
+        reason: Union[str, None] = None,
     ) -> WorkRequest:
         work_request.request_status = WorkRequestStatus.FAILED
         work_request.request_status_reason = reason if reason is not None else "ERROR"
-        updated_work_request = self.update_request(work_request, enforce_same_server_id=enforce_same_server_id, retry_count=1)
+        updated_work_request = self.update_request(
+            work_request, enforce_same_server_id=enforce_same_server_id, retry_count=1
+        )
 
         if updated_work_request is None:
             raise Exception("Failed to update WorkRequest [%s]" % work_request.id)
@@ -449,3 +448,100 @@ class WorkRequestController(Thread):
         return WorkRequestStatsFilterData(
             model_ids=list(map(lambda x: x.id, ModelController.instance().get_models()))
         )
+
+    def _cleanup_anon_work_requests(self):
+        deleted_work_requests: list[tuple[str, int]] = []
+
+        try:
+            ContextLogger.debug(self._logger_key, "Deleting ANON WorkRequests...")
+
+            results: list[MapRecord] = WorkRequestDAO.execute_query(
+                WorkRequestQuery.DELETE_BY_ANON_USER,
+                ApplicationConfig.instance().database_config,
+                query_kwargs={
+                    "batch_size": self.anon_work_request_cleanup_batch_size,
+                    "age": self.anon_work_request_cleanup_age,
+                },
+            )
+
+            if len(results) == 0:
+                ContextLogger.debug(
+                    self._logger_key, "All anon user work requests deleted within range"
+                )
+
+                return
+
+            for result in results:
+                deleted_work_requests.append(
+                    (result.result["modelid"], result.result["id"])
+                )
+        except:
+            error_str = "Failed to delete ANON user WorkRequests, error = [%s]" % (
+                repr(exc_info()),
+            )
+            ContextLogger.error(self._logger_key, error_str)
+            traceback.print_exc(file=stdout)
+
+            return
+
+        ContextLogger.info(
+            self._logger_key,
+            "Deleted [%d] ANON WorkRequests" % len(deleted_work_requests),
+        )
+
+        for work_request in deleted_work_requests:
+            try:
+                S3IntegrationController.instance().delete_request_data(
+                    work_request[0], str(work_request[1])
+                )
+            except:
+                error_str = (
+                    "Failed to delete ANON user WorkRequest S3 data for model_id = [%s], work_request = [%d], error = [%s]"
+                    % (
+                        work_request[0],
+                        work_request[1],
+                        repr(exc_info()),
+                    )
+                )
+                ContextLogger.error(self._logger_key, error_str)
+                traceback.print_exc(file=stdout)
+
+                return
+
+    def run(self):
+        ContextLogger.info(self._logger_key, "Controller started")
+
+        # initial wait for models cache to be populated
+        if self._wait_or_kill(20):
+            return
+
+        self._initialize_workers()
+
+        last_iteration_time: str | None = None
+        anon_cleanup_delta = (
+            f"{WorkRequestController.ANON_WORK_REQUEST_AUTO_CLEANUP_WAIT_TIME}s"
+        )
+
+        while True:
+            if self._wait_or_kill(WorkRequestController.WORKER_LOADBALANCE_WAIT_TIME):
+                break
+
+            iteration_time = utc_now()
+
+            try:
+                self._update_worker_models()
+            except:
+                error_str = "Failed to load balance workers, error = [%s]" % (
+                    repr(exc_info()),
+                )
+                ContextLogger.error(self._logger_key, error_str)
+                traceback.print_exc(file=stdout)
+
+            if last_iteration_time is None or is_after(
+                iteration_time, datetime_delta(last_iteration_time, anon_cleanup_delta)
+            ):
+                self._cleanup_anon_work_requests()
+
+        self._stop_workers()
+
+        ContextLogger.info(self._logger_key, "Controller stopped")
