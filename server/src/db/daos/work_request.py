@@ -10,6 +10,7 @@ from python_framework.time import timestamp_to_utc_timestamp
 class WorkRequestQuery(Enum):
     SELECT_FILTERED = "SELECT_FILTERED"
     DELETE_BY_USER = "DELETE_BY_USER"
+    DELETE_BY_ANON_USER = "DELETE_BY_ANON_USER"
 
 
 class WorkRequestRecord(DAORecord):
@@ -574,11 +575,102 @@ class WorkRequestDeleteByUserQuery(DAOQuery):
         return sql, field_map
 
 
+class WorkRequestDeleteByAnonUserQuery(DAOQuery):
+    def __init__(self, batch_size: int, age: int):
+        super().__init__(MapRecord)
+
+        self.batch_size = batch_size
+        self.age = age
+
+    def to_sql(self):
+        field_map = {
+            "query_Age": self.age,
+            "query_BatchSize": self.batch_size,
+        }
+
+        sql = """
+            WITH AnonUsers AS (
+                SELECT Id
+                FROM ErsiliaUser
+                WHERE Id LIKE '%00000-0000-0000-0000-000000000000'
+                AND Username LIKE 'anonymous%'
+            ),
+
+            WorkRequestsToDelete AS (
+                SELECT Id, UserId, ModelId
+                FROM WorkRequest
+                WHERE UserId IN (SELECT Id FROM AnonUsers)
+                AND RequestDate <= CURRENT_TIMESTAMP - (INTERVAL '1 MINUTES' * :query_Age)
+                ORDER BY RequestDate ASC
+                LIMIT :query_BatchSize
+            ),
+
+            DeletedWRData AS (
+                DELETE FROM WorkRequestData
+                WHERE RequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING RequestId
+            ),
+
+            DeletedWRCache AS (
+                DELETE FROM WorkRequestResultCacheTemp
+                WHERE WorkRequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING WorkRequestId
+            ),
+
+            DeletedModelInstance AS (
+                DELETE FROM ModelInstance
+                WHERE WorkRequestId IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING WorkRequestId, InstanceId
+            ),
+
+            DeletedModelInstanceLog AS (
+                DELETE FROM ModelInstanceLog
+                WHERE InstanceId IN (
+                    SELECT DISTINCT InstanceId FROM DeletedModelInstance
+                )
+                OR CorrelationId IN (
+                    SELECT Id::text FROM WorkRequestsToDelete
+                )
+                RETURNING InstanceId
+            ),
+
+            DeletedWR AS (
+                DELETE FROM WorkRequest
+                WHERE Id IN (
+                    SELECT Id FROM WorkRequestsToDelete
+                )
+                RETURNING Id
+            )
+
+            SELECT DISTINCT ON (WorkRequestsToDelete.Id) WorkRequestsToDelete.Id as id, WorkRequestsToDelete.ModelId as ModelId
+            FROM WorkRequestsToDelete
+            LEFT JOIN DeletedWRData 
+                ON WorkRequestsToDelete.Id = DeletedWRData.RequestId
+            LEFT JOIN DeletedWRCache
+                ON WorkRequestsToDelete.Id = DeletedWRCache.WorkRequestId
+            LEFT JOIN DeletedModelInstance
+                ON WorkRequestsToDelete.Id = DeletedModelInstance.WorkRequestId
+            LEFT JOIN DeletedModelInstanceLog
+                ON DeletedModelInstance.InstanceId = DeletedModelInstanceLog.InstanceId
+            LEFT JOIN DeletedWR
+                ON WorkRequestsToDelete.Id = DeletedWR.Id
+        """
+
+        return sql, field_map
+
+
 class WorkRequestDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: WorkRequestSelectAllQuery,
         BaseDAO.INSERT_QUERY_KEY: WorkRequestInsertQuery,
         BaseDAO.UPDATE_QUERY_KEY: WorkRequestUpdateQuery,
         WorkRequestQuery.DELETE_BY_USER: WorkRequestDeleteByUserQuery,
+        WorkRequestQuery.DELETE_BY_ANON_USER: WorkRequestDeleteByAnonUserQuery,
         WorkRequestQuery.SELECT_FILTERED: WorkRequestSelectFilteredQuery,
     }
