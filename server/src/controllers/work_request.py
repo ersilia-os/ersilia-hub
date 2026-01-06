@@ -27,7 +27,11 @@ from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_list import ThreadSafeList
-from python_framework.time import datetime_delta, is_after, now_delta, utc_now
+from python_framework.time import (
+    is_date_in_range_from_now,
+    now_delta,
+    utc_now,
+)
 
 
 class WorkRequestControllerKillInstance(KillInstance):
@@ -449,7 +453,13 @@ class WorkRequestController(Thread):
             model_ids=list(map(lambda x: x.id, ModelController.instance().get_models()))
         )
 
-    def _cleanup_anon_work_requests(self):
+    def _cleanup_anon_work_requests(self, last_iteration_time: str | None):
+        if last_iteration_time is not None and is_date_in_range_from_now(
+            last_iteration_time,
+            f"-{WorkRequestController.ANON_WORK_REQUEST_AUTO_CLEANUP_WAIT_TIME}s",
+        ):
+            return False
+
         deleted_work_requests: list[tuple[str, int]] = []
 
         try:
@@ -469,7 +479,7 @@ class WorkRequestController(Thread):
                     self._logger_key, "All anon user work requests deleted within range"
                 )
 
-                return
+                return True
 
             for result in results:
                 deleted_work_requests.append(
@@ -482,7 +492,7 @@ class WorkRequestController(Thread):
             ContextLogger.error(self._logger_key, error_str)
             traceback.print_exc(file=stdout)
 
-            return
+            return False
 
         ContextLogger.info(
             self._logger_key,
@@ -506,7 +516,7 @@ class WorkRequestController(Thread):
                 ContextLogger.error(self._logger_key, error_str)
                 traceback.print_exc(file=stdout)
 
-                return
+        return True
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")
@@ -517,10 +527,7 @@ class WorkRequestController(Thread):
 
         self._initialize_workers()
 
-        last_iteration_time: str | None = None
-        anon_cleanup_delta = (
-            f"{WorkRequestController.ANON_WORK_REQUEST_AUTO_CLEANUP_WAIT_TIME}s"
-        )
+        last_anon_cleanup_time: str | None = None
 
         while True:
             if self._wait_or_kill(WorkRequestController.WORKER_LOADBALANCE_WAIT_TIME):
@@ -537,10 +544,17 @@ class WorkRequestController(Thread):
                 ContextLogger.error(self._logger_key, error_str)
                 traceback.print_exc(file=stdout)
 
-            if last_iteration_time is None or is_after(
-                iteration_time, datetime_delta(last_iteration_time, anon_cleanup_delta)
-            ):
-                self._cleanup_anon_work_requests()
+            try:
+                if self._cleanup_anon_work_requests(last_anon_cleanup_time):
+                    last_anon_cleanup_time = iteration_time
+            except:
+                error_str = "Failed to delete ANON workrequests, error = [%s]" % (
+                    repr(exc_info()),
+                )
+                ContextLogger.error(self._logger_key, error_str)
+                traceback.print_exc(file=stdout)
+
+            last_iteration_time = iteration_time
 
         self._stop_workers()
 
