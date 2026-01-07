@@ -27,6 +27,80 @@ class ModelExecutionMode(Enum):
         return str(self.name).__hash__()
 
 
+class ModelIdentificationDetails:
+    description: str | None
+    title: str | None
+    interpretation: str | None
+    slug: str | None
+    source_code: str | None
+    publication: str | None
+    target_organisms: list[str] | None
+    biomedical_areas: list[str] | None
+
+    def __init__(
+        self,
+        description: str | None = None,
+        title: str | None = None,
+        interpretation: str | None = None,
+        slug: str | None = None,
+        source_code: str | None = None,
+        publication: str | None = None,
+        target_organisms: list[str] | None = None,
+        biomedical_areas: list[str] | None = None,
+    ) -> None:
+        self.description = description
+        self.title = title
+        self.interpretation = interpretation
+        self.slug = slug
+        self.source_code = source_code
+        self.publication = publication
+        self.target_organisms = target_organisms
+        self.biomedical_areas = biomedical_areas
+
+    def copy(self) -> "ModelIdentificationDetails":
+        return ModelIdentificationDetails(
+            self.description,
+            self.title,
+            self.interpretation,
+            self.slug,
+            self.source_code,
+            self.publication,
+            self.target_organisms,
+            self.biomedical_areas,
+        )
+
+    @staticmethod
+    def from_object(obj: dict[str, Any]) -> "ModelIdentificationDetails":
+        return ModelIdentificationDetails(
+            None if "description" not in obj else obj["description"],
+            None if "title" not in obj else obj["title"],
+            None if "interpretation" not in obj else obj["interpretation"],
+            None if "slug" not in obj else obj["slug"],
+            None if "sourceCode" not in obj else obj["sourceCode"],
+            None if "publication" not in obj else obj["publication"],
+            None if "targetOrganisms" not in obj else obj["targetOrganisms"],
+            None if "biomedicalAreas" not in obj else obj["biomedicalAreas"],
+        )
+
+    def to_object(self) -> dict[str, Any]:
+        return {
+            "description": self.description,
+            "title": self.title,
+            "interpretation": self.interpretation,
+            "slug": self.slug,
+            "sourceCode": self.source_code,
+            "publication": self.publication,
+            "targetOrganisms": self.target_organisms,
+            "biomedicalAreas": self.biomedical_areas,
+        }
+
+    def __str__(self):
+        return dumps(self.to_object())
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class ModelDetails:
     template_version: str
     description: str
@@ -37,6 +111,7 @@ class ModelDetails:
     k8s_resources: K8sPodResources
     image_tag: str
     cache_enabled: bool
+    identification_details: ModelIdentificationDetails | None
 
     def __init__(
         self,
@@ -49,6 +124,7 @@ class ModelDetails:
         k8s_resources: K8sPodResources | None = None,
         image_tag: str = "latest",
         cache_enabled: bool = False,
+        identification_details: ModelIdentificationDetails | None = None,
     ):
         self.template_version = template_version
         self.description = description
@@ -68,6 +144,7 @@ class ModelDetails:
         )
         self.image_tag = image_tag
         self.cache_enabled = cache_enabled
+        self.identification_details = identification_details
 
     def copy(self) -> "ModelDetails":
         return ModelDetails(
@@ -80,6 +157,9 @@ class ModelDetails:
             self.k8s_resources,
             self.image_tag,
             self.cache_enabled,
+            None
+            if self.identification_details is None
+            else self.identification_details.copy(),
         )
 
     @staticmethod
@@ -100,12 +180,24 @@ class ModelDetails:
                 if "k8sResources" not in obj
                 else K8sPodResources.from_object(obj["k8sResources"])
             ),
-            "latest"
-            if "imageTag" not in obj or obj["imageTag"] is None
-            else obj["imageTag"],
-            False
-            if "cacheEnabled" not in obj or obj["cacheEnabled"] is None
-            else obj["cacheEnabled"],
+            (
+                "latest"
+                if "imageTag" not in obj or obj["imageTag"] is None
+                else obj["imageTag"]
+            ),
+            (
+                False
+                if "cacheEnabled" not in obj or obj["cacheEnabled"] is None
+                else obj["cacheEnabled"]
+            ),
+            (
+                None
+                if "identificationDetails" not in obj
+                or obj["identificationDetails"] is None
+                else ModelIdentificationDetails.from_object(
+                    obj["identificationDetails"]
+                )
+            ),
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -119,6 +211,11 @@ class ModelDetails:
             "k8sResources": self.k8s_resources.to_object(),
             "imageTag": self.image_tag,
             "cacheEnabled": self.cache_enabled,
+            "identificationDetails": (
+                None
+                if self.identification_details is None
+                else self.identification_details.to_object()
+            ),
         }
 
     def __str__(self):
@@ -126,6 +223,44 @@ class ModelDetails:
 
     def __repr__(self):
         return self.__str__()
+
+
+class ModelIdentificationDetailsModel(BaseModel):
+    description: str | None = None
+    title: str | None = None
+    interpretation: str | None = None
+    slug: str | None = None
+    source_code: str | None = None
+    publication: str | None = None
+    target_organisms: list[str] | None = None
+    biomedical_areas: list[str] | None = None
+
+    @staticmethod
+    def from_object(
+        model_details: ModelIdentificationDetails,
+    ) -> "ModelIdentificationDetailsModel":
+        return ModelIdentificationDetailsModel(
+            description=model_details.description,
+            title=model_details.title,
+            interpretation=model_details.interpretation,
+            slug=model_details.slug,
+            source_code=model_details.source_code,
+            publication=model_details.publication,
+            target_organisms=model_details.target_organisms,
+            biomedical_areas=model_details.biomedical_areas,
+        )
+
+    def to_object(self) -> ModelIdentificationDetails:
+        return ModelIdentificationDetails(
+            self.description,
+            self.title,
+            self.interpretation,
+            self.slug,
+            self.source_code,
+            self.publication,
+            self.target_organisms,
+            self.biomedical_areas,
+        )
 
 
 class ModelDetailsApiModel(BaseModel):
@@ -137,6 +272,7 @@ class ModelDetailsApiModel(BaseModel):
     k8s_resources: K8sPodResourcesModel | None = None
     image_tag: str
     cache_enabled: bool
+    identification_details: ModelIdentificationDetailsModel | None = None
 
     @staticmethod
     def from_object(model_details: ModelDetails) -> "ModelDetailsApiModel":
@@ -149,6 +285,13 @@ class ModelDetailsApiModel(BaseModel):
             k8s_resources=K8sPodResourcesModel.from_object(model_details.k8s_resources),
             image_tag=model_details.image_tag,
             cache_enabled=model_details.cache_enabled,
+            identification_details=(
+                None
+                if model_details.identification_details is None
+                else ModelIdentificationDetailsModel.from_object(
+                    model_details.identification_details
+                )
+            ),
         )
 
     def to_object(self) -> ModelDetails:
@@ -162,6 +305,11 @@ class ModelDetailsApiModel(BaseModel):
             None if self.k8s_resources is None else self.k8s_resources.to_object(),
             self.image_tag,
             self.cache_enabled,
+            (
+                None
+                if self.identification_details is None
+                else self.identification_details.to_object()
+            ),
         )
 
 

@@ -9,6 +9,30 @@ export enum ModelExecutionMode {
   ASYNC = "ASYNC"
 }
 
+export interface ModelIdentificationDetails {
+  description?: string;
+  title?: string;
+  interpretation?: string;
+  slug?: string;
+  source_code?: string;
+  publication?: string;
+  target_organisms?: string[]
+  biomedical_areas?: string[]
+}
+
+export function ModelIdentificationDetails(): ModelIdentificationDetails {
+  return {
+    description: "",
+    title: "",
+    interpretation: "",
+    slug: "",
+    source_code: "",
+    publication: "",
+    target_organisms: [],
+    biomedical_areas: [],
+  };
+}
+
 export interface ModelDetails {
   template_version: string;
   description: string;
@@ -18,6 +42,7 @@ export interface ModelDetails {
   k8s_resources?: K8sPodResources;
   image_tag: string;
   cache_enabled: boolean;
+  identification_details?: ModelIdentificationDetails;
 }
 
 export interface Model {
@@ -44,7 +69,8 @@ export function Model(): Model {
         memory_limit: 3500
       },
       image_tag: "latest",
-      cache_enabled: false
+      cache_enabled: false,
+      identification_details: ModelIdentificationDetails()
     }
   }
 }
