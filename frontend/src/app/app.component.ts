@@ -49,7 +49,7 @@ export class AppComponent implements OnInit {
     this.user = this.authService.getUserSignal();
     this.appPermissions = this.authService.computePermissionsSignal(p => {
       return {
-        canViewMenu: hasPermission(p, ["ADMIN"]),
+        canViewMenu: true, // always allow menu since we have some public routes
         canViewStats: hasPermission(p, ["ADMIN"]),
         canManageRequests: hasPermission(p, ["ADMIN"]),
         canManageInstances: hasPermission(p, ["ADMIN"]),

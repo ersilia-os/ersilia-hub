@@ -46,15 +46,21 @@ interface MenuItem {
 function buildMenu(permissions: AppPermissions): MenuItem[] {
   let menu: MenuItem[] = [];
 
-  if (!permissions.canViewMenu) {
-    return menu;
-  }
-
   menu.push({
     text: 'Evaluations',
     icon: 'science',
     link: ''
   });
+
+  menu.push({
+    text: 'Models',
+    icon: 'info',
+    link: 'models'
+  });
+
+  if (!permissions.canViewMenu) {
+    return menu;
+  }
 
   if (permissions.canViewStats) {
     menu.push({
