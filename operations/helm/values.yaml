@@ -29,6 +29,6 @@ server:
       InstanceMetricsController: ERROR
 
 frontend:
-  version: 0.0.13
+  version: 0.0.14
   replicas: 1
 

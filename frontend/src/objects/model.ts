@@ -61,3 +61,23 @@ export interface ModelUpdate {
   details: ModelDetails;
   enabled: boolean;
 }
+
+export interface ModelFilter {
+  id: string | undefined;
+  description: string | undefined;
+}
+
+export function filterModels(models: Model[], filters: ModelFilter): Model[] {
+  return models.filter(model =>
+    checkId(model, filters.id)
+    && checkDescription(model, filters.description)
+  )
+}
+
+export function checkId(model: Model, filter: string | undefined): boolean {
+  return filter == null || (model.id != null && model.id.includes(filter));
+}
+
+export function checkDescription(model: Model, filter: string | undefined): boolean {
+  return filter == null || (model.details.description != null && model.details.description.includes(filter));
+}

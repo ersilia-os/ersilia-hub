@@ -57,31 +57,59 @@
   align-items: center;
   width: 100%;
 
-  .model {
-    width: 250px;
+  .filters {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
 
-    .mat-mdc-form-field {
-      width: 250px;
+    width: calc(100% - 20px);
+
+    .filter {
+      margin-right: 10px;
+    }
+
+    .spacer {
+      width: 100%;
+      flex: 1;
     }
   }
 
-  .file-upload {
+  .entry-row {
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
 
-    min-width: 250px;
     width: calc(100% - 20px);
-    margin-bottom: 8px;
+    margin-top: 10px;
+    margin-bottom: 10px;
 
-    input {
-      display: none;
+    .model {
+      width: 250px;
+
+      .mat-mdc-form-field {
+        width: 250px;
+      }
     }
 
     .file-upload {
-      .ersilia-button {
-        margin-left: 6px;
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+
+      min-width: 250px;
+      margin-bottom: 8px;
+
+      input {
+        display: none;
+      }
+
+      .file-upload {
+        .ersilia-button {
+          margin-left: 6px;
+        }
       }
     }
   }

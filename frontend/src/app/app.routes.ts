@@ -7,6 +7,7 @@ import { ModelInstancesComponent } from './model-instances/model-instances.compo
 import { ModelRecommendationsComponent } from './model-recommendations/model-recommendations.component';
 import { ModelManagementComponent } from './model-management/model-management.component';
 import { UserAdminComponent } from './user/admin/admin.component';
+import { ModelReadonlyComponent } from './model-readonly/model-readonly.component';
 
 export const routerGuardFunction: CanActivateFn = (
   next: ActivatedRouteSnapshot,
@@ -24,6 +25,10 @@ export const routes: Routes = [
   {
     path: '',
     component: RequestsListComponent,
+  },
+  {
+    path: 'models',
+    component: ModelReadonlyComponent,
   },
   {
     path: 'stats',

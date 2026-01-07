@@ -1,0 +1,65 @@
+@import '../../styles/colour-palette.scss';
+
+:host {
+  width: 100%;
+  height: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.component-header {
+  font-size: 26px;
+  margin-bottom: 20px;
+  width: calc(100% - 30px);
+  color: $ersilia-purple;
+}
+
+.component-toolbar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+
+  width: calc(100% - 50px);
+  margin-bottom: 20px;
+
+
+  .filters {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    width: 100%;
+    flex: 1;
+
+    .filter {
+      margin-right: 10px;
+    }
+
+    .spacer {
+      width: 100%;
+      flex: 1;
+    }
+  }
+}
+
+.mat-column-id {
+  width: 120px;
+}
+
+.mat-column-description {
+  width: 400px;
+  text-wrap: wrap;
+}
+
+.mat-mdc-table {
+  background-color: #727272;
+}
+
+.table {
+  width: 80%;
+  height: 100%;
+}
