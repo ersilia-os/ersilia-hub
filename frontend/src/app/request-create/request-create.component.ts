@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, Signal, WritableSignal } from '@angular/core';
 import { RequestsService, RequestSubmissionResult } from '../../services/requests.service';
 import { MatButtonModule } from '@angular/material/button';
 import { RequestSubmission } from '../../objects/request';
@@ -12,7 +12,7 @@ import {
   MatDialogRef,
   MatDialogTitle,
 } from '@angular/material/dialog';
-import { Model } from '../../objects/model';
+import { filterModels, Model, ModelFilter } from '../../objects/model';
 import { ModelsService } from '../../services/models.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -44,7 +44,9 @@ export class RequestsCreateComponent implements OnInit {
   private auth = inject(AuthService);
 
   userCanContributeToCache: boolean = false;
-  models: Signal<Model[]>
+  models: Signal<Model[]>;
+  filteredModels: Signal<Model[]>;
+  filters: WritableSignal<ModelFilter> = signal({ id: undefined, description: undefined });
   modelsLoading: Signal<boolean>;
 
   private _selectedModel: string | undefined;
@@ -64,6 +66,22 @@ export class RequestsCreateComponent implements OnInit {
 
     let model = this.models().find(m => m.id === value);
     this.canOptInToCache.set(model != null && model.details.cache_enabled);
+  }
+
+  get filterId(): string | undefined {
+    return this.filters().id;
+  }
+
+  set filterId(value: string | undefined) {
+    this.filters.set({ ...this.filters(), id: value });
+  }
+
+  get filterDescription(): string | undefined {
+    return this.filters().description;
+  }
+
+  set filterDescription(value: string | undefined) {
+    this.filters.set({ ...this.filters(), description: value });
   }
 
   fileName: string | undefined;
@@ -98,6 +116,7 @@ export class RequestsCreateComponent implements OnInit {
     this.modelsLoading = this.modelsService.computeModelsLoadingSignal(_loading => {
       return this.models == null || _loading
     });
+    this.filteredModels = computed(() => filterModels(this.models(), this.filters()));
     this.submitting = this.requestService.getRequestSubmittingSignal();
     this.userCanContributeToCache = this.auth.getAuthType() === 'ErsiliaUser';
   }

@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.component';
 import { ModelsService } from '../../services/models.service';
-import { Model } from '../../objects/model';
+import { filterModels, Model, ModelFilter } from '../../objects/model';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
@@ -72,24 +72,4 @@ export class ModelReadonlyComponent implements OnInit {
   tableTrackBy: TrackByFunction<Model> = (index: number, item: Model) => {
     return `${item.id}_${item.last_updated}`;
   };
-}
-
-interface ModelFilter {
-  id: string | undefined;
-  description: string | undefined;
-}
-
-function filterModels(models: Model[], filters: ModelFilter): Model[] {
-  return models.filter(model =>
-    checkId(model, filters.id)
-    && checkDescription(model, filters.description)
-  )
-}
-
-function checkId(model: Model, filter: string | undefined): boolean {
-  return filter == null || (model.id != null && model.id.includes(filter));
-}
-
-function checkDescription(model: Model, filter: string | undefined): boolean {
-  return filter == null || (model.details.description != null && model.details.description.includes(filter));
 }

@@ -4,21 +4,38 @@
     </div>
 
     <div class="request-form">
-        <div class="model">
-            @if (modelsLoading()) {
-            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-            }
-            <mat-form-field>
-                <mat-label>Select a Model</mat-label>
-                <mat-select [(value)]="selectedModel">
-                    @for (model of models(); track model) {
-                    <mat-option [value]="model.id">
-                      <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{ model.details.description }}</span>
-                    </mat-option>
-                    }
-                </mat-select>
-            </mat-form-field>
-        </div>
+      <div class="filters">
+          <div class="filter id">
+              <mat-form-field>
+                  <mat-label>Id</mat-label>
+                  <input matInput [(ngModel)]="filterId">
+              </mat-form-field>
+          </div>
+
+          <div class="filter description">
+              <mat-form-field>
+                  <mat-label>Description</mat-label>
+                  <input matInput [(ngModel)]="filterDescription">
+              </mat-form-field>
+          </div>
+      </div>
+
+      <div class="entry-row">
+          <div class="model">
+              @if (modelsLoading()) {
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              }
+              <mat-form-field>
+                  <mat-label>Select a Model</mat-label>
+                  <mat-select [(value)]="selectedModel">
+                      @for (model of filteredModels(); track model) {
+                      <mat-option [value]="model.id">
+                        <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{ model.details.description }}</span>
+                      </mat-option>
+                      }
+                  </mat-select>
+              </mat-form-field>
+          </div>
 
         <div class="file-upload">
             <input type="file" (change)="onFileSelected($event)" #fileUpload>
@@ -31,28 +48,29 @@
                 </div>
             </div>
         </div>
+      </div>
 
-        <div class="entries">
-            <mat-form-field class="smiles">
-                <mat-label>SMILES</mat-label>
-                <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
-                    [(ngModel)]="entriesString"></textarea>
-            </mat-form-field>
-        </div>
+      <div class="entries">
+          <mat-form-field class="smiles">
+              <mat-label>SMILES</mat-label>
+              <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
+                  [(ngModel)]="entriesString"></textarea>
+          </mat-form-field>
+      </div>
 
-        @if (canOptInToCache()) {
-            <div class="contribute">
-                <div class="check">
-                    <mat-checkbox [(ngModel)]="cacheOptIn"></mat-checkbox>
-                </div>
+      @if (canOptInToCache()) {
+          <div class="contribute">
+              <div class="check">
+                  <mat-checkbox [(ngModel)]="cacheOptIn"></mat-checkbox>
+              </div>
 
-                <div class="notice">
-                  If you would like to contribute to Ersilia Hub's model cache, you can select this checkbox.
-                  <br/>
-                  The result of your inputs will be cached and future calculations of the same Molecules will use the cached result.
-                </div>
-            </div>
-        }
+              <div class="notice">
+                If you would like to contribute to Ersilia Hub's model cache, you can select this checkbox.
+                <br/>
+                The result of your inputs will be cached and future calculations of the same Molecules will use the cached result.
+              </div>
+          </div>
+      }
     </div>
 
     <div class="dialog-actions">
