@@ -57,7 +57,7 @@ export class ModelReadonlyComponent implements OnInit {
       _loading => this.models == null || (this.models().length == 0 && _loading)
     );
 
-    this.models = this.modelsService.getModelsSignal();
+    this.models = this.modelsService.computeModelsSignal(models => models.filter(m => m.enabled));
     this.filteredModels = computed(() => filterModels(this.models(), this.filters()));
   }
 

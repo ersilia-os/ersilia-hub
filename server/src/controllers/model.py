@@ -1,17 +1,23 @@
+import traceback
 from sys import exc_info, stdout
 from threading import Event, Lock, Thread
-import traceback
-from typing import Dict, List, Union
-from db.daos.model import ModelRecord, ModelDAO
-from objects.model import Model, ModelScalingInfo, ModelUpdate
-from python_framework.logger import ContextLogger, LogLevel
+from typing import Any, Dict, List, Union
+
 from config.application_config import ApplicationConfig
-from python_framework.thread_safe_cache import ThreadSafeCache
-from sqlalchemy.engine.base import Connection
+from controllers.k8s import K8sController
+from db.daos.model import ModelDAO, ModelRecord
+from objects.model import (
+    Model,
+    ModelIdentificationDetails,
+    ModelScalingInfo,
+    ModelUpdate,
+)
 from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
-
-from controllers.k8s import K8sController
+from python_framework.logger import ContextLogger, LogLevel
+from python_framework.thread_safe_cache import ThreadSafeCache
+from requests import post
+from sqlalchemy.engine.base import Connection
 
 
 class ModelControllerKillInstance(KillInstance):
@@ -20,7 +26,6 @@ class ModelControllerKillInstance(KillInstance):
 
 
 class ModelController(Thread):
-
     _instance: "ModelController" = None
 
     UPDATE_WAIT_TIME = 30
@@ -32,6 +37,9 @@ class ModelController(Thread):
     _models_cache_update_lock: Lock
     _models_scaling_info: ThreadSafeCache[str, ModelScalingInfo]
     _models_scaling_info_update_lock: Lock
+
+    _model_hub_records_url: str
+    _model_hub_details_base_url: str
 
     def __init__(self):
         Thread.__init__(self)
@@ -51,6 +59,13 @@ class ModelController(Thread):
                     f"LOG_LEVEL_{self._logger_key}", default=LogLevel.INFO.name
                 )
             ),
+        )
+
+        self._model_hub_records_url = load_environment_variable(
+            "MODEL_HUB_RECORDS_URL", error_on_none=True
+        )
+        self._model_hub_details_base_url = load_environment_variable(
+            "MODEL_HUB_DETAILS_BASE_URL", error_on_none=True
         )
 
     @staticmethod
@@ -252,6 +267,168 @@ class ModelController(Thread):
             self._models_cache[persisted_model.id] = persisted_model
 
         return persisted_model
+
+    def get_details_from_model_hub(
+        self, model_id: str
+    ) -> ModelIdentificationDetails | None:
+        ContextLogger.debug(
+            self._logger_key,
+            f"Getting ModelHub records using url = [{self._model_hub_records_url}], model_id = [{model_id}]...",
+        )
+
+        response = post(
+            url=self._model_hub_records_url,
+            json={
+                "options": {
+                    "cellFormat": "string",
+                    "timeZone": "UTC",
+                    "userLocale": "en-US",
+                },
+                "pageContext": None,
+                "filterCriteria": {
+                    "filterConditionGroup": {
+                        "logicalOperator": "AND",
+                        "filterGroups": [
+                            {
+                                "logicalOperator": "OR",
+                                "filters": [
+                                    {
+                                        "subject": "Identifier",
+                                        "operator": "CONTAINS",
+                                        "value": model_id,
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                },
+                "pagingOption": {"offset": None, "count": 6},
+            },
+        )
+
+        response.raise_for_status()
+        model_records: dict[str, Any] | None = response.json()
+
+        ContextLogger.debug(self._logger_key, f"ModelHub records = [{model_records}]")
+
+        if (
+            model_records is None
+            or "records" not in model_records
+            or model_records["records"] is None
+            or len(model_records["records"]) == 0
+        ):
+            return None
+
+        model_hub_id: str | None = None
+
+        for record in model_records["records"]:
+            if (
+                "fields" not in record
+                or record["fields"] is None
+                or "Identifier" not in record["fields"]
+            ):
+                continue
+
+            if record["fields"]["Identifier"] == model_id:
+                if "id" not in record:
+                    raise Exception("ModelHub record found but no 'id' field present")
+
+                model_hub_id = record["id"]
+                break
+
+        if model_hub_id is None:
+            return None
+
+        ContextLogger.debug(
+            self._logger_key,
+            f"Getting ModelHub details using url = [{self._model_hub_details_base_url}/{model_hub_id}], model_id = [{model_id}]...",
+        )
+        response = post(
+            url=f"{self._model_hub_details_base_url}/{model_hub_id}",
+            json={
+                "options": {
+                    "cellFormat": "string",
+                    "timeZone": "UTC",
+                    "userLocale": "en-US",
+                },
+                "pageContext": None,
+                "filterCriteria": {},
+            },
+        )
+
+        response.raise_for_status()
+        model_records: dict[str, Any] | None = response.json()
+
+        ContextLogger.debug(self._logger_key, f"ModelHub records = [{model_records}]")
+
+        if (
+            model_records is None
+            or "records" not in model_records
+            or model_records["records"] is None
+            or len(model_records["records"]) == 0
+        ):
+            return None
+
+        model_record: dict[str, Any] = model_records["records"][0]
+
+        if (
+            model_record is None
+            or "fields" not in model_record
+            or model_record["fields"] is None
+        ):
+            raise Exception("ModelHub record found, but no 'fields' present")
+
+        model_identification_details = ModelIdentificationDetails()
+
+        if "Description" in model_record["fields"]:
+            model_identification_details.description = model_record["fields"][
+                "Description"
+            ]
+
+        if "Title" in model_record["fields"]:
+            model_identification_details.title = model_record["fields"]["Title"]
+
+        if "Slug" in model_record["fields"]:
+            model_identification_details.slug = model_record["fields"]["Slug"]
+
+        if "Interpretation" in model_record["fields"]:
+            model_identification_details.interpretation = model_record["fields"][
+                "Interpretation"
+            ]
+
+        if "Publication" in model_record["fields"]:
+            model_identification_details.publication = model_record["fields"][
+                "Publication"
+            ]
+
+        if "GitHub" in model_record["fields"]:
+            model_identification_details.source_code = model_record["fields"]["GitHub"]
+
+        if "Target Organism" in model_record["fields"]:
+            model_identification_details.target_organisms = (
+                []
+                if len(model_record["fields"]["Target Organism"]) == 0
+                else list(
+                    map(
+                        lambda x: x.strip(),
+                        model_record["fields"]["Target Organism"].split(","),
+                    )
+                )
+            )
+
+        if "Biomedical Area" in model_record["fields"]:
+            model_identification_details.biomedical_areas = (
+                []
+                if len(model_record["fields"]["Biomedical Area"]) == 0
+                else list(
+                    map(
+                        lambda x: x.strip(),
+                        model_record["fields"]["Biomedical Area"].split(","),
+                    )
+                )
+            )
+
+        return model_identification_details
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")

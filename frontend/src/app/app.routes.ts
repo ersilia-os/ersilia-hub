@@ -46,7 +46,7 @@ export const routes: Routes = [
     canActivate: [routerGuardFunction]
   },
   {
-    path: 'models',
+    path: 'models-admin',
     component: ModelManagementComponent,
     canActivate: [routerGuardFunction]
   },

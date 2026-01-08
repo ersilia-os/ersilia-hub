@@ -82,9 +82,9 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
       link: 'recommendations'
     });
     menu.push({
-      text: 'Models',
+      text: 'Models Admin',
       icon: 'settings',
-      link: 'models'
+      link: 'models-admin'
     })
   }
 
