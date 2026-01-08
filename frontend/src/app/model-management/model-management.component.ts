@@ -105,7 +105,7 @@ export class ModelManagementComponent implements OnInit {
     this.dialog.open(ModelCreateComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
-      panelClass: 'dialog-panel'
+      panelClass: 'dialog-panel-large'
     });
   }
 

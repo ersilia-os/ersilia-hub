@@ -11,6 +11,8 @@
   align-items: center;
 
   padding: 20px;
+  overflow-y: auto;
+  max-height: 750px;
 
   .dialog-header {
     width: 100%;
@@ -54,8 +56,20 @@
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
+}
+
+.form-title {
+  width: 100%;
+  font-size: 20px;
+  padding: 15px;
+  color: $ersilia-purple;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .model-form {
@@ -64,8 +78,6 @@
   justify-content: flex-start;
   align-items: flex-start;
   width: 50%;
-  min-height: 355px;
-  height: 475px;
   padding: 0px 10px;
 
   .field {
@@ -85,11 +97,6 @@
       }
     }
 
-    &.description {
-      min-height: 125px;
-      height: 125px;
-    }
-
     &.enabled {
       padding-bottom: 15px;
     }
@@ -99,5 +106,12 @@
     }
   }
 
+  .row {
+    width: calc(100% - 20px);
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 
 }

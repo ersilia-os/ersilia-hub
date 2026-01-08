@@ -403,6 +403,7 @@ export class ModelUpdateComponent implements OnInit {
         image_tag: this.form.imageTag.getRawValue(),
         cache_enabled: this.form.cacheEnabled.getRawValue(),
         identification_details: {
+          description: this.form.description.getRawValue(),
           title: this.form.title.getRawValue(),
           slug: this.form.slug.getRawValue(),
           interpretation: this.form.interpretation.getRawValue(),
@@ -446,6 +447,7 @@ export class ModelUpdateComponent implements OnInit {
 
     this.modelsService.getInfoFromModelHub(this.form.modelId.getRawValue()).subscribe({
       next: details => {
+        this.form.description.setValue(details.description);
         this.form.title.setValue(details.title);
         this.form.slug.setValue(details.slug);
         this.form.interpretation.setValue(details.interpretation);

@@ -232,7 +232,7 @@
             <div class="field description">
                 <mat-form-field>
                     <mat-label>Description</mat-label>
-                    <textarea matInput required rows=6 [formControl]="form.description"
+                    <textarea matInput required rows=8 [formControl]="form.description"
                         [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
                     @if (form.description.hasError('required')) {
                     <mat-error>Description is <strong>required</strong></mat-error>
