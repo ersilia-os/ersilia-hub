@@ -48,7 +48,7 @@ export class RequestsCreateComponent implements OnInit {
   userCanContributeToCache: boolean = false;
   models: Signal<Model[]>;
   filteredModels: Signal<Model[]>;
-  filters: WritableSignal<ModelFilter> = signal({ id: undefined, description: undefined });
+  filters: WritableSignal<ModelFilter> = signal({ freeText: undefined, id: undefined, description: undefined });
   modelsLoading: Signal<boolean>;
 
   private _selectedModel: string | undefined;
@@ -68,6 +68,14 @@ export class RequestsCreateComponent implements OnInit {
 
     let model = this.models().find(m => m.id === value);
     this.canOptInToCache.set(model != null && model.details.cache_enabled);
+  }
+
+  get filterFreeText(): string | undefined {
+    return this.filters().freeText;
+  }
+
+  set filterFreeText(value: string | undefined) {
+    this.filters.set({ ...this.filters(), freeText: value });
   }
 
   get filterId(): string | undefined {

@@ -32,7 +32,7 @@ export class ModelReadonlyComponent implements OnInit {
 
   models: Signal<Model[]>;
   filteredModels: Signal<Model[]>;
-  filters: WritableSignal<ModelFilter> = signal({ id: undefined, description: undefined });
+  filters: WritableSignal<ModelFilter> = signal({ freeText: undefined, id: undefined, description: undefined });
   loading: Signal<boolean>;
 
   displayedColumns: string[] = ['id', 'description'];
@@ -40,6 +40,14 @@ export class ModelReadonlyComponent implements OnInit {
     id: 'id',
     description: 'Description',
   };
+
+  get filterFreeText(): string | undefined {
+    return this.filters().freeText;
+  }
+
+  set filterFreeText(value: string | undefined) {
+    this.filters.set({ ...this.filters(), freeText: value });
+  }
 
   get filterId(): string | undefined {
     return this.filters().id;

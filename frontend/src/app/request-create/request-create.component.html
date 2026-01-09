@@ -5,6 +5,13 @@
 
     <div class="request-form">
       <div class="filters">
+          <div class="filter free-text">
+              <mat-form-field>
+                  <mat-label>All Fields</mat-label>
+                  <input matInput [(ngModel)]="filterFreeText">
+              </mat-form-field>
+          </div>
+
           <div class="filter id">
               <mat-form-field>
                   <mat-label>Id</mat-label>
