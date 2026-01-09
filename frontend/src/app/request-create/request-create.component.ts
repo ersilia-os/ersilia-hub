@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
+  MAT_DIALOG_DATA,
   MatDialogActions,
   MatDialogClose,
   MatDialogContent,
@@ -37,6 +38,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 })
 export class RequestsCreateComponent implements OnInit {
   readonly dialogRef = inject(MatDialogRef<RequestsCreateComponent>);
+  readonly dialogData = inject(MAT_DIALOG_DATA);
 
   private requestService = inject(RequestsService);
   private modelsService = inject(ModelsService);
@@ -123,6 +125,10 @@ export class RequestsCreateComponent implements OnInit {
 
   ngOnInit() {
     this.refreshModels();
+
+    if (this.dialogData != null && this.dialogData.id != null) {
+      this.selectedModel = this.dialogData.id;
+    }
   }
 
   refreshModels() {
