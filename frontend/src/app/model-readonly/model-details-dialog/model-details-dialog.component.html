@@ -1,0 +1,80 @@
+<div class="dialog-container">
+    <div class="dialog-header">
+        Model Details
+
+        <div class="ersilia-button" (click)="openCreateRequestDialog(model)">
+            <mat-icon>science</mat-icon>
+            New Evaluation
+        </div>
+    </div>
+
+    @if (!busy() && model != null) {
+    <div class="model-form-split-panel">
+        <div class="model-form">
+            <div class="field id">
+                <div class="label">Model Id</div>
+                <div class="contents">{{ model.id }}</div>
+            </div>
+
+            @if (model.details.identification_details != null) {
+            <div class="field slug">
+                <div class="label">Slug</div>
+                <div class="contents">{{ model.details.identification_details!.slug }}</div>
+            </div>
+
+            <div class="field title">
+                <div class="label">Title</div>
+                <div class="contents">{{ model.details.identification_details!.title }}</div>
+            </div>
+
+            <div class="field publication">
+                <div class="label">Publication</div>
+                <div class="contents">{{ model.details.identification_details!.publication }}</div>
+            </div>
+
+            <div class="field source_code">
+                <div class="label">Source Code</div>
+                <div class="contents">{{ model.details.identification_details!.source_code }}</div>
+            </div>
+
+            <div class="field target_organisms">
+                <div class="label">Target Organisms</div>
+                <div class="contents">{{ model.details.identification_details!.target_organisms }}</div>
+            </div>
+
+            <div class="field biomedical_areas">
+                <div class="label">Biomedical Areas</div>
+                <div class="contents">{{ model.details.identification_details!.biomedical_areas }}</div>
+            </div>
+            }
+        </div>
+
+        <div class="model-form">
+            @if (model.details.identification_details != null) {
+            <div class="field description">
+                <div class="label">Description</div>
+                <div class="contents">{{ model.details.identification_details!.description }}</div>
+            </div>
+
+            <div class="field interpretation">
+                <div class="label">Interpretation</div>
+                <div class="contents">{{ model.details.identification_details!.interpretation }}</div>
+            </div>
+            } @else {
+            <div class="field description">
+                <div class="label">Description</div>
+                <div class="contents">{{ model.details.description }}</div>
+            </div>
+            }
+      </div>
+    </div>
+    }
+
+    <div class="dialog-actions">
+        <div class="ersilia-button cancel" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Close
+        </div>
+    </div>
+</div>
+

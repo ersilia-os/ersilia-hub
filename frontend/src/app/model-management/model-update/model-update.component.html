@@ -3,6 +3,7 @@
         Update Model
     </div>
 
+    <div class="form-title">Core Details</div>
     <div class="model-form-split-panel">
         <div class="model-form">
             <div class="field id">
@@ -18,19 +19,6 @@
                 </mat-form-field>
             </div>
 
-            <div class="field description">
-                <mat-form-field>
-                    <mat-label>Description</mat-label>
-                    <textarea matInput required rows=3 [formControl]="form.description"
-                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
-                    @if (form.description.hasError('required')) {
-                    <mat-error>Description is <strong>required</strong></mat-error>
-                    } @else if (form.description.hasError('validation')) {
-                    <mat-error>{{ form.description.getError('validation') }}</mat-error>
-                    }
-                </mat-form-field>
-            </div>
-
             <div class="field image-tag">
                 <mat-form-field>
                     <mat-label>Image Tag</mat-label>
@@ -42,15 +30,6 @@
                     <mat-error>{{ form.imageTag.getError('validation') }}</mat-error>
                     }
                 </mat-form-field>
-            </div>
-
-            <div class="field enabled">
-                <mat-checkbox [(ngModel)]="formModelEnabled">Enabled</mat-checkbox>
-                @if (form.enabled.hasError('required')) {
-                <mat-error>Enabled is <strong>required</strong></mat-error>
-                } @else if (form.enabled.hasError('validation')) {
-                <mat-error>{{ form.enabled.getError('validation') }}</mat-error>
-                }
             </div>
 
             <div class="field execution-mode">
@@ -79,6 +58,26 @@
                     <mat-error>{{ form.maxInstances.getError('validation') }}</mat-error>
                     }
                 </mat-form-field>
+            </div>
+
+            <div class="row">
+              <div class="field enabled">
+                  <mat-checkbox [(ngModel)]="formModelEnabled">Enabled</mat-checkbox>
+                  @if (form.enabled.hasError('required')) {
+                  <mat-error>Enabled is <strong>required</strong></mat-error>
+                  } @else if (form.enabled.hasError('validation')) {
+                  <mat-error>{{ form.enabled.getError('validation') }}</mat-error>
+                  }
+              </div>
+
+              <div class="field cache-enabled">
+                  <mat-checkbox [(ngModel)]="formCacheEnabled">Cache Enabled</mat-checkbox>
+                  @if (form.cacheEnabled.hasError('required')) {
+                  <mat-error>Cache Enabled is <strong>required</strong></mat-error>
+                  } @else if (form.cacheEnabled.hasError('validation')) {
+                  <mat-error>{{ form.cacheEnabled.getError('validation') }}</mat-error>
+                  }
+              </div>
             </div>
         </div>
 
@@ -143,16 +142,117 @@
                 <mat-error>{{ form.disableMemoryLimit.getError('validation') }}</mat-error>
                 }
             </div>
-
-            <div class="field cache-enabled">
-                <mat-checkbox [(ngModel)]="formCacheEnabled">Cache Enabled</mat-checkbox>
-                @if (form.cacheEnabled.hasError('required')) {
-                <mat-error>Cache Enabled is <strong>required</strong></mat-error>
-                } @else if (form.cacheEnabled.hasError('validation')) {
-                <mat-error>{{ form.cacheEnabled.getError('validation') }}</mat-error>
-                }
-            </div>
         </div>
+    </div>
+
+    <div class="form-title">
+      Identification Details
+
+      <div class="ersilia-button" (click)="importIdentificationDetails()" [ngClass]="{'disabled': importing()}">
+          @if (!importing()) {
+          <mat-icon>download</mat-icon>
+          } @else {
+          <ersilia-loader [colour]="'#ffffff'"></ersilia-loader>
+          }
+          Import from Model Hub
+      </div>
+    </div>
+
+    <div class="model-form-split-panel">
+        <div class="model-form">
+            <div class="field slug">
+                <mat-form-field>
+                    <mat-label>Slug</mat-label>
+                    <input matInput [formControl]="form.slug"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.slug.hasError('validation')) {
+                    <mat-error>{{ form.slug.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field title">
+                <mat-form-field>
+                    <mat-label>Title</mat-label>
+                    <input matInput [formControl]="form.title"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (form.title.hasError('validation')) {
+                    <mat-error>{{ form.title.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field publication">
+                <mat-form-field>
+                    <mat-label>Publication</mat-label>
+                    <textarea matInput rows=2 [formControl]="form.publication"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.publication.hasError('validation')) {
+                    <mat-error>{{ form.publication.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field source_code">
+                <mat-form-field>
+                    <mat-label>Source Code</mat-label>
+                    <textarea matInput rows=1 [formControl]="form.source_code"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.source_code.hasError('validation')) {
+                    <mat-error>{{ form.source_code.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field target_organisms">
+                <mat-form-field>
+                    <mat-label>Target Organisms</mat-label>
+                    <textarea matInput rows=2 [formControl]="form.target_organisms"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.target_organisms.hasError('validation')) {
+                    <mat-error>{{ form.target_organisms.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field biomedical_areas">
+                <mat-form-field>
+                    <mat-label>Biomedical Areas</mat-label>
+                    <textarea matInput rows=2 [formControl]="form.biomedical_areas"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.biomedical_areas.hasError('validation')) {
+                    <mat-error>{{ form.biomedical_areas.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+        </div>
+
+        <div class="model-form">
+            <div class="field description">
+                <mat-form-field>
+                    <mat-label>Description</mat-label>
+                    <textarea matInput required rows=8 [formControl]="form.description"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.description.hasError('required')) {
+                    <mat-error>Description is <strong>required</strong></mat-error>
+                    } @else if (form.description.hasError('validation')) {
+                    <mat-error>{{ form.description.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field interpretation">
+                <mat-form-field>
+                    <mat-label>Interpretation</mat-label>
+                    <textarea matInput rows=8 [formControl]="form.interpretation"
+                        [errorStateMatcher]="formControlErrorStateMatcher"></textarea>
+                    @if (form.interpretation.hasError('validation')) {
+                    <mat-error>{{ form.interpretation.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+      </div>
     </div>
 
 

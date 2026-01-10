@@ -1,13 +1,16 @@
-from sys import stdout
 import traceback
+from sys import exc_info, stdout
 
 from controllers.model import ModelController
 from fastapi import APIRouter, HTTPException, Request
-
-from library.fastapi_root import FastAPIRoot
-from objects.model import ModelApiModel, ModelScalingInfoModel, ModelUpdateApiModel
-
 from library.api_utils import api_handler
+from library.fastapi_root import FastAPIRoot
+from objects.model import (
+    ModelApiModel,
+    ModelIdentificationDetailsModel,
+    ModelScalingInfoModel,
+    ModelUpdateApiModel,
+)
 from objects.rbac import Permission
 
 ###############################################################################
@@ -145,3 +148,25 @@ def update_model(
         )
 
     return ModelApiModel.from_object(persisted_model)
+
+
+@router.get("/{model_id}/model-hub-details")
+def get_model_hub_details(
+    model_id: str, api_request: Request
+) -> ModelIdentificationDetailsModel:
+    auth_details, tracking_details = api_handler(api_request)
+
+    try:
+        model_details = ModelController.instance().get_details_from_model_hub(model_id)
+
+        if model_details is None:
+            raise Exception("No ModelHub details found")
+
+        return ModelIdentificationDetailsModel.from_object(model_details)
+    except:
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get ModelHub details, err = [%s]" % repr(exc_info()),
+        )

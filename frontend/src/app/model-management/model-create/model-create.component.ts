@@ -43,12 +43,12 @@ export class ModelCreateComponent implements OnInit {
 
   submitting: Signal<boolean>;
   submissionResult: ModelSubmissionResult | undefined;
+  importing: WritableSignal<boolean> = signal(false);
 
   formControlErrorStateMatcher = new MyErrorStateMatcher()
   form: {
     modelId: FormControl;
     enabled: FormControl;
-    description: FormControl;
     disableMemoryLimit: FormControl;
     maxInstances: FormControl;
     executionMode: FormControl;
@@ -58,6 +58,16 @@ export class ModelCreateComponent implements OnInit {
     memoryLimit: FormControl;
     imageTag: FormControl;
     cacheEnabled: FormControl;
+
+    // identification details
+    description: FormControl;
+    title: FormControl;
+    interpretation: FormControl;
+    slug: FormControl;
+    source_code: FormControl;
+    publication: FormControl;
+    target_organisms: FormControl;
+    biomedical_areas: FormControl;
   } = {
       modelId: new FormControl('eos', [
         Validators.required,
@@ -77,18 +87,6 @@ export class ModelCreateComponent implements OnInit {
           if (rawValue == null || typeof rawValue !== 'boolean') {
             return {
               'validation': 'Invalid Enabled state'
-            }
-          }
-
-          return null;
-        })
-      ]),
-      description: new FormControl('', [
-        Validators.required,
-        (control) => validator(control, rawValue => {
-          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 5) {
-            return {
-              'validation': 'Invalid Description, need at least 5 charecters'
             }
           }
 
@@ -212,7 +210,98 @@ export class ModelCreateComponent implements OnInit {
 
           return null;
         })
-      ])
+      ]),
+
+      // identification details
+      description: new FormControl('', [
+        Validators.required,
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 5) {
+            return {
+              'validation': 'Invalid Description, need at least 5 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      title: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 3) {
+            return {
+              'validation': 'Invalid title, need at least 3 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      slug: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 3) {
+            return {
+              'validation': 'Invalid slug, need at least 3 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      interpretation: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 3) {
+            return {
+              'validation': 'Invalid interpretation, need at least 3 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      source_code: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 3) {
+            return {
+              'validation': 'Invalid source_code, need at least 3 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      publication: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 3) {
+            return {
+              'validation': 'Invalid publication, need at least 3 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      target_organisms: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 5) {
+            return {
+              'validation': 'Invalid target organisms, need at least 5 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
+      biomedical_areas: new FormControl('', [
+        (control) => validator(control, rawValue => {
+          if (rawValue == null || typeof rawValue !== 'string' || rawValue.length < 5) {
+            return {
+              'validation': 'Invalid biomedical areas, need at least 5 charecters'
+            }
+          }
+
+          return null;
+        })
+      ]),
     };
 
   get formModelEnabled(): boolean {
@@ -285,7 +374,17 @@ export class ModelCreateComponent implements OnInit {
           memory_limit: this.form.memoryLimit.getRawValue()
         },
         image_tag: this.form.imageTag.getRawValue(),
-        cache_enabled: this.form.cacheEnabled.getRawValue()
+        cache_enabled: this.form.cacheEnabled.getRawValue(),
+        identification_details: {
+          description: this.form.description.getRawValue(),
+          title: this.form.title.getRawValue(),
+          slug: this.form.slug.getRawValue(),
+          interpretation: this.form.interpretation.getRawValue(),
+          publication: this.form.publication.getRawValue(),
+          source_code: this.form.source_code.getRawValue(),
+          target_organisms: this.form.target_organisms.getRawValue() == null ? undefined : this.form.target_organisms.getRawValue().split(","),
+          biomedical_areas: this.form.biomedical_areas.getRawValue() == null ? undefined : this.form.biomedical_areas.getRawValue().split(","),
+        }
       }
     };
 
@@ -310,6 +409,39 @@ export class ModelCreateComponent implements OnInit {
     this.busy.set(false);
     this.clearForm();
     this.dialogRef.close();
+  }
+
+  importIdentificationDetails() {
+    if (this.importing()) {
+      return;
+    }
+
+    this.importing.set(true);
+
+    this.modelsService.getInfoFromModelHub(this.form.modelId.getRawValue()).subscribe({
+      next: details => {
+        this.form.description.setValue(details.description);
+        this.form.title.setValue(details.title);
+        this.form.slug.setValue(details.slug);
+        this.form.interpretation.setValue(details.interpretation);
+        this.form.source_code.setValue(details.source_code);
+        this.form.publication.setValue(details.publication);
+
+        if (details.target_organisms != undefined) {
+          this.form.target_organisms.setValue(details.target_organisms.join(","));
+        }
+
+        if (details.biomedical_areas != undefined) {
+          this.form.biomedical_areas.setValue(details.biomedical_areas.join(","));
+        }
+
+        this.importing.set(false);
+      },
+      error: err => {
+        this.notificationsService.pushNotification(Notification("WARN", "Failed to import details from ModelHub"));
+        this.importing.set(false);
+      }
+    })
   }
 }
 

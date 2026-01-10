@@ -5,6 +5,13 @@
 
     <div class="request-form">
       <div class="filters">
+          <div class="filter free-text">
+              <mat-form-field>
+                  <mat-label>All Fields</mat-label>
+                  <input matInput [(ngModel)]="filterFreeText">
+              </mat-form-field>
+          </div>
+
           <div class="filter id">
               <mat-form-field>
                   <mat-label>Id</mat-label>
@@ -30,7 +37,10 @@
                   <mat-select [(value)]="selectedModel">
                       @for (model of filteredModels(); track model) {
                       <mat-option [value]="model.id">
-                        <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{ model.details.description }}</span>
+                        <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{
+                          model.details.identification_details && model.details.identification_details.title ?
+                            model.details.identification_details.title : model.details.description
+                          }}</span>
                       </mat-option>
                       }
                   </mat-select>
@@ -53,7 +63,7 @@
       <div class="entries">
           <mat-form-field class="smiles">
               <mat-label>SMILES</mat-label>
-              <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
+              <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings"
                   [(ngModel)]="entriesString"></textarea>
           </mat-form-field>
       </div>

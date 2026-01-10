@@ -13,79 +13,109 @@
         </div>
     </div>
 
-    <!-- TODO: labels -->
-
-    @if(request() != undefined) {
-    <div class="details">
-        <div class="detail">
-            <div class="label">ID</div>
-            <div class="contents">{{ request()!.id }}</div>
-        </div>
-
-        <div class="detail">
-            <div class="label">Request Date</div>
-            <div class="contents">{{ request()!.request_date | date:'yyyy-MM-dd HH:mm:ss' }}</div>
-        </div>
-
-        <div class="detail">
-            <div class="label">Status</div>
-            <div class="contents">
-                <div class="status" [ngClass]="request()!.request_status?.toLowerCase()">
-                    {{ request()!.request_status }}
-                </div>
+    <div class="model-form-split-panel">
+        <div class="model-form">
+            @if(request() != undefined) {
+            <div class="field">
+                <div class="label">ID</div>
+                <div class="contents">{{ request()!.id }}</div>
             </div>
-        </div>
 
-        <div class="detail input">
-            <div class="label">Input</div>
-            <div class="contents entries">
-                <mat-form-field class="smiles">
-                    <mat-label>SMILES</mat-label>
-                    <textarea matInput rows=5 placeholder="Enter molecules as SMILES strings"
-                        [value]="request()!.request_payload"></textarea>
-                </mat-form-field>
+            <div class="field">
+                <div class="label">Request Date</div>
+                <div class="contents">{{ request()!.request_date | date:'yyyy-MM-dd HH:mm:ss' }}</div>
             </div>
-        </div>
 
-        @if (request()!.request_status == 'FAILED' ) {
-        <div class="detail">
-            <div class="label">Status Reason</div>
-            <div class="contents">
-                {{ request()!.request_status_reason }}
-            </div>
-        </div>
-        } @else if (request()!.has_result) {
-        <div class="detail">
-            <div class="label">Result</div>
-            <div class="contents">
-                <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
-                    (click)="downloadResult('csv')">
-                    <div class="icon">
-                        @if(downloadingResult()) {
-                        <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                        } @else {
-                        <mat-icon>download</mat-icon>
-                        }
+            <div class="field">
+                <div class="label">Status</div>
+                <div class="contents">
+                    <div class="status" [ngClass]="request()!.request_status?.toLowerCase()">
+                        {{ request()!.request_status }}
                     </div>
-                    CSV
-                </div>
-
-                <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
-                    (click)="downloadResult('json')">
-                    <div class="icon">
-                        @if(downloadingResult()) {
-                        <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                        } @else {
-                        <mat-icon>download</mat-icon>
-                        }
-                    </div>
-                    JSON
                 </div>
             </div>
+
+            @if (request()!.request_status == 'FAILED' ) {
+            <div class="field">
+                <div class="label">Status Reason</div>
+                <div class="contents">
+                    {{ request()!.request_status_reason }}
+                </div>
+            </div>
+            } @else if (request()!.has_result) {
+            <div class="field">
+                <div class="label">Result</div>
+                <div class="contents">
+                    <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                        (click)="downloadResult('csv')">
+                        <div class="icon">
+                            @if(downloadingResult()) {
+                            <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                            } @else {
+                            <mat-icon>download</mat-icon>
+                            }
+                        </div>
+                        CSV
+                    </div>
+
+                    <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                        (click)="downloadResult('json')">
+                        <div class="icon">
+                            @if(downloadingResult()) {
+                            <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
+                            } @else {
+                            <mat-icon>download</mat-icon>
+                            }
+                        </div>
+                        JSON
+                    </div>
+                </div>
+            </div>
+            }
+            }
         </div>
-        }
+
+        <div class="model-form">
+            @if (model() != undefined) {
+            <div class="field">
+                <div class="label">Model Id</div>
+                <div class="contents model-id" (click)="openDetailsDialog(model())">{{ model()!.id }}</div>
+            </div>
+
+            @if (model()!.details.identification_details != null) {
+            <div class="field title">
+                <div class="label">Title</div>
+                <div class="contents">{{ model()!.details.identification_details!.title }}</div>
+            </div>
+
+            <div class="field description">
+                <div class="label">Description</div>
+                <div class="contents">{{ model()!.details.identification_details!.description }}</div>
+            </div>
+            } @else {
+            <div class="field description">
+                <div class="label">Description</div>
+                <div class="contents">{{ model()!.details.description }}</div>
+            </div>
+            }
+            }
+        </div>
     </div>
-    }
+
+  <div class="model-form-split-panel">
+    <div class="model-form full">
+      <div class="field input">
+          <div class="label">Input</div>
+          <div class="contents entries">
+              <mat-form-field class="smiles">
+                  <mat-label>SMILES</mat-label>
+                  <textarea matInput diabled rows=10 placeholder="Enter molecules as SMILES strings"
+                      [value]="request()!.request_payload"></textarea>
+              </mat-form-field>
+          </div>
+      </div>
+    </div>
+  </div>
 
     <div class="dialog-actions">
         <div class="ersilia-button cancel" (click)="close()">
@@ -94,3 +124,5 @@
         </div>
     </div>
 </div>
+
+

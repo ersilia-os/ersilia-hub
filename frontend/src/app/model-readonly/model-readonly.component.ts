@@ -10,13 +10,17 @@ import { filterModels, Model, ModelFilter } from '../../objects/model';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
+import { MatDialog } from '@angular/material/dialog';
+import { ModelDetailsDialogComponent } from './model-details-dialog/model-details-dialog.component';
+import { RequestsCreateComponent } from '../request-create/request-create.component';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-model-readonly',
   standalone: true,
   imports: [
     MatButtonModule, MatTableModule, CommonModule, MatIconModule, MatProgressBarModule,
-    ErsiliaLoaderComponent, MatFormFieldModule, MatInputModule, FormsModule
+    ErsiliaLoaderComponent, MatFormFieldModule, MatInputModule, FormsModule, MatTooltipModule
   ],
   templateUrl: './model-readonly.component.html',
   styleUrl: './model-readonly.component.scss'
@@ -24,10 +28,11 @@ import { FormsModule } from '@angular/forms';
 export class ModelReadonlyComponent implements OnInit {
 
   private modelsService = inject(ModelsService);
+  readonly dialog = inject(MatDialog);
 
   models: Signal<Model[]>;
   filteredModels: Signal<Model[]>;
-  filters: WritableSignal<ModelFilter> = signal({ id: undefined, description: undefined });
+  filters: WritableSignal<ModelFilter> = signal({ freeText: undefined, id: undefined, description: undefined });
   loading: Signal<boolean>;
 
   displayedColumns: string[] = ['id', 'description'];
@@ -35,6 +40,14 @@ export class ModelReadonlyComponent implements OnInit {
     id: 'id',
     description: 'Description',
   };
+
+  get filterFreeText(): string | undefined {
+    return this.filters().freeText;
+  }
+
+  set filterFreeText(value: string | undefined) {
+    this.filters.set({ ...this.filters(), freeText: value });
+  }
 
   get filterId(): string | undefined {
     return this.filters().id;
@@ -57,7 +70,7 @@ export class ModelReadonlyComponent implements OnInit {
       _loading => this.models == null || (this.models().length == 0 && _loading)
     );
 
-    this.models = this.modelsService.getModelsSignal();
+    this.models = this.modelsService.computeModelsSignal(models => models.filter(m => m.enabled));
     this.filteredModels = computed(() => filterModels(this.models(), this.filters()));
   }
 
@@ -72,4 +85,23 @@ export class ModelReadonlyComponent implements OnInit {
   tableTrackBy: TrackByFunction<Model> = (index: number, item: Model) => {
     return `${item.id}_${item.last_updated}`;
   };
+
+  openDetailsDialog(model: Model) {
+    this.dialog.open(ModelDetailsDialogComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel-large',
+      data: model,
+    });
+  }
+
+  openRequestForm(model: Model) {
+    this.dialog.open(RequestsCreateComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel-large',
+      data: model,
+    });
+  }
+
 }

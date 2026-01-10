@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, Signal, signal, WritableSignal } from '@angular/core';
+import { computed, inject, Injectable, Signal, signal, WritableSignal } from '@angular/core';
 import { catchError, map, Observable, Subscription, throwError } from 'rxjs';
-import { Model, ModelFromApi, ModelList, ModelUpdate } from '../objects/model';
+import { Model, ModelFromApi, ModelIdentificationDetails, ModelList, ModelUpdate } from '../objects/model';
 import { environment } from '../environments/environment';
 import { mapHttpError } from '../app/utils/api';
+import { Notification, NotificationsService } from '../app/notifications/notifications.service';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,11 @@ export class ModelsService {
 
   constructor(private http: HttpClient) { }
 
-  loadModels(): Subscription {
+  loadModels(useCache?: boolean): Subscription | undefined {
+    if (useCache && this.models().length > 0) {
+      return undefined;
+    }
+
     this.modelsLoading.set(true);
 
     return this.http.get<ModelList>(`${environment.apiHost}/api/models`).subscribe(modelsList => {
@@ -125,6 +130,19 @@ export class ModelsService {
       );
   }
 
+  getInfoFromModelHub(modelId: string): Observable<ModelIdentificationDetails> {
+    return this.http.get<ModelIdentificationDetails>(`${environment.apiHost}/api/models/${modelId}/model-hub-details`)
+      .pipe(
+        // map((model: ModelIdentificationDetails) => model),
+        catchError(error => {
+          const errorString = mapHttpError(error);
+
+          // Return an observable with a user-facing error message.
+          return throwError(() => new Error(errorString));
+        })
+      );
+  }
+
   getModelsSignal(): Signal<Model[]> {
     return computed(() => this.models());
   }
@@ -162,4 +180,11 @@ export interface ModelSubmissionResult {
   success: boolean;
   error?: string;
   response?: Model;
+}
+
+interface ModelHubResponse {
+  records: {
+    fields: { [key: string]: string };
+    id: string;
+  }[];
 }
