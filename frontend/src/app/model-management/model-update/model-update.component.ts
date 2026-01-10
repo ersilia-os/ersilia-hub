@@ -361,8 +361,8 @@ export class ModelUpdateComponent implements OnInit {
       this.form.interpretation.setValue(existingModel.details.identification_details.interpretation);
       this.form.source_code.setValue(existingModel.details.identification_details.source_code);
       this.form.publication.setValue(existingModel.details.identification_details.publication);
-      this.form.target_organisms.setValue(existingModel.details.identification_details.target_organisms);
-      this.form.biomedical_areas.setValue(existingModel.details.identification_details.biomedical_areas);
+      this.form.target_organisms.setValue(existingModel.details.identification_details.target_organisms ? existingModel.details.identification_details.target_organisms.join(".") : undefined);
+      this.form.biomedical_areas.setValue(existingModel.details.identification_details.biomedical_areas ? existingModel.details.identification_details.biomedical_areas.join(",") : undefined);
     }
   }
 

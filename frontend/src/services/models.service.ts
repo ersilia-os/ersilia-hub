@@ -17,11 +17,13 @@ export class ModelsService {
   private modelSubmitting: WritableSignal<boolean> = signal(false);
   private modelSubmissionResult: WritableSignal<ModelSubmissionResult | undefined> = signal(undefined);
 
-  private notificationService = inject(NotificationsService);
-
   constructor(private http: HttpClient) { }
 
-  loadModels(): Subscription {
+  loadModels(useCache?: boolean): Subscription | undefined {
+    if (useCache && this.models().length > 0) {
+      return undefined;
+    }
+
     this.modelsLoading.set(true);
 
     return this.http.get<ModelList>(`${environment.apiHost}/api/models`).subscribe(modelsList => {

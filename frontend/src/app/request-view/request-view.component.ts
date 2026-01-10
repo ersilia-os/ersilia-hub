@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, Signal, signal, WritableSignal } from '@angular/core';
 import { RequestsService } from '../../services/requests.service';
 import { MatButtonModule } from '@angular/material/button';
 import { RequestStatus } from '../../objects/request';
@@ -6,12 +6,13 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import {
-    MAT_DIALOG_DATA,
-    MatDialogActions,
-    MatDialogClose,
-    MatDialogContent,
-    MatDialogRef,
-    MatDialogTitle,
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,142 +22,171 @@ import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.compone
 import { mapRequest, RequestDisplay } from '../../objects/request-view';
 import { NotificationsService, Notification } from '../notifications/notifications.service';
 import { Observable, Subscription, timer } from 'rxjs';
+import { ModelsService } from '../../services/models.service';
+import { Model } from '../../objects/model';
+import { ModelDetailsDialogComponent } from '../model-readonly/model-details-dialog/model-details-dialog.component';
 
 
 @Component({
-    standalone: true,
-    imports: [
-        MatButtonModule, CommonModule, MatIconModule, MatProgressBarModule,
-        MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent,
-        MatFormFieldModule, MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent
-    ],
-    templateUrl: './request-view.component.html',
-    styleUrl: './request-view.component.scss'
+  standalone: true,
+  imports: [
+    MatButtonModule, CommonModule, MatIconModule, MatProgressBarModule,
+    MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent,
+    MatFormFieldModule, MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent
+  ],
+  templateUrl: './request-view.component.html',
+  styleUrl: './request-view.component.scss'
 })
 export class RequestViewComponent implements OnInit {
-    private notificationService = inject(NotificationsService);
+  private notificationService = inject(NotificationsService);
 
-    readonly dialogRef = inject(MatDialogRef<RequestViewComponent>);
-    readonly requestData: RequestDisplay = inject(MAT_DIALOG_DATA);
+  readonly dialogRef = inject(MatDialogRef<RequestViewComponent>);
+  readonly requestData: RequestDisplay = inject(MAT_DIALOG_DATA);
+  readonly dialog = inject(MatDialog);
 
-    private requestService = inject(RequestsService);
+  private requestService = inject(RequestsService);
+  private modelsService = inject(ModelsService);
 
-    loading: WritableSignal<boolean> = signal(true);
-    downloadingResult: WritableSignal<boolean> = signal(false);
-    request: WritableSignal<RequestDisplay | undefined> = signal(undefined);
+  loading: WritableSignal<boolean> = signal(true);
+  downloadingResult: WritableSignal<boolean> = signal(false);
+  request: WritableSignal<RequestDisplay | undefined> = signal(undefined);
+  model: Signal<Model | undefined>;
 
-    private timer$: Observable<number> | undefined;
-    private timerSubscription: Subscription | undefined;
+  private timer$: Observable<number> | undefined;
+  private timerSubscription: Subscription | undefined;
 
-    constructor() {
+  constructor() {
+    this.model = computed(() => {
+      if (this.request() == undefined) {
+        return undefined;
+      }
+
+      return this.modelsService.getModelsSignal()().find(model => model.id === this.request()?.model_id);
+    });
+  }
+
+  ngOnInit() {
+    this.modelsService.loadModels(true);
+
+    if (this.request() == undefined) {
+      this.request.set(this.requestData);
     }
 
-    ngOnInit() {
-        if (this.request() == undefined) {
-            this.request.set(this.requestData);
-        }
+    if (this.request()?.request_status == RequestStatus.COMPLETED || this.request()?.request_status == RequestStatus.FAILED) {
+      this.loading.set(false);
+      return;
+    }
 
-        if (this.request()?.request_status == RequestStatus.COMPLETED || this.request()?.request_status == RequestStatus.FAILED) {
-            this.loading.set(false);
-            return;
-        }
+    this.timer$ = timer(2000, 3000);
+    this.timerSubscription = this.timer$.subscribe({
+      next: _ => {
+        this.load();
+      }
+    });
 
-        this.timer$ = timer(2000, 3000);
-        this.timerSubscription = this.timer$.subscribe({
-            next: _ => {
-                this.load();
+    this.loading.set(false);
+  }
+
+  private deleteRefreshTimer() {
+    if (this.timerSubscription != null) {
+      this.timerSubscription.unsubscribe();
+      this.timer$ = undefined;
+    }
+  }
+
+  load(download_result?: boolean, csv_result?: boolean) {
+    if (!download_result && this.loading()) {
+      return;
+    } else if (download_result && this.downloadingResult()) {
+      return;
+    }
+
+    if (!download_result) {
+      this.loading.set(true);
+    } else {
+      this.downloadingResult.set(true);
+    }
+
+    this.requestService.loadRequest(this.requestData.id!, download_result, csv_result)
+      .subscribe({
+        next: result => {
+          this.request.set(mapRequest(result));
+
+          if (download_result) {
+            if (this.request()?.has_result && result.result != null) {
+              const a = document.createElement('a');
+              let objectUrl: string | undefined = undefined;
+
+              if (csv_result) {
+                objectUrl = URL.createObjectURL(new Blob([result.result.join("\n")], {
+                  type: "text/csv",
+                }));
+              } else {
+                objectUrl = URL.createObjectURL(new Blob([JSON.stringify(result.result, null, 2)], {
+                  type: "application/json",
+                }));
+              }
+
+              a.href = objectUrl!;
+              a.download = `ersiliahub_${this.request()?.model_id}_${this.request()?.id}.${csv_result ? "csv" : "json"}`;
+              a.click();
+              URL.revokeObjectURL(objectUrl!);
+            } else {
+              this.notificationService.pushNotification(Notification('WARN', 'Failed to download result. Please try again'));
             }
-        });
 
-        this.loading.set(false);
-    }
+            this.downloadingResult.set(false);
+          } else {
+            this.loading.set(false);
 
-    private deleteRefreshTimer() {
-        if (this.timerSubscription != null) {
-            this.timerSubscription.unsubscribe();
-            this.timer$ = undefined;
+            if (this.request()?.request_status == RequestStatus.COMPLETED || this.request()?.request_status == RequestStatus.FAILED) {
+              this.deleteRefreshTimer();
+            }
+          }
+        },
+        error: err => {
+          if (!download_result) {
+            this.notificationService.pushNotification(Notification('ERROR', `Failed to refresh`));
+            this.loading.set(false);
+          } else {
+            this.notificationService.pushNotification(Notification('ERROR', `Failed to download result`));
+            this.downloadingResult.set(false);
+          }
         }
+      })
+  }
+
+  close() {
+    this.deleteRefreshTimer();
+    this.dialogRef.close();
+  }
+
+  canDownloadResult(): boolean {
+    return this.request != undefined
+      && this.request()!.has_result
+      && !this.downloadingResult();
+  }
+
+  downloadResult(type?: 'json' | 'csv') {
+    if (!this.canDownloadResult()) {
+      console.log("cannot download result")
+      return;
     }
 
-    load(download_result?: boolean, csv_result?: boolean) {
-        if (!download_result && this.loading()) {
-            return;
-        } else if (download_result && this.downloadingResult()) {
-            return;
-        }
+    this.load(true, type === 'csv');
+  }
 
-        if (!download_result) {
-            this.loading.set(true);
-        } else {
-            this.downloadingResult.set(true);
-        }
-
-        this.requestService.loadRequest(this.requestData.id!, download_result, csv_result)
-            .subscribe({
-                next: result => {
-                    this.request.set(mapRequest(result));
-
-                    if (download_result) {
-                        if (this.request()?.has_result && result.result != null) {
-                            const a = document.createElement('a');
-                            let objectUrl: string | undefined = undefined;
-
-                            if (csv_result) {
-                                objectUrl = URL.createObjectURL(new Blob([result.result.join("\n")], {
-                                    type: "text/csv",
-                                }));
-                            } else {
-                                objectUrl = URL.createObjectURL(new Blob([JSON.stringify(result.result, null, 2)], {
-                                    type: "application/json",
-                                }));
-                            }
-
-                            a.href = objectUrl!;
-                            a.download = `ersiliahub_${this.request()?.model_id}_${this.request()?.id}.${csv_result ? "csv" : "json"}`;
-                            a.click();
-                            URL.revokeObjectURL(objectUrl!);
-                        } else {
-                            this.notificationService.pushNotification(Notification('WARN', 'Failed to download result. Please try again'));
-                        }
-
-                        this.downloadingResult.set(false);
-                    } else {
-                        this.loading.set(false);
-
-                        if (this.request()?.request_status == RequestStatus.COMPLETED || this.request()?.request_status == RequestStatus.FAILED) {
-                            this.deleteRefreshTimer();
-                        }
-                    }
-                },
-                error: err => {
-                    if (!download_result) {
-                        this.notificationService.pushNotification(Notification('ERROR', `Failed to refresh`));
-                        this.loading.set(false);
-                    } else {
-                        this.notificationService.pushNotification(Notification('ERROR', `Failed to download result`));
-                        this.downloadingResult.set(false);
-                    }
-                }
-            })
+  openDetailsDialog(model: Model | undefined) {
+    if (model == undefined) {
+      return;
     }
 
-    close() {
-        this.deleteRefreshTimer();
-        this.dialogRef.close();
-    }
+    this.dialog.open(ModelDetailsDialogComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel-large',
+      data: model,
+    });
+  }
 
-    canDownloadResult(): boolean {
-        return this.request != undefined
-            && this.request()!.has_result
-            && !this.downloadingResult();
-    }
-
-    downloadResult(type?: 'json' | 'csv') {
-        if (!this.canDownloadResult()) {
-            console.log("cannot download result")
-            return;
-        }
-
-        this.load(true, type === 'csv');
-    }
 }

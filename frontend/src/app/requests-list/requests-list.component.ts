@@ -82,7 +82,7 @@ export class RequestsListComponent implements OnDestroy {
     this.dialog.open(RequestsCreateComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
-      panelClass: 'dialog-panel'
+      panelClass: 'dialog-panel-large'
     });
   }
 
@@ -90,7 +90,7 @@ export class RequestsListComponent implements OnDestroy {
     this.dialog.open(RequestViewComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
-      panelClass: 'dialog-panel',
+      panelClass: 'dialog-panel-large',
       data: request,
     });
   }

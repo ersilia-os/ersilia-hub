@@ -47,15 +47,15 @@ function buildMenu(permissions: AppPermissions): MenuItem[] {
   let menu: MenuItem[] = [];
 
   menu.push({
-    text: 'Evaluations',
-    icon: 'science',
-    link: ''
-  });
-
-  menu.push({
     text: 'Models',
     icon: 'info',
     link: 'models'
+  });
+
+  menu.push({
+    text: 'Evaluations',
+    icon: 'science',
+    link: 'evaluations'
   });
 
   if (!permissions.canViewMenu) {

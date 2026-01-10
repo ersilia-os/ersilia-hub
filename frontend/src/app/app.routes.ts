@@ -24,11 +24,16 @@ export const routerGuardFunction: CanActivateFn = (
 export const routes: Routes = [
   {
     path: '',
-    component: RequestsListComponent,
+    pathMatch: 'full',
+    redirectTo: 'models'
   },
   {
     path: 'models',
     component: ModelReadonlyComponent,
+  },
+  {
+    path: 'evaluations',
+    component: RequestsListComponent,
   },
   {
     path: 'stats',

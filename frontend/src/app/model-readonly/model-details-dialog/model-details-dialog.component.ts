@@ -60,7 +60,7 @@ export class ModelDetailsDialogComponent implements OnInit {
     this.dialog.open(RequestsCreateComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
-      panelClass: 'dialog-panel',
+      panelClass: 'dialog-panel-large',
       data: model,
     });
   }
