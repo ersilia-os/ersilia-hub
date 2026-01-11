@@ -179,7 +179,8 @@ def load_workrequest(
             )
             request.result = result.extract_result()
 
-            if filters.csv_result:
+            # can only get JSON result if an admin, so transform result to CSV if NOT an admin
+            if filters.csv_result or not is_admin:
                 request.map_result_to_csv()
         except:
             ContextLogger.sys_log(

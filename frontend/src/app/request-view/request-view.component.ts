@@ -25,6 +25,7 @@ import { Observable, Subscription, timer } from 'rxjs';
 import { ModelsService } from '../../services/models.service';
 import { Model } from '../../objects/model';
 import { ModelDetailsDialogComponent } from '../model-readonly/model-details-dialog/model-details-dialog.component';
+import { AuthService } from '../../services/auth.service';
 
 
 @Component({
@@ -46,16 +47,21 @@ export class RequestViewComponent implements OnInit {
 
   private requestService = inject(RequestsService);
   private modelsService = inject(ModelsService);
+  private authService = inject(AuthService);
 
   loading: WritableSignal<boolean> = signal(true);
   downloadingResult: WritableSignal<boolean> = signal(false);
   request: WritableSignal<RequestDisplay | undefined> = signal(undefined);
   model: Signal<Model | undefined>;
 
+  canDownloadJsonResult: boolean = false;
+
   private timer$: Observable<number> | undefined;
   private timerSubscription: Subscription | undefined;
 
   constructor() {
+    this.canDownloadJsonResult = this.authService.computePermissionsSignal(permissions => permissions.includes("ADMIN"))();
+
     this.model = computed(() => {
       if (this.request() == undefined) {
         return undefined;
@@ -98,6 +104,10 @@ export class RequestViewComponent implements OnInit {
     if (!download_result && this.loading()) {
       return;
     } else if (download_result && this.downloadingResult()) {
+      return;
+    }
+
+    if (!csv_result && !this.canDownloadJsonResult) {
       return;
     }
 
@@ -169,11 +179,10 @@ export class RequestViewComponent implements OnInit {
 
   downloadResult(type?: 'json' | 'csv') {
     if (!this.canDownloadResult()) {
-      console.log("cannot download result")
       return;
     }
 
-    this.load(true, type === 'csv');
+    this.load(true, type === 'csv' || !this.canDownloadJsonResult);
   }
 
   openDetailsDialog(model: Model | undefined) {
