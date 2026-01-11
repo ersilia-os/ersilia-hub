@@ -58,6 +58,7 @@
                         CSV
                     </div>
 
+                    @if (canDownloadJsonResult) {
                     <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
                         (click)="downloadResult('json')">
                         <div class="icon">
@@ -69,6 +70,7 @@
                         </div>
                         JSON
                     </div>
+                    }
                 </div>
             </div>
             }
