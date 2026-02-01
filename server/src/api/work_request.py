@@ -52,6 +52,9 @@ def create_request(
 
     try:
         new_work_request = WorkRequest.from_object(work_request.to_object())
+
+        if new_work_request is None:
+            raise Exception("Failed to parse work request")
     except:
         raise HTTPException(status_code=400, detail=repr(exc_info()))
 

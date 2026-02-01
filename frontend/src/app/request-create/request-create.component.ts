@@ -51,6 +51,8 @@ export class RequestsCreateComponent implements OnInit {
   filters: WritableSignal<ModelFilter> = signal({ freeText: undefined, id: undefined, description: undefined });
   modelsLoading: Signal<boolean>;
 
+  modelSelectionDisabled: boolean = false;
+
   private _selectedModel: string | undefined;
 
   get selectedModel() {
@@ -136,6 +138,7 @@ export class RequestsCreateComponent implements OnInit {
 
     if (this.dialogData != null && this.dialogData.id != null) {
       this.selectedModel = this.dialogData.id;
+      this.modelSelectionDisabled = true;
     }
   }
 

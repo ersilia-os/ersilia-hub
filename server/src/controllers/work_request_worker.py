@@ -447,20 +447,26 @@ class WorkRequestWorker(Thread):
                 traceback.print_exc(file=stdout)
 
     def _handle_work_request_cache(self, work_request: WorkRequest) -> list[str]:
+        work_request_entries = (
+            work_request.request_payload.entries
+            if not work_request.request_payload.has_header
+            else work_request.request_payload.entries[1:]
+        )
+
         if (
             not ModelController.instance()
             .get_model(work_request.model_id)
             .details.cache_enabled
         ):
-            return work_request.request_payload.entries
+            return work_request_entries
 
         try:
             cached_results = ModelInputCache.instance().lookup_model_results(
-                work_request.model_id, work_request.request_payload.entries
+                work_request.model_id, work_request_entries
             )
 
             if len(cached_results) == 0:
-                return work_request.request_payload.entries
+                return work_request_entries
 
             non_cached_entries = list(
                 filter(
@@ -470,7 +476,7 @@ class WorkRequestWorker(Thread):
                             cached_results,
                         )
                     ),
-                    work_request.request_payload.entries,
+                    work_request_entries,
                 )
             )
 
@@ -486,7 +492,7 @@ class WorkRequestWorker(Thread):
                 return non_cached_entries
 
             job_result = ModelInputCache.instance().consolidate_results(
-                work_request.request_payload.entries, [], [], cached_results
+                work_request_entries, [], [], cached_results
             )
 
             if not self._upload_result_to_s3(work_request, job_result):
@@ -564,12 +570,18 @@ class WorkRequestWorker(Thread):
 
                     continue
 
+                work_request_entries = (
+                    work_request.request_payload.entries
+                    if not work_request.request_payload.has_header
+                    else work_request.request_payload.entries[1:]
+                )
+
                 instance = ModelInstanceController.instance().request_instance(
                     work_request.model_id,
                     str(work_request.id),
                     ignore_max_concurrent_limit=True,
                     job_submission_entries=(
-                        work_request.request_payload.entries
+                        work_request_entries
                         if non_cached_inputs is None or len(non_cached_inputs) == 0
                         else non_cached_inputs
                     ),

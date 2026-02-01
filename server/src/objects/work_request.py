@@ -9,24 +9,27 @@ from pydantic import BaseModel, Field
 class WorkRequestPayloadModel(BaseModel):
     entries: List[str]
     cache_opt_in: bool = False
+    has_header: bool = True
 
     def to_object(self) -> Dict[str, Any]:
-        return {"entries": self.entries, "cacheOptIn": self.cache_opt_in}
-
-
-# simple check if line contains a comma
-# NOTE: we might improve this later, once we have a regex for SMILES
-def check_payload_line_is_header(line: str) -> bool:
-    return "," in line
+        return {
+            "entries": self.entries,
+            "cacheOptIn": self.cache_opt_in,
+            "hasHeader": self.has_header,
+        }
 
 
 class WorkRequestPayload:
     entries: List[str]
     cache_opt_in: bool
+    has_header: bool
 
-    def __init__(self, entries: List[str], cache_opt_in: bool = False):
+    def __init__(
+        self, entries: List[str], cache_opt_in: bool = False, has_header: bool = True
+    ):
         self.entries = entries
         self.cache_opt_in = cache_opt_in
+        self.has_header = has_header
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestPayload":
@@ -34,19 +37,16 @@ class WorkRequestPayload:
             raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
-            list(
-                filter(
-                    lambda line: not check_payload_line_is_header(line),
-                    map(lambda e: e.strip(), obj["entries"]),
-                )
-            ),
+            list(map(lambda e: e.strip(), obj["entries"])),
             False if "cacheOptIn" not in obj else obj["cacheOptIn"],
+            False if "hasHeader" not in obj else obj["hasHeader"],
         )
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "entries": self.entries,
             "cacheOptIn": self.cache_opt_in,
+            "hasHeader": self.has_header,
         }
 
 
