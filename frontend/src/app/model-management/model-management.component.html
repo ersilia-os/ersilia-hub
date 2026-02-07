@@ -103,8 +103,15 @@
                 } @else if (column == 'cache_enabled') {
                 <mat-checkbox [checked]="element.details.cache_enabled" [disabled]="true"></mat-checkbox>
                 } @else if (column == 'actions') {
-                <div class="action-button" (click)="editModel(element)">
-                    <mat-icon>create</mat-icon>
+                <div class="actions-cell">
+                  <div class="action-button" (click)="editModel(element)">
+                      <mat-icon>create</mat-icon>
+                  </div>
+                  <div class="action-button" (click)="clearModelCache(element.id)"
+                    #clearCacheTooltip="matTooltip" matTooltip="Clear Cache"
+                  >
+                      <mat-icon>playlist_remove</mat-icon>
+                  </div>
                 </div>
                 }
             </td>

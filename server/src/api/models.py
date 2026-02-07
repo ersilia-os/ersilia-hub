@@ -2,6 +2,7 @@ import traceback
 from sys import exc_info, stdout
 
 from controllers.model import ModelController
+from controllers.model_input_cache import ModelInputCache
 from fastapi import APIRouter, HTTPException, Request
 from library.api_utils import api_handler
 from library.fastapi_root import FastAPIRoot
@@ -169,4 +170,22 @@ def get_model_hub_details(
         raise HTTPException(
             status_code=500,
             detail="Failed to get ModelHub details, err = [%s]" % repr(exc_info()),
+        )
+
+
+@router.delete("/{model_id}/cache")
+def delete_model_cache(model_id: str, api_request: Request):
+    auth_details, tracking_details = api_handler(api_request)
+
+    try:
+        if not ModelInputCache.instance().clear_model_cached_results(model_id):
+            raise Exception("execution failed")
+
+        return {"result": "SUCCESS"}
+    except:
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to clear model cache, err = [%s]" % repr(exc_info()),
         )

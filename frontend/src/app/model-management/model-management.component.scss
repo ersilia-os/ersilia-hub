@@ -167,6 +167,14 @@
   background-color: #727272;
 }
 
+.actions-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  min-width: 90px;
+}
+
 .action-button {
   cursor: pointer;
   width: 32px;

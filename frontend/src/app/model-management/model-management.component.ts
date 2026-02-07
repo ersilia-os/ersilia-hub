@@ -14,12 +14,13 @@ import { MatInputModule } from '@angular/material/input';
 import { ModelCreateComponent } from './model-create/model-create.component';
 import { ModelUpdateComponent } from './model-update/model-update.component';
 import { NotificationsService, Notification } from '../notifications/notifications.service';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-model-management',
   standalone: true,
   imports: [MatButtonModule, MatTableModule, FormsModule, MatFormFieldModule, MatInputModule, CommonModule, MatIconModule, MatCheckboxModule,
-    ErsiliaLoaderComponent],
+    ErsiliaLoaderComponent, MatTooltipModule],
   templateUrl: './model-management.component.html',
   styleUrl: './model-management.component.scss'
 })
@@ -137,6 +138,18 @@ export class ModelManagementComponent implements OnInit {
         },
         error: (err: Error) => {
           this.notificationsService.pushNotification(Notification('ERROR', 'Model Update Failed'));
+        }
+      });
+  }
+
+  clearModelCache(modelId: string) {
+    this.modelsService.clearFromCache(modelId)
+      .subscribe({
+        next: _ => {
+          this.notificationsService.pushNotification(Notification('SUCCESS', 'Successfully cleared Model cache'));
+        },
+        error: (err: Error) => {
+          this.notificationsService.pushNotification(Notification('ERROR', 'Failed to clear model cache'));
         }
       });
   }

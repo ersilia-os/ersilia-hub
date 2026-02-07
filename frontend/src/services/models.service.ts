@@ -143,6 +143,18 @@ export class ModelsService {
       );
   }
 
+  clearFromCache(modelId: string): Observable<void> {
+    return this.http.delete<void>(`${environment.apiHost}/api/models/${modelId}/cache`)
+      .pipe(
+        catchError(error => {
+          const errorString = mapHttpError(error);
+
+          // Return an observable with a user-facing error message.
+          return throwError(() => new Error(errorString));
+        })
+      );
+  }
+
   getModelsSignal(): Signal<Model[]> {
     return computed(() => this.models());
   }
