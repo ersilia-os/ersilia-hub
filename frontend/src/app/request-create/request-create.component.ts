@@ -152,7 +152,7 @@ export class RequestsCreateComponent implements OnInit {
 
   canSubmit(): boolean {
     return (this.selectedModel != null && this.selectedModel?.length > 0)
-      && (this.entries != null && this.entries.length > 0)
+      && (this.entries != null && this.entries.length > 1) // NOTE: we default has_header = true, so we need at least 2 lines
       && !this.submitting();
   }
 

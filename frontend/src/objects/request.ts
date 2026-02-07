@@ -9,6 +9,7 @@ export enum RequestStatus {
 export interface RequestPayload {
   entries: string[];
   cache_opt_in: boolean;
+  has_header: boolean;
 }
 
 export interface RequestList {
@@ -36,12 +37,13 @@ export function RequestFromApi(request: Request): Request {
   }
 }
 
-export function RequestSubmission(model_id: string, entries: string[], cache_opt_in: boolean = false): Request {
+export function RequestSubmission(model_id: string, entries: string[], cache_opt_in: boolean = false, has_header: boolean = true): Request {
   return {
     model_id: model_id,
     request_payload: {
       entries: entries,
-      cache_opt_in: cache_opt_in
+      cache_opt_in: cache_opt_in,
+      has_header: has_header
     }
   }
 

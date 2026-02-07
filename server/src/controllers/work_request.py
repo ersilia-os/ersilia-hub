@@ -120,11 +120,18 @@ class WorkRequestController(Thread):
         if (
             work_request.request_payload is None
             or work_request.request_payload.entries is None
-            or len(work_request.request_payload.entries) == 0
+            or len(work_request.request_payload.entries)
+            == (1 if work_request.request_payload.has_header else 0)
         ):
             return False, "Invalid request body - Empty molecules payload"
 
-        if work_request.input_size > self.max_work_request_input_size:
+        if (
+            work_request.request_payload.has_header
+            and work_request.input_size - 1 > self.max_work_request_input_size
+        ) or (
+            not work_request.request_payload.has_header
+            and work_request.input_size > self.max_work_request_input_size
+        ):
             return False, "Invalid request body - Input Size Too Large"
 
         return True, None
