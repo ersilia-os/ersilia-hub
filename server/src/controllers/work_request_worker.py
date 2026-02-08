@@ -5,7 +5,7 @@ from string import ascii_lowercase
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set
 
 from controllers.job_submission_process import JobSubmissionProcess
 from controllers.model import ModelController
@@ -16,6 +16,7 @@ from controllers.model_instance_handler import (
 )
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from controllers.work_request_controller_stub import WorkRequestControllerStub
 from objects.model_integration import JobResult, JobStatus
 from objects.s3_integration import S3ResultObject
 from objects.work_request import WorkRequest, WorkRequestStatus
@@ -29,39 +30,6 @@ from python_framework.time import (
     utc_now,
     utc_now_datetime,
 )
-
-
-class WorkRequestControllerStub:
-    @staticmethod
-    def instance() -> "WorkRequestControllerStub":
-        pass
-
-    def update_request(
-        self,
-        work_request: WorkRequest,
-        enforce_same_server_id: bool = True,
-        expect_null_server_id: bool = False,  # for first time update
-        retry_count: int = 0,
-    ) -> Union[WorkRequest, None]:
-        pass
-
-    def mark_workrequest_failed(
-        self, work_request: WorkRequest, reason: Union[str, None] = None
-    ) -> WorkRequest:
-        pass
-
-    def get_requests(
-        self,
-        id: str = None,
-        model_ids: List[str] = None,
-        user_id: str = None,
-        request_date_from: str = None,
-        request_date_to: str = None,
-        request_statuses: List[str] = None,
-        server_ids: List[str] | None = None,
-        limit: int = 200,
-    ) -> List[WorkRequest]:
-        pass
 
 
 class WorkRequestWorker(Thread):
@@ -447,20 +415,26 @@ class WorkRequestWorker(Thread):
                 traceback.print_exc(file=stdout)
 
     def _handle_work_request_cache(self, work_request: WorkRequest) -> list[str]:
+        work_request_entries = (
+            work_request.request_payload.entries
+            if not work_request.request_payload.has_header
+            else work_request.request_payload.entries[1:]
+        )
+
         if (
             not ModelController.instance()
             .get_model(work_request.model_id)
             .details.cache_enabled
         ):
-            return work_request.request_payload.entries
+            return work_request_entries
 
         try:
             cached_results = ModelInputCache.instance().lookup_model_results(
-                work_request.model_id, work_request.request_payload.entries
+                work_request.model_id, work_request_entries
             )
 
             if len(cached_results) == 0:
-                return work_request.request_payload.entries
+                return work_request_entries
 
             non_cached_entries = list(
                 filter(
@@ -470,7 +444,7 @@ class WorkRequestWorker(Thread):
                             cached_results,
                         )
                     ),
-                    work_request.request_payload.entries,
+                    work_request_entries,
                 )
             )
 
@@ -486,7 +460,7 @@ class WorkRequestWorker(Thread):
                 return non_cached_entries
 
             job_result = ModelInputCache.instance().consolidate_results(
-                work_request.request_payload.entries, [], [], cached_results
+                work_request_entries, [], [], cached_results
             )
 
             if not self._upload_result_to_s3(work_request, job_result):
@@ -564,15 +538,22 @@ class WorkRequestWorker(Thread):
 
                     continue
 
+                work_request_entries = (
+                    work_request.request_payload.entries
+                    if not work_request.request_payload.has_header
+                    else work_request.request_payload.entries[1:]
+                )
+
                 instance = ModelInstanceController.instance().request_instance(
                     work_request.model_id,
                     str(work_request.id),
                     ignore_max_concurrent_limit=True,
                     job_submission_entries=(
-                        work_request.request_payload.entries
+                        work_request_entries
                         if non_cached_inputs is None or len(non_cached_inputs) == 0
                         else non_cached_inputs
                     ),
+                    work_request_controller=self._controller,
                 )
 
                 if instance is None:

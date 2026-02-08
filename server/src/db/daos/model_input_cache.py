@@ -1,9 +1,15 @@
+from enum import Enum
 from typing import Dict, Union
 
 import python_framework.db.dao.dao as BaseDAO
 from db.daos.shared_record import CountRecord
 from python_framework.db.dao.objects import DAOQuery, DAORecord
 from python_framework.time import timestamp_to_utc_timestamp
+
+
+class ModelInputCacheQuery(Enum):
+    DELETE_BY_USER_ID = "DELETE_BY_USER_ID"
+    DELETE_BY_MODEL_ID = "DELETE_BY_MODEL_ID"
 
 
 class ModelInputCacheRecord(DAORecord):
@@ -170,9 +176,38 @@ class ModelInputCacheDeleteByUserQuery(DAOQuery):
         return sql, field_map
 
 
+class ModelInputCacheDeleteByModelQuery(DAOQuery):
+    def __init__(
+        self,
+        model_id: str,
+    ):
+        super().__init__(CountRecord)
+
+        self.model_id = model_id
+
+    def to_sql(self):
+        field_map = {
+            "query_ModelId": self.model_id,
+        }
+
+        sql = """
+            WITH DeletedRecords AS (
+                DELETE FROM ModelInputCache
+                WHERE ModelId = :query_ModelId
+                RETURNING ModelId, InputHash
+            )
+            SELECT count(*) as count
+            FROM DeletedRecords
+        """
+
+        return sql, field_map
+
+
 class ModelInputCacheDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: ModelInputCacheSelectBatchQuery,
         BaseDAO.INSERT_QUERY_KEY: ModelInputCacheInsertQuery,
         BaseDAO.DELETE_QUERY_KEY: ModelInputCacheDeleteByUserQuery,
+        ModelInputCacheQuery.DELETE_BY_USER_ID: ModelInputCacheDeleteByUserQuery,
+        ModelInputCacheQuery.DELETE_BY_MODEL_ID: ModelInputCacheDeleteByModelQuery,
     }

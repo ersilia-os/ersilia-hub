@@ -17,8 +17,10 @@ from controllers.model_instance_log import (
     ModelInstanceLogController,
     ModelInstanceLogEvent,
 )
+from controllers.model_integration import ModelIntegrationController
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from controllers.work_request_controller_stub import WorkRequestControllerStub
 from db.daos.model_instance import (
     ModelInstanceDAO,
     ModelInstanceExtendedRecord,
@@ -102,6 +104,7 @@ class ModelInstanceHandler(Thread):
     _kill_event: Event
 
     _controller: ModelInstanceControllerStub
+    _work_request_controller: WorkRequestControllerStub | None
 
     model_id: str
     work_request_id: str
@@ -124,12 +127,14 @@ class ModelInstanceHandler(Thread):
         work_request_id: int,
         controller: ModelInstanceControllerStub,
         job_submission_entries: list[str] | None = None,
+        work_request_controller: WorkRequestControllerStub | None = None,
     ):
         Thread.__init__(self)
 
         self._logger_key = f"ModelInstanceHandler[{model_id}@{work_request_id}]"
         self._kill_event = Event()
         self._controller = controller
+        self._work_request_controller = work_request_controller
 
         self.model_id = model_id
         self.work_request_id = str(work_request_id)
@@ -717,6 +722,45 @@ class ModelInstanceHandler(Thread):
             )
             traceback.print_exc(file=stdout)
 
+    def update_work_request_job_metadata(self):
+        if self._work_request_controller is None:
+            return
+
+        if self.k8s_pod is None:
+            ContextLogger.warn(
+                self._logger_key,
+                "Failed to retrieve model version - K8sPod is not defined",
+            )
+
+            return
+
+        attempt_count = 0
+
+        while attempt_count < 2:
+            model_version = ModelIntegrationController.instance().get_model_version(
+                self.model_id, self.work_request_id, self.k8s_pod.ip
+            )
+
+            if model_version is not None:
+                try:
+                    self._work_request_controller.update_work_request_metadata(
+                        int(self.work_request_id), job_model_version=model_version
+                    )
+
+                    break
+                except:
+                    ContextLogger.error(
+                        self._logger_key,
+                        "Failed to update WorkRequest ModelVersion, exc = [%s]"
+                        % repr(exc_info()),
+                    )
+                    traceback.print_exc(file=stdout)
+
+            if self._wait_or_kill(5):
+                break
+
+            attempt_count += 1
+
     def run(self):
         ContextLogger.info(self._logger_key, "Starting handler")
 
@@ -759,6 +803,8 @@ class ModelInstanceHandler(Thread):
                             self._logger_key,
                             f"[pre-job submission] pod state.phase = {self.k8s_pod.state.phase}",
                         )
+
+                        self.update_work_request_job_metadata()
 
                         if not self._submit_job():
                             ModelInstanceLogController.instance().log_instance(
@@ -863,6 +909,7 @@ class ModelInstanceController:
         work_request_id: str,
         ignore_max_concurrent_limit: bool = False,
         job_submission_entries: list[str] | None = None,
+        work_request_controller: WorkRequestControllerStub | None = None,
     ) -> ModelInstanceHandler:
         if not ignore_max_concurrent_limit and self.max_instances_limit_reached():
             raise Exception("Max Concurrent Model Instances reached")
@@ -873,7 +920,11 @@ class ModelInstanceController:
             return self.model_instance_handlers[key]
 
         handler = ModelInstanceHandler(
-            model_id, work_request_id, self, job_submission_entries
+            model_id,
+            work_request_id,
+            self,
+            job_submission_entries,
+            work_request_controller,
         )
         self.model_instance_handlers[key] = handler
         handler.start()

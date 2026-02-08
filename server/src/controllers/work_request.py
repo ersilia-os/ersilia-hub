@@ -120,11 +120,18 @@ class WorkRequestController(Thread):
         if (
             work_request.request_payload is None
             or work_request.request_payload.entries is None
-            or len(work_request.request_payload.entries) == 0
+            or len(work_request.request_payload.entries)
+            == (1 if work_request.request_payload.has_header else 0)
         ):
             return False, "Invalid request body - Empty molecules payload"
 
-        if work_request.input_size > self.max_work_request_input_size:
+        if (
+            work_request.request_payload.has_header
+            and work_request.input_size - 1 > self.max_work_request_input_size
+        ) or (
+            not work_request.request_payload.has_header
+            and work_request.input_size > self.max_work_request_input_size
+        ):
             return False, "Invalid request body - Input Size Too Large"
 
         return True, None
@@ -200,13 +207,14 @@ class WorkRequestController(Thread):
         if enforce_same_session_id:
             # we first load the request to ensure it belongs to the session
             existing_work_request = self.get_requests(
-                id=work_request.id, session_id=work_request.metadata.session_id
+                id=work_request.id,
+                session_id=work_request.metadata.tracking_data.session_id,
             )
 
             if existing_work_request is None or len(existing_work_request) == 0:
                 ContextLogger.warn(
                     self._logger_key,
-                    f"WorkRequest [{work_request.id}] with session_id [{work_request.metadata.session_id}] not found",
+                    f"WorkRequest [{work_request.id}] with session_id [{work_request.metadata.tracking_data.session_id}] not found",
                 )
 
                 return None
@@ -517,6 +525,34 @@ class WorkRequestController(Thread):
                 traceback.print_exc(file=stdout)
 
         return True
+
+    def update_work_request_metadata(
+        self, work_request_id: int, job_model_version: str | None = None
+    ) -> WorkRequest:
+        update_args: dict[str, str | int] = {
+            "id": work_request_id,
+        }
+
+        if job_model_version is not None:
+            update_args["job_metadata"] = '{"modelVersion": "%s"}' % job_model_version
+
+        results = WorkRequestDAO.execute_query(
+            WorkRequestQuery.UPDATE_JOB_METADATA,
+            ApplicationConfig.instance().database_config,
+            query_kwargs=update_args,
+        )
+
+        if results is None or len(results) == 0:
+            raise Exception("Update returned zero records")
+
+        updated_work_request = WorkRequest.init_from_record(results[0])
+
+        ContextLogger.debug(
+            self._logger_key,
+            "WorkRequest metadata update persisted with id = [%s]" % work_request_id,
+        )
+
+        return updated_work_request
 
     def run(self):
         ContextLogger.info(self._logger_key, "Controller started")

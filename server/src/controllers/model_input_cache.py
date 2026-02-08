@@ -5,7 +5,11 @@ from sys import exc_info, stdout
 from typing import Any
 
 from config.application_config import ApplicationConfig
-from db.daos.model_input_cache import ModelInputCacheDAO, ModelInputCacheRecord
+from db.daos.model_input_cache import (
+    ModelInputCacheDAO,
+    ModelInputCacheQuery,
+    ModelInputCacheRecord,
+)
 from db.daos.work_request_result_cache_temp import (
     WorkRequestResultCacheTempDAO,
     WorkRequestResultCacheTempRecord,
@@ -254,3 +258,20 @@ class ModelInputCache:
         return self.consolidate_results(
             work_request_ordered_inputs, job_inputs, job_results, cached_results
         )
+
+    def clear_model_cached_results(self, model_id: str) -> bool:
+        try:
+            deleted = ModelInputCacheDAO.execute_query(
+                ModelInputCacheQuery.DELETE_BY_MODEL_ID,
+                ApplicationConfig.instance().database_config,
+                return_count_only=True,
+                query_kwargs={"model_id": model_id},
+            )
+
+            return True
+        except:
+            raise Exception(
+                f"Failed to clear results cache for [{model_id}], error = [{exc_info()!r}]"
+            )
+
+            return False

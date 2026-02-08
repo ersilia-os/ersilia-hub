@@ -52,6 +52,7 @@ export class RequestViewComponent implements OnInit {
   loading: WritableSignal<boolean> = signal(true);
   downloadingResult: WritableSignal<boolean> = signal(false);
   request: WritableSignal<RequestDisplay | undefined> = signal(undefined);
+  modelVersion: WritableSignal<string | undefined> = signal(undefined);
   model: Signal<Model | undefined>;
 
   canDownloadJsonResult: boolean = false;
@@ -76,6 +77,11 @@ export class RequestViewComponent implements OnInit {
 
     if (this.request() == undefined) {
       this.request.set(this.requestData);
+
+      if (this.requestData.metadata != null && this.requestData.metadata.job_data != null) {
+        this.modelVersion.set(this.requestData.metadata.job_data.model_version);
+      }
+
     }
 
     if (this.request()?.request_status == RequestStatus.COMPLETED || this.request()?.request_status == RequestStatus.FAILED) {
@@ -121,6 +127,10 @@ export class RequestViewComponent implements OnInit {
       .subscribe({
         next: result => {
           this.request.set(mapRequest(result));
+
+          if (result.metadata != null && result.metadata.job_data != null) {
+            this.modelVersion.set(result.metadata.job_data.model_version);
+          }
 
           if (download_result) {
             if (this.request()?.has_result && result.result != null) {

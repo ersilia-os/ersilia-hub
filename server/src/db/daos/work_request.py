@@ -11,6 +11,7 @@ class WorkRequestQuery(Enum):
     SELECT_FILTERED = "SELECT_FILTERED"
     DELETE_BY_USER = "DELETE_BY_USER"
     DELETE_BY_ANON_USER = "DELETE_BY_ANON_USER"
+    UPDATE_JOB_METADATA = "UPDATE_JOB_METADATA"
 
 
 class WorkRequestRecord(DAORecord):
@@ -201,7 +202,11 @@ class WorkRequestSelectFilteredQuery(DAOQuery):
 
         if self.session_id is not None:
             custom_filters.append(
-                'WorkRequest.Metadata @> \'{"sessionId": "%s"}\'' % self.session_id
+                ('(WorkRequest.Metadata @> \'{"sessionId": "%s"}\'' % self.session_id)
+                + (
+                    ' OR WorkRequest.Metadata @> \'{"trackingData": {"sessionId": "%s"}}\')'
+                    % self.session_id
+                )
             )
 
         if self.server_ids is not None:
@@ -665,6 +670,69 @@ class WorkRequestDeleteByAnonUserQuery(DAOQuery):
         return sql, field_map
 
 
+class WorkRequestUpdateJobMetadataQuery(DAOQuery):
+    def __init__(
+        self,
+        id: str,
+        job_metadata: str,
+    ):
+        super().__init__(WorkRequestRecord)
+
+        self.id = id
+        self.job_metadata = job_metadata
+
+    def to_sql(self):
+        field_map = {
+            "query_Id": self.id,
+        }
+
+        sql = """
+            WITH WorkRequestUpdate AS (
+                UPDATE WorkRequest 
+                SET
+                    Metadata = jsonb_set(Metadata, '{jobData}', '%s')
+                WHERE Id = :query_Id
+                RETURNING
+                    Id,
+                    ModelId,
+                    UserId,
+                    RequestDate::text,
+                    Metadata::text,
+                    RequestStatus,
+                    RequestStatusReason,
+                    ModelJobId,
+                    LastUpdated::text,
+                    PodReadyTimestamp::text,
+                    JobSubmissionTimestamp::text,
+                    ProcessedTimestamp::text,
+                    InputSize,
+                    ServerId
+            )
+
+            SELECT 
+                WorkRequestUpdate.Id,
+                WorkRequestUpdate.ModelId,
+                WorkRequestUpdate.UserId,
+                WorkRequestData.RequestPayload::text,
+                WorkRequestUpdate.RequestDate::text,
+                WorkRequestUpdate.Metadata::text,
+                WorkRequestUpdate.RequestStatus,
+                WorkRequestUpdate.RequestStatusReason,
+                WorkRequestUpdate.ModelJobId,
+                WorkRequestUpdate.LastUpdated::text,
+                WorkRequestUpdate.PodReadyTimestamp::text,
+                WorkRequestUpdate.JobSubmissionTimestamp::text,
+                WorkRequestUpdate.ProcessedTimestamp::text,
+                WorkRequestUpdate.InputSize,
+                WorkRequestUpdate.ServerId
+            FROM WorkRequestUpdate
+            LEFT JOIN WorkRequestData
+                ON WorkRequestUpdate.Id = WorkRequestData.RequestId
+        """ % (self.job_metadata)
+
+        return sql, field_map
+
+
 class WorkRequestDAO(BaseDAO.DAO):
     queries = {
         BaseDAO.SELECT_ALL_QUERY_KEY: WorkRequestSelectAllQuery,
@@ -673,4 +741,5 @@ class WorkRequestDAO(BaseDAO.DAO):
         WorkRequestQuery.DELETE_BY_USER: WorkRequestDeleteByUserQuery,
         WorkRequestQuery.DELETE_BY_ANON_USER: WorkRequestDeleteByAnonUserQuery,
         WorkRequestQuery.SELECT_FILTERED: WorkRequestSelectFilteredQuery,
+        WorkRequestQuery.UPDATE_JOB_METADATA: WorkRequestUpdateJobMetadataQuery,
     }

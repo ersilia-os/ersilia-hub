@@ -9,24 +9,27 @@ from pydantic import BaseModel, Field
 class WorkRequestPayloadModel(BaseModel):
     entries: List[str]
     cache_opt_in: bool = False
+    has_header: bool = True
 
     def to_object(self) -> Dict[str, Any]:
-        return {"entries": self.entries, "cacheOptIn": self.cache_opt_in}
-
-
-# simple check if line contains a comma
-# NOTE: we might improve this later, once we have a regex for SMILES
-def check_payload_line_is_header(line: str) -> bool:
-    return "," in line
+        return {
+            "entries": self.entries,
+            "cacheOptIn": self.cache_opt_in,
+            "hasHeader": self.has_header,
+        }
 
 
 class WorkRequestPayload:
     entries: List[str]
     cache_opt_in: bool
+    has_header: bool
 
-    def __init__(self, entries: List[str], cache_opt_in: bool = False):
+    def __init__(
+        self, entries: List[str], cache_opt_in: bool = False, has_header: bool = True
+    ):
         self.entries = entries
         self.cache_opt_in = cache_opt_in
+        self.has_header = has_header
 
     @staticmethod
     def from_object(obj: Dict[str, Any]) -> "WorkRequestPayload":
@@ -34,19 +37,16 @@ class WorkRequestPayload:
             raise Exception("Invalid request payload - Empty molecules")
 
         return WorkRequestPayload(
-            list(
-                filter(
-                    lambda line: not check_payload_line_is_header(line),
-                    map(lambda e: e.strip(), obj["entries"]),
-                )
-            ),
+            list(map(lambda e: e.strip(), obj["entries"])),
             False if "cacheOptIn" not in obj else obj["cacheOptIn"],
+            False if "hasHeader" not in obj else obj["hasHeader"],
         )
 
     def to_object(self) -> Dict[str, Any]:
         return {
             "entries": self.entries,
             "cacheOptIn": self.cache_opt_in,
+            "hasHeader": self.has_header,
         }
 
 
@@ -73,26 +73,29 @@ class WorkRequestStatus(Enum):
 
 
 # NOT RETURNED VIA API
-class WorkRequestMetadata:
-    user_agent: str
-    session_id: str
-    host: str
+class TrackingData:
+    user_agent: str | None
+    session_id: str | None
+    host: str | None
 
     def __init__(
         self,
-        user_agent: str,
-        session_id: str,
-        host: str = None,
+        user_agent: str | None,
+        session_id: str | None,
+        host: str | None = None,
     ):
         self.user_agent = user_agent
         self.session_id = session_id
         self.host = host
 
     @staticmethod
-    def from_object(obj: Dict[str, Any]) -> "WorkRequestMetadata":
-        return WorkRequestMetadata(
-            obj["userAgent"],
-            obj["sessionId"],
+    def from_object(obj: Dict[str, Any]) -> "TrackingData":
+        if obj is None:
+            return TrackingData(None, None, None)
+
+        return TrackingData(
+            None if "userAgent" not in obj else obj["userAgent"],
+            None if "sessionId" not in obj else obj["sessionId"],
             None if "host" not in obj else obj["host"],
         )
 
@@ -101,6 +104,62 @@ class WorkRequestMetadata:
             "userAgent": self.user_agent,
             "sessionId": self.session_id,
             "host": self.host,
+        }
+
+
+class JobMetadata:
+    model_version: str
+
+    def __init__(self, model_version: str) -> None:
+        self.model_version = model_version
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "JobMetadata":
+        if obj is None:
+            return JobMetadata(None)
+
+        return JobMetadata(obj["modelVersion"])
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "modelVersion": self.model_version,
+        }
+
+
+class WorkRequestMetadata:
+    tracking_data: TrackingData | None
+    job_data: JobMetadata | None
+
+    def __init__(
+        self,
+        tracking_data: TrackingData | None,
+        job_data: JobMetadata | None,
+    ) -> None:
+        self.tracking_data = tracking_data
+        self.job_data = job_data
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "WorkRequestMetadata":
+        tracking_data: TrackingData | None = None
+        job_data: JobMetadata | None = None
+
+        # backwards compatibility check
+        if "userAgent" in obj or "sessionId" in obj:
+            tracking_data = TrackingData.from_object(obj)
+        elif "trackingData" in obj:
+            tracking_data = TrackingData.from_object(obj["trackingData"])
+
+        return WorkRequestMetadata(
+            tracking_data,
+            None if "jobData" not in obj else JobMetadata.from_object(obj["jobData"]),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "trackingData": (
+                None if self.tracking_data is None else self.tracking_data.to_object()
+            ),
+            "jobData": (None if self.job_data is None else self.job_data.to_object()),
         }
 
 
@@ -314,12 +373,45 @@ class WorkRequestCreateModel(BaseModel):
 WorkRequestResult = List[Union[str, Dict[str, Any]]]
 
 
+class JobMetadataModel(BaseModel):
+    model_version: str | None = None
+
+    @staticmethod
+    def from_object(metadata: JobMetadata | None) -> "JobMetadataModel":
+        if metadata is None:
+            return JobMetadataModel(model_version=None)
+
+        return JobMetadataModel(model_version=metadata.model_version)
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "modelVersion": self.model_version,
+        }
+
+
+class WorkRequestMetadataModel(BaseModel):
+    # NOTE: we deliberately do not add TrackingData here, as it might be sensitive
+    job_data: JobMetadataModel | None
+
+    @staticmethod
+    def from_object(metadata: WorkRequestMetadata) -> "WorkRequestMetadataModel":
+        return WorkRequestMetadataModel(
+            job_data=JobMetadataModel.from_object(metadata.job_data)
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "jobData": (None if self.job_data is None else self.job_data.to_object()),
+        }
+
+
 class WorkRequestModel(BaseModel):
     id: int | None = None
     model_id: str
     user_id: str
     request_payload: WorkRequestPayloadModel | None = None
     request_date: str | None = None
+    metadata: WorkRequestMetadataModel | None = None
     request_status: WorkRequestStatus | None = None
     request_status_reason: str | None = None
     model_job_id: str | None = None
@@ -342,6 +434,7 @@ class WorkRequestModel(BaseModel):
                 else self.request_payload.to_object()
             ),
             "requestDate": self.request_date,
+            "metadata": (None if self.metadata is None else self.metadata.to_object()),
             "requestStatus": str(self.request_status),
             "requestStatusReason": self.request_status_reason,
             "modelJobId": self.model_job_id,
@@ -368,6 +461,11 @@ class WorkRequestModel(BaseModel):
                 )
             ),
             request_date=workrequest.request_date,
+            metadata=(
+                None
+                if workrequest.metadata is None
+                else WorkRequestMetadataModel.from_object(workrequest.metadata)
+            ),
             request_status=workrequest.request_status,
             request_status_reason=workrequest.request_status_reason,
             model_job_id=workrequest.model_job_id,

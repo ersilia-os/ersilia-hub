@@ -9,10 +9,19 @@ export enum RequestStatus {
 export interface RequestPayload {
   entries: string[];
   cache_opt_in: boolean;
+  has_header: boolean;
 }
 
 export interface RequestList {
   items: Request[];
+}
+
+export interface JobMetadata {
+  model_version: string | undefined;
+}
+
+export interface WorkRequestMetadata {
+  job_data: JobMetadata | undefined;
 }
 
 export interface Request {
@@ -21,6 +30,7 @@ export interface Request {
   user_id?: string;
   request_payload: RequestPayload;
   request_date?: Date;
+  metadata?: WorkRequestMetadata;
   request_status?: RequestStatus;
   request_status_reason?: string;
   model_job_id?: string;
@@ -36,12 +46,13 @@ export function RequestFromApi(request: Request): Request {
   }
 }
 
-export function RequestSubmission(model_id: string, entries: string[], cache_opt_in: boolean = false): Request {
+export function RequestSubmission(model_id: string, entries: string[], cache_opt_in: boolean = false, has_header: boolean = true): Request {
   return {
     model_id: model_id,
     request_payload: {
       entries: entries,
-      cache_opt_in: cache_opt_in
+      cache_opt_in: cache_opt_in,
+      has_header: has_header
     }
   }
 

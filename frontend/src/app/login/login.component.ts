@@ -37,7 +37,7 @@ export class LoginComponent implements OnInit {
     this.lastAnonSessionId = this.authService.getLastAnonSessionId();
   }
 
-  loginFormState: 'ANON_LOGIN' | 'SIGN_UP' | 'LOGIN' = 'ANON_LOGIN';
+  loginFormState: 'ANON_LOGIN' | 'SIGN_UP' | 'LOGIN' = 'LOGIN';
 
   // anon login form
   anonSessionIdControl = new FormControl('', [Validators.required, (control) => {

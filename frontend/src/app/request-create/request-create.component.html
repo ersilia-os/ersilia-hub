@@ -8,21 +8,21 @@
           <div class="filter free-text">
               <mat-form-field>
                   <mat-label>All Fields</mat-label>
-                  <input matInput [(ngModel)]="filterFreeText">
+                  <input matInput [(ngModel)]="filterFreeText" [disabled]="modelSelectionDisabled">
               </mat-form-field>
           </div>
 
           <div class="filter id">
               <mat-form-field>
                   <mat-label>Id</mat-label>
-                  <input matInput [(ngModel)]="filterId">
+                  <input matInput [(ngModel)]="filterId" [disabled]="modelSelectionDisabled">
               </mat-form-field>
           </div>
 
           <div class="filter description">
               <mat-form-field>
                   <mat-label>Description</mat-label>
-                  <input matInput [(ngModel)]="filterDescription">
+                  <input matInput [(ngModel)]="filterDescription" [disabled]="modelSelectionDisabled">
               </mat-form-field>
           </div>
       </div>
@@ -34,7 +34,7 @@
               }
               <mat-form-field>
                   <mat-label>Select a Model</mat-label>
-                  <mat-select [(value)]="selectedModel">
+                  <mat-select [(value)]="selectedModel" [disabled]="modelSelectionDisabled">
                       @for (model of filteredModels(); track model) {
                       <mat-option [value]="model.id">
                         <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{
@@ -63,7 +63,7 @@
       <div class="entries">
           <mat-form-field class="smiles">
               <mat-label>SMILES</mat-label>
-              <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings"
+              <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings with a Header line"
                   [(ngModel)]="entriesString"></textarea>
           </mat-form-field>
       </div>
