@@ -124,6 +124,59 @@ class ModelIntegrationController:
 
             return False
 
+    def get_model_version(
+        self, model_id: str, request_id: str, host: str
+    ) -> str | None:
+        ContextLogger.debug(
+            self._logger_key,
+            "Checking model version for model [%s], request_id [%s] using host = [%s]..."
+            % (model_id, request_id, host),
+        )
+
+        _host, _port = self._proxied_host_and_port(
+            model_id, request_id, host, self._model_port
+        )
+
+        try:
+            response = get(
+                url=f"http://{_host}:{_port}/models/status",
+                timeout=self._request_timeout,
+            )
+
+            if response.status_code < 200 or response.status_code >= 300:
+                ContextLogger.warn(
+                    self._logger_key,
+                    "Model info response = [%d] for model [%s], request_id [%s] using host = [%s]..."
+                    % (response.status_code, model_id, request_id, host),
+                )
+                return None
+
+            response_json = response.json()
+
+            # find model and return version
+            for model in response_json:
+                if "modelName" not in model or model["modelName"] != model_id:
+                    continue
+
+                if "modelVersion" not in model:
+                    continue
+
+                return str(model["modelVersion"])
+
+            ContextLogger.warn(
+                self._logger_key, "Cannot find model [%s] in status response" % model_id
+            )
+
+            return None
+        except:
+            ContextLogger.error(
+                ModelIntegrationController.instance()._logger_key,
+                "Failed to retrieve instance info for model [%s], request_id [%s] using host = [%s], error = [%s]"
+                % (model_id, request_id, _host, repr(exc_info())),
+            )
+
+            return None
+
     def wait_for_model_readiness(
         self, model_id: str, request_id: str, host: str, timeout: float = 60
     ) -> bool:

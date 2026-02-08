@@ -16,12 +16,21 @@ export interface RequestList {
   items: Request[];
 }
 
+export interface JobMetadata {
+  model_version: string | undefined;
+}
+
+export interface WorkRequestMetadata {
+  job_data: JobMetadata | undefined;
+}
+
 export interface Request {
   id?: number;
   model_id: string;
   user_id?: string;
   request_payload: RequestPayload;
   request_date?: Date;
+  metadata?: WorkRequestMetadata;
   request_status?: RequestStatus;
   request_status_reason?: string;
   model_job_id?: string;

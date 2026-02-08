@@ -81,7 +81,12 @@
             @if (model() != undefined) {
             <div class="field">
                 <div class="label">Model Id</div>
-                <div class="contents model-id" (click)="openDetailsDialog(model())">{{ model()!.id }}</div>
+                <div class="contents model-id" (click)="openDetailsDialog(model())">
+                  {{ model()!.id }}
+                  @if (modelVersion()) {
+                    &#64; v={{ modelVersion() }}
+                  }
+                </div>
             </div>
 
             @if (model()!.details.identification_details != null) {

@@ -10,11 +10,13 @@ from library.fastapi_root import FastAPIRoot
 from objects.api import AuthType
 from objects.rbac import Permission
 from objects.work_request import (
+    TrackingData,
     WorkRequest,
     WorkRequestCreateModel,
     WorkRequestListModel,
     WorkRequestLoadAllFilters,
     WorkRequestLoadFilters,
+    WorkRequestMetadata,
     WorkRequestModel,
     WorkRequestStatus,
     WorkRequestUpdateModel,
@@ -59,9 +61,13 @@ def create_request(
         raise HTTPException(status_code=400, detail=repr(exc_info()))
 
     new_work_request.user_id = auth_details.user_session.userid
-    new_work_request.metadata.session_id = auth_details.user_session.session_id
-    new_work_request.metadata.user_agent = tracking_details.user_agent
-    new_work_request.metadata.host = tracking_details.host
+
+    tracking_data = TrackingData(
+        tracking_details.user_agent,
+        session_id=auth_details.user_session.session_id,
+        host=tracking_details.host,
+    )
+    new_work_request.metadata = WorkRequestMetadata(tracking_data, None)
 
     valid, reason = WorkRequestController.instance().validate_request(new_work_request)
 

@@ -5,7 +5,7 @@ from string import ascii_lowercase
 from sys import exc_info, stdout
 from threading import Event, Thread
 from time import sleep
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set
 
 from controllers.job_submission_process import JobSubmissionProcess
 from controllers.model import ModelController
@@ -16,6 +16,7 @@ from controllers.model_instance_handler import (
 )
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from controllers.work_request_controller_stub import WorkRequestControllerStub
 from objects.model_integration import JobResult, JobStatus
 from objects.s3_integration import S3ResultObject
 from objects.work_request import WorkRequest, WorkRequestStatus
@@ -29,39 +30,6 @@ from python_framework.time import (
     utc_now,
     utc_now_datetime,
 )
-
-
-class WorkRequestControllerStub:
-    @staticmethod
-    def instance() -> "WorkRequestControllerStub":
-        pass
-
-    def update_request(
-        self,
-        work_request: WorkRequest,
-        enforce_same_server_id: bool = True,
-        expect_null_server_id: bool = False,  # for first time update
-        retry_count: int = 0,
-    ) -> Union[WorkRequest, None]:
-        pass
-
-    def mark_workrequest_failed(
-        self, work_request: WorkRequest, reason: Union[str, None] = None
-    ) -> WorkRequest:
-        pass
-
-    def get_requests(
-        self,
-        id: str = None,
-        model_ids: List[str] = None,
-        user_id: str = None,
-        request_date_from: str = None,
-        request_date_to: str = None,
-        request_statuses: List[str] = None,
-        server_ids: List[str] | None = None,
-        limit: int = 200,
-    ) -> List[WorkRequest]:
-        pass
 
 
 class WorkRequestWorker(Thread):
@@ -585,6 +553,7 @@ class WorkRequestWorker(Thread):
                         if non_cached_inputs is None or len(non_cached_inputs) == 0
                         else non_cached_inputs
                     ),
+                    work_request_controller=self._controller,
                 )
 
                 if instance is None:
