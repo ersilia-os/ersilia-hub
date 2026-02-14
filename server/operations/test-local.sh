@@ -58,6 +58,10 @@ export MODEL_HUB_DETAILS_BASE_URL="https://www.ersilia.io/v1/datasource/airtable
 # TODO: add to SECRET
 export PASSWORD_SALT="temptesting"
 
+if [ $(ls -1 "operations" | grep -c "secrets.sh") -eq "1" ]; then
+  source operations/secrets.sh
+fi
+
 echo "\nStarting Python app..."
 
 python3 src/app.py

@@ -502,8 +502,14 @@ class WorkRequestModel(BaseModel):
 
         result_index = 0
 
+        payload_entries = (
+            self.request_payload.entries[1:]
+            if self.request_payload.has_header
+            else self.request_payload.entries
+        )
+
         for result in self.result:
-            csv_value_line = [self.request_payload.entries[result_index]]
+            csv_value_line = [payload_entries[result_index]]
 
             for key, value in sorted(result.items(), key=lambda r: r[0]):
                 if result_index == 0:
