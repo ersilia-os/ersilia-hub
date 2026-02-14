@@ -174,11 +174,17 @@ class WorkRequestWorker(Thread):
                 instance=instance,
             )
 
+        job_payload_entries = (
+            work_request.request_payload.entries[1:]
+            if work_request.request_payload.has_header
+            else work_request.request_payload.entries
+        )
+
         if has_cached_results:
             _result_content = (
                 ModelInputCache.instance().hydrate_job_result_with_cached_results(
                     work_request.id,
-                    work_request.request_payload.entries,
+                    job_payload_entries,
                     non_cached_inputs,
                     _result_content,
                 )
@@ -191,7 +197,7 @@ class WorkRequestWorker(Thread):
             except:
                 ContextLogger.warn(self._logger_key, repr(exc_info()))
 
-        if len(_result_content) != len(work_request.request_payload.entries):
+        if len(_result_content) != len(job_payload_entries):
             return self._process_failed_job(
                 work_request,
                 reason="Model result count not the same as model input count",
