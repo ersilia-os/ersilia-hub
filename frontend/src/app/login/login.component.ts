@@ -8,11 +8,12 @@ import { NotificationsService, Notification } from "../notifications/notificatio
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { FormControl, FormGroupDirective, FormsModule, NgForm, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatInputModule } from "@angular/material/input";
-import { User } from "../../objects/user";
+import { ForgotPasswordRequest, User } from "../../objects/user";
 import { ErrorStateMatcher } from "@angular/material/core";
 import { generateGuid } from "../utils/random";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Clipboard } from '@angular/cdk/clipboard';
+import { UsersService } from "../../services/users.service";
 
 @Component({
   standalone: true,
@@ -28,6 +29,7 @@ export class LoginComponent implements OnInit {
 
   busy: WritableSignal<boolean> = signal(false);
   private authService = inject(AuthService);
+  private userAdminService = inject(UsersService);
   private notificationsService = inject(NotificationsService);
   private clipboard = inject(Clipboard);
 
@@ -37,7 +39,7 @@ export class LoginComponent implements OnInit {
     this.lastAnonSessionId = this.authService.getLastAnonSessionId();
   }
 
-  loginFormState: 'ANON_LOGIN' | 'SIGN_UP' | 'LOGIN' = 'LOGIN';
+  loginFormState: 'ANON_LOGIN' | 'SIGN_UP' | 'LOGIN' | 'FORGOT_PASSWORD' = 'LOGIN';
 
   // anon login form
   anonSessionIdControl = new FormControl('', [Validators.required, (control) => {
@@ -128,7 +130,7 @@ export class LoginComponent implements OnInit {
     return null;
   }]);
 
-  signupEmailControl = new FormControl('', [Validators.email]);
+  signupEmailControl = new FormControl('', [Validators.required, Validators.email]);
 
   signupPasswordControl = new FormControl('', [Validators.required, (control) => {
     if (!control.dirty) {
@@ -173,6 +175,25 @@ export class LoginComponent implements OnInit {
 
     return null;
   }]);
+
+  // Forgot Password
+  forgotPasswordUsernameControl = new FormControl('', [Validators.required, (control) => {
+    if (!control.dirty) {
+      return null;
+    }
+
+    const value = control.getRawValue();
+
+    if (value == null || value.length < 3) {
+      return {
+        'validation': 'Invalid Username'
+      }
+    }
+
+    return null;
+  }]);
+
+  forgotPasswordEmailControl = new FormControl('', [Validators.required, Validators.email]);
 
   formControlErrorStateMatcher = new MyErrorStateMatcher()
 
@@ -325,6 +346,57 @@ export class LoginComponent implements OnInit {
     this.loginFormState = 'LOGIN';
     this.clearSignUpForm();
   }
+
+  // Forgot Password Form
+  openForgotPasswordForm() {
+    this.loginFormState = 'FORGOT_PASSWORD';
+  }
+
+  isForgotPasswordFormValid(): boolean {
+    return this.forgotPasswordUsernameControl.valid
+      && this.forgotPasswordEmailControl.valid
+  }
+
+  clearForgotPasswordForm() {
+    this.forgotPasswordUsernameControl.reset();
+    this.forgotPasswordEmailControl.reset();
+  }
+
+  canSubmitPasswordReset(): boolean {
+    return !this.busy() && this.isForgotPasswordFormValid();
+  }
+
+  submitPasswordReset() {
+    if (!this.canSubmitPasswordReset()) {
+      return;
+    }
+
+    this.busy.set(true);
+
+    let forgotPassword: ForgotPasswordRequest = {
+      username: this.forgotPasswordUsernameControl.getRawValue()!,
+      email: this.forgotPasswordEmailControl.getRawValue()!
+    };
+    this.userAdminService.forgotPassword(forgotPassword)
+      .subscribe({
+        next: result => {
+          this.notificationsService.pushNotification(Notification('SUCCESS', 'Password Reset request sent'));
+          this.loginFormState = 'LOGIN';
+          this.clearSignUpForm();
+          this.busy.set(false);
+        },
+        error: (err: Error) => {
+          this.notificationsService.pushNotification(Notification('ERROR', 'Failed to send password reset request'));
+          this.busy.set(false);
+        }
+      });
+  }
+
+  cancelForgotPassword() {
+    this.loginFormState = 'LOGIN';
+    this.clearForgotPasswordForm();
+  }
+
 }
 
 export class MyErrorStateMatcher implements ErrorStateMatcher {

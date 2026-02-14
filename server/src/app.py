@@ -19,6 +19,7 @@ from controllers.node_monitor import NodeMonitorController
 from controllers.recommendation_engine import RecommendationEngine
 from controllers.s3_integration import S3IntegrationController
 from controllers.server import ServerController
+from controllers.slack_integration import SlackIntegration
 from controllers.user_admin import UserAdminController
 from controllers.work_request import WorkRequestController
 from library.fastapi_root import FastAPIRoot
@@ -93,6 +94,7 @@ def init():
     UserAdminController.initialize()
     AuthController.initialize()
     RecommendationEngine.initialize()
+    SlackIntegration.initialize()
 
     FastAPIRoot.initialize(
         ApplicationConfig.instance().application_name,

@@ -261,3 +261,8 @@ class UserPasswordUpdateModel(BaseModel):
 
 class UserPermissionsUpdateModel(BaseModel):
     permissions: list[str] | None = None
+
+
+class UserForgotPasswordModel(BaseModel):
+    username: str
+    email: str

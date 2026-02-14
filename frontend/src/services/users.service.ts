@@ -5,7 +5,7 @@ import { AuthType, LoginResponse, mapUserSessionFromApi, Permission, userLoginAu
 import { catchError, map, Observable, throwError, timer } from "rxjs";
 import { mapHttpError } from "../app/utils/api";
 import { environment } from "../environments/environment";
-import { User, UsersFilter, mapUserFromApi } from "../objects/user";
+import { ForgotPasswordRequest, User, UsersFilter, mapUserFromApi } from "../objects/user";
 import { APIFiltersMap, APIList } from "../objects/common";
 
 
@@ -102,6 +102,18 @@ export class UsersService {
       current_password: currentPassword,
       force: force,
     })
+      .pipe(
+        map(response => {
+          return;
+        }),
+        catchError((error: HttpErrorResponse) => {
+          return throwError(() => new Error(mapHttpError(error)));
+        })
+      );
+  }
+
+  forgotPassword(request: ForgotPasswordRequest): Observable<void> {
+    return this.http.post(`${environment.apiHost}/api/users/forgot-password`, request)
       .pipe(
         map(response => {
           return;

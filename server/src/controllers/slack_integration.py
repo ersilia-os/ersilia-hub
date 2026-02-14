@@ -1,5 +1,15 @@
+from sys import exc_info
+from time import sleep
+
 from python_framework.config_utils import load_environment_variable
 from python_framework.logger import ContextLogger, LogLevel
+from requests import post
+
+SLACK_MSG_TEMPLATE_PASSWORD_RESET = """
+Password reset requested by user [`%(username)s`] with email [<mailto:%(email)s|%(email)s>].
+
+<%(link)s|Reset password link>
+"""
 
 
 class SlackIntegration:
@@ -7,14 +17,16 @@ class SlackIntegration:
 
     _logger_key: str = None
 
-    channel_id: str
     bot_token: str
+    channel_id: str
+    slack_base_url: str
 
-    def __init__(self, bot_token: str, channel_id: str):
+    def __init__(self, bot_token: str, channel_id: str, slack_base_url: str):
         self._logger_key = "SlackIntegration"
 
         self.bot_token = bot_token
         self.channel_id = channel_id
+        self.slack_base_url = slack_base_url
 
         ContextLogger.instance().create_logger_for_context(
             self._logger_key,
@@ -33,6 +45,9 @@ class SlackIntegration:
         SlackIntegration._instance = SlackIntegration(
             load_environment_variable("SLACK_TOKEN", error_on_none=True),
             load_environment_variable("SLACK_CHANNEL_ID", error_on_none=True),
+            load_environment_variable(
+                "SLACK_BASE_URL", default="https://slack.com/api"
+            ),
         )
 
         return SlackIntegration._instance
@@ -41,30 +56,61 @@ class SlackIntegration:
     def instance() -> "SlackIntegration":
         return SlackIntegration._instance
 
-    def send_message(self, message: str):
-        pass
+    def send_text_message(self, channel_id: str, message: str) -> bool:
+        try:
+            response = post(
+                url=f"{self.slack_base_url}/chat.postMessage",
+                json={
+                    "channel": channel_id,
+                    "text": message,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.bot_token}",
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
 
-    # TODO: add "send_message" method (http post)
-    # curl -X POST \
-    #   -H "Content-type: application/json" \
-    #   -H "Authorization: Bearer xoxb-your-bot-token" \
-    #   -d '{
-    #     "channel": "C123456",
-    #     "text": "Hello, world!"
-    #   }' \
-    #   https://slack.com/api/chat.postMessage
+            ContextLogger.debug(
+                self._logger_key, "Slack Message successfully sent:\n%s" % message
+            )
 
-    def send_password_reset_message(self, username: str, email: str):
-        pass
+            return True
+        except:
+            ContextLogger.error(
+                self._logger_key,
+                "Failed to send Slack message, error = [%s]" % repr(exc_info()),
+            )
 
+            return False
 
-# TODO: add send_password_reset_message(username)
-#       - fixed template
-#       - add link to ersilia-hub reset (hub.ersilia.io/#/user-admin?user=username)
-#       - use send_message
+    def send_password_reset_message(self, username: str, email: str) -> bool:
+        message = SLACK_MSG_TEMPLATE_PASSWORD_RESET % {
+            "username": username,
+            "email": email,
+            "link": f"https://hub.ersilia.io/users?username={username}",
+        }
 
+        warn_log_message = f"Failed to send password reset message for username [{username}] and email [{email}]."
 
-# ----
-# TODO: add forgot_password to user_admin controller
-#       - validate username + email (must exist, i.e. do select using BOTH)
-#       - call send_password_reset_message
+        if not self.send_text_message(self.channel_id, message):
+            ContextLogger.warn(
+                self._logger_key, f"{warn_log_message} Retrying once in 5s..."
+            )
+
+            sleep(5)
+
+            if not self.send_text_message(self.channel_id, message):
+                ContextLogger.error(
+                    self._logger_key, f"{warn_log_message} Not retrying again."
+                )
+
+                return False
+
+        ContextLogger.info(
+            self._logger_key,
+            f"Password reset message sent for username [{username}] and email [{email}]",
+        )
+
+        return True
