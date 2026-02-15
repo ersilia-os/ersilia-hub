@@ -97,6 +97,17 @@ spec:
                   name: {{ .Values.application.name }}
                   key: serverPasswordSalt
 
+            - name: SLACK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: slackToken
+            - name: SLACK_CHANNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.application.name }}
+                  key: slackChannelId
+
             {{- range $key, $value := .Values.server.env.logs }}
             - name: LOG_LEVEL_{{ $key }}
               value: {{ $value }}
