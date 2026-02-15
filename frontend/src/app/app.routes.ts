@@ -18,7 +18,20 @@ export const routerGuardFunction: CanActivateFn = (
 
   // TODO: when more permissions added -> check next state's link and match with permissions
 
-  return authService.checkPermissions(['ADMIN']) ?? router.parseUrl("/");
+  const hasPermission = authService.checkPermissions(['ADMIN']);
+
+  const nextUrlPath = next.url.map(u => u.path).join("/");
+  let nextUrlParams: string | undefined;
+
+  if (Object.entries(next.queryParams).length > 0) {
+    nextUrlParams = "?" + Object.entries(next.queryParams).map(param => `${param[0]}=${param[1]}`);
+  }
+
+  if (!hasPermission) {
+    authService.setLoginRedirectUrl(nextUrlPath, nextUrlParams ?? '');
+  }
+
+  return hasPermission ?? router.parseUrl("/");
 }
 
 export const routes: Routes = [

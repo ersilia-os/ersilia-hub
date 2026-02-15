@@ -6,6 +6,7 @@ import { User, mapUserFromApi } from "../objects/user";
 import { catchError, map, Observable, throwError, timer } from "rxjs";
 import { mapHttpError } from "../app/utils/api";
 import { environment } from "../environments/environment";
+import { Router } from "@angular/router";
 
 
 /**
@@ -21,6 +22,7 @@ import { environment } from "../environments/environment";
 export class AuthService {
 
   private notificationService = inject(NotificationsService);
+  private router = inject(Router);
 
   readonly MAX_SESSION_AGE = 5 * 60 * 1000; // 5 minutes
   readonly SESSION_REFRESH_DELAY = 2 * 60 * 1000; // 2 minutes
@@ -32,10 +34,11 @@ export class AuthService {
   private hasSession: WritableSignal<boolean> = signal(false);
   private lastAnonSessionId: WritableSignal<string | undefined> = signal(undefined);
 
+  private loginRedirectUrl: WritableSignal<string | undefined> = signal(undefined);
+
   constructor(private http: HttpClient) {
     timer(0, this.SESSION_REFRESH_DELAY).subscribe(_ => {
       if (!this.hasSession()) {
-        console.log("no session, no refresh");
         return;
       }
 
@@ -222,6 +225,12 @@ export class AuthService {
           this.hasSession.set(true);
           this.authType.set(response.session.auth_type);
 
+          if (this.loginRedirectUrl() != null) {
+            this.router.navigateByUrl(this.loginRedirectUrl()!).then(_ => {
+              this.loginRedirectUrl.set(undefined);
+            });
+          }
+
           return response;
         }),
         catchError((error: HttpErrorResponse) => {
@@ -263,6 +272,10 @@ export class AuthService {
       );
   }
 
+  setLoginRedirectUrl(path: string, params: string) {
+    this.loginRedirectUrl.set(`${path}${params}`);
+  }
+
   private refreshSession() {
     return this.http.post<UserSession>(`${environment.apiHost}/api/auth/session/refresh`, undefined)
       .pipe(
@@ -290,11 +303,6 @@ export class AuthService {
     }
 
     const dateNow = new Date();
-
-    console.log(`session_start_time [${this.userSession()!.session_start_time}] = [${this.userSession()!.session_start_time.valueOf()}]`);
-    console.log(`dateNow [${dateNow}] = [${dateNow.valueOf()}]`);
-    console.log("session_max_age_seconds =", this.userSession()!.session_max_age_seconds);
-    console.log("check =", (this.userSession()!.session_start_time.valueOf() + (this.userSession()!.session_max_age_seconds * 1000) <= dateNow.valueOf()));
 
     if (this.userSession()!.session_start_time.valueOf() + (this.userSession()!.session_max_age_seconds * 1000) <= dateNow.valueOf()) {
       this.notificationService.pushNotification(Notification('INFO', 'User session has expired'));

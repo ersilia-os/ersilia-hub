@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -14,6 +14,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from "@angular/forms";
 import { UserInfoPopupComponent } from '../info-popup/info-popup.component';
 import { DeleteUserComponent } from '../delete-user/delete-user.component';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-user-admin',
@@ -26,16 +27,15 @@ import { DeleteUserComponent } from '../delete-user/delete-user.component';
   styleUrl: './admin.component.scss'
 })
 export class UserAdminComponent implements OnInit {
-
+  private activatedRoute = inject(ActivatedRoute);
   private userAdminService = inject(UsersService);
-  private usersFilters: UsersFilter = {
-
-  };
+  private usersFilters: UsersFilter = {};
 
   readonly dialog = inject(MatDialog);
 
   users: WritableSignal<User[]> = signal([]);
   loading: WritableSignal<boolean> = signal(false);
+  autoOpenUserDialogFor: WritableSignal<string | undefined> = signal(undefined);
 
   displayedColumns: string[] = ['username', 'first_name', 'last_name', 'email', 'actions'];
   columnHeaders: { [column: string]: string } = {
@@ -100,7 +100,28 @@ export class UserAdminComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.load();
+    try {
+      let dialogUsername: string | undefined;
+
+      this.activatedRoute.queryParams.subscribe(params => {
+        if (params["username"] != null) {
+          dialogUsername = params["username"];
+        }
+      });
+
+      if (dialogUsername != null) {
+        this.autoOpenUserDialogFor.set(dialogUsername);
+        this.usersFilters = {
+          username: dialogUsername
+        };
+      }
+
+      this.load();
+    } catch {
+      // ignore
+      this.load();
+    }
+
   }
 
   load() {
@@ -114,6 +135,7 @@ export class UserAdminComponent implements OnInit {
       this.userAdminService.filterUsers(this.usersFilters)
         .subscribe(users => {
           this.users.set(users);
+          this.autoOpenUserDialog();
           this.loading.set(false);
         });
     } catch (e) {
@@ -125,7 +147,23 @@ export class UserAdminComponent implements OnInit {
     return `${item.username}_${item.last_updated}`;
   };
 
+  autoOpenUserDialog() {
+    if (this.autoOpenUserDialogFor() == undefined) {
+      return;
+    }
+
+    const dialogUser = this.users().find(user => user.username === this.autoOpenUserDialogFor());
+
+    if (dialogUser != null) {
+      this.openUserDialog(dialogUser);
+    }
+  }
+
   openUserDialog(user: User) {
+    if (this.autoOpenUserDialogFor() != undefined) {
+      this.autoOpenUserDialogFor.set(undefined);
+    }
+
     this.dialog.open(UserInfoPopupComponent, {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '300ms',
