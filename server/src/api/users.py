@@ -1,4 +1,5 @@
-from sys import exc_info
+import traceback
+from sys import exc_info, stdout
 from typing import Annotated
 
 from controllers.auth import AuthController
@@ -9,6 +10,7 @@ from library.fastapi_root import FastAPIRoot
 from objects.rbac import Permission
 from objects.user import (
     User,
+    UserForgotPasswordModel,
     UserModel,
     UserPasswordUpdateModel,
     UserPermissionsUpdateModel,
@@ -198,5 +200,42 @@ def delete_user(
         UserAdminController.instance().delete_user(userid)
     except:
         raise HTTPException(500, detail="Failed to delete user")
+
+    return {"result": "SUCCESS"}
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: UserForgotPasswordModel,
+    api_request: Request,
+):
+    auth_details, tracking_details = api_handler(api_request, requires_auth=False)
+
+    try:
+        user = UserAdminController.instance().load_user_by_name(request.username)
+
+        if user is None:
+            raise Exception("User not found")
+
+        if user.email is None or user.email.lower() != request.email.lower():
+            raise Exception("Email does not match request email")
+    except:
+        ContextLogger.sys_log(
+            LogLevel.ERROR,
+            f"Failed to handle password reset request for username [{request.username}] and email [{request.email}]",
+        )
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(400, detail="Invalid user details")
+
+    try:
+        success = UserAdminController.instance().forgot_password(
+            request.username, request.email
+        )
+
+        if not success:
+            raise Exception("not successful")
+    except:
+        raise HTTPException(500, detail="Failed to request forgot password")
 
     return {"result": "SUCCESS"}

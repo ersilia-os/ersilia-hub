@@ -5,6 +5,7 @@ from uuid import uuid4
 import library.auth_utils as AuthUtils
 from config.application_config import ApplicationConfig
 from controllers.s3_integration import S3IntegrationController
+from controllers.slack_integration import SlackIntegration
 from db.daos.model_input_cache import ModelInputCacheDAO
 from db.daos.shared_record import CountRecord, MapRecord
 from db.daos.user import UserDAO, UserQuery, UserRecord
@@ -320,3 +321,6 @@ class UserAdminController:
             raise Exception(error)
         finally:
             self._release_lock(user.username)
+
+    def forgot_password(self, username: str, email: str) -> bool:
+        return SlackIntegration.instance().send_password_reset_message(username, email)

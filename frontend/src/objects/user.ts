@@ -31,3 +31,7 @@ export interface UserPasswordUpdate {
   force: boolean;
 }
 
+export interface ForgotPasswordRequest {
+  username: string;
+  email: string;
+}

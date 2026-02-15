@@ -119,7 +119,56 @@
                     </div>
                 </div>
             </div>
+
+            <div class="additional-actions">
+                <div class="ersilia-button" (click)="openForgotPasswordForm()">
+                    <mat-icon>key_off</mat-icon>
+                    Forgot Password
+                </div>
+            </div>
         </div>
+        } @else if (loginFormState === 'FORGOT_PASSWORD') {
+        <div class="sign-up-form">
+            <div class="field username">
+                <mat-form-field>
+                    <mat-label>Username</mat-label>
+                    <input matInput required [formControl]="forgotPasswordUsernameControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (forgotPasswordUsernameControl.hasError('required')) {
+                    <mat-error>Username is <strong>required</strong></mat-error>
+                    } @else if (forgotPasswordUsernameControl.hasError('validation')) {
+                    <mat-error>{{ forgotPasswordUsernameControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="field email">
+                <mat-form-field>
+                    <mat-label>Email</mat-label>
+                    <input matInput required [formControl]="forgotPasswordEmailControl"
+                        [errorStateMatcher]="formControlErrorStateMatcher">
+                    @if (forgotPasswordEmailControl.hasError('validation')) {
+                    <mat-error>{{ forgotPasswordEmailControl.getError('validation') }}</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            <div class="actions">
+                <div class="ersilia-button cancel" (click)="cancelForgotPassword()">
+                    <mat-icon>close</mat-icon>
+                    Cancel
+                </div>
+
+                <div class="ersilia-button" (click)="submitPasswordReset()" [ngClass]="{'disabled': !canSubmitPasswordReset()}">
+                    @if (busy()) {
+                    <ersilia-loader scale="small" [animate]="true" colour="#fffc"></ersilia-loader>
+                    } @else {
+                    <mat-icon>key_off</mat-icon>
+                    }
+                    Submit
+                </div>
+            </div>
+          </div>
         } @else if (loginFormState === 'SIGN_UP') {
         <div class="sign-up-form">
             <div class="field username">
@@ -164,7 +213,7 @@
             <div class="field email">
                 <mat-form-field>
                     <mat-label>Email</mat-label>
-                    <input matInput [formControl]="signupEmailControl"
+                    <input matInput required [formControl]="signupEmailControl"
                         [errorStateMatcher]="formControlErrorStateMatcher">
                     @if (signupEmailControl.hasError('validation')) {
                     <mat-error>{{ signupEmailControl.getError('validation') }}</mat-error>
