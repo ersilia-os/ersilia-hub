@@ -130,8 +130,8 @@ export class ModelsService {
       );
   }
 
-  getInfoFromModelHub(modelId: string): Observable<ModelIdentificationDetails> {
-    return this.http.get<ModelIdentificationDetails>(`${environment.apiHost}/api/models/${modelId}/model-hub-details`)
+  getIdentificationDetails(modelId: string): Observable<ModelIdentificationDetails> {
+    return this.http.get<ModelIdentificationDetails>(`${environment.apiHost}/api/models/${modelId}/identification-details`)
       .pipe(
         // map((model: ModelIdentificationDetails) => model),
         catchError(error => {

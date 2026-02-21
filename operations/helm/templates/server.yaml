@@ -80,6 +80,8 @@ spec:
               value: {{ .Values.server.env.MODEL_HUB_RECORDS_URL | squote }}
             - name: MODEL_HUB_DETAILS_BASE_URL
               value: {{ .Values.server.env.MODEL_HUB_DETAILS_BASE_URL | squote }}
+            - name: ERSILIA_CATALOG_MODELS_URL
+              value: {{ .Values.server.env.ERSILIA_CATALOG_MODELS_URL | squote }}
 
             - name: MODELS_NAMESPACE
               value: eos-models
