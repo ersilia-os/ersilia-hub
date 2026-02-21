@@ -445,7 +445,7 @@ export class ModelUpdateComponent implements OnInit {
 
     this.importing.set(true);
 
-    this.modelsService.getInfoFromModelHub(this.form.modelId.getRawValue()).subscribe({
+    this.modelsService.getIdentificationDetails(this.form.modelId.getRawValue()).subscribe({
       next: details => {
         this.form.description.setValue(details.description);
         this.form.title.setValue(details.title);

@@ -16,7 +16,7 @@ from python_framework.config_utils import load_environment_variable
 from python_framework.graceful_killer import GracefulKiller, KillInstance
 from python_framework.logger import ContextLogger, LogLevel
 from python_framework.thread_safe_cache import ThreadSafeCache
-from requests import post
+from requests import get, post
 from sqlalchemy.engine.base import Connection
 
 
@@ -40,6 +40,7 @@ class ModelController(Thread):
 
     _model_hub_records_url: str
     _model_hub_details_base_url: str
+    _ersilia_catalog_models_url: str
 
     def __init__(self):
         Thread.__init__(self)
@@ -62,10 +63,13 @@ class ModelController(Thread):
         )
 
         self._model_hub_records_url = load_environment_variable(
-            "MODEL_HUB_RECORDS_URL", error_on_none=True
+            "MODEL_HUB_RECORDS_URL", error_on_none=False
         )
         self._model_hub_details_base_url = load_environment_variable(
-            "MODEL_HUB_DETAILS_BASE_URL", error_on_none=True
+            "MODEL_HUB_DETAILS_BASE_URL", error_on_none=False
+        )
+        self._ersilia_catalog_models_url = load_environment_variable(
+            "ERSILIA_CATALOG_MODELS_URL", error_on_none=True
         )
 
     @staticmethod
@@ -268,9 +272,74 @@ class ModelController(Thread):
 
         return persisted_model
 
+    def get_details_from_ersilia_catalog(
+        self, model_id: str
+    ) -> ModelIdentificationDetails | None:
+        ContextLogger.debug(
+            self._logger_key,
+            f"Getting Ersilia Catalog model records using url = [{self._ersilia_catalog_models_url}], model_id = [{model_id}]...",
+        )
+
+        response = get(url=self._ersilia_catalog_models_url)
+        response.raise_for_status()
+
+        model_records: list[dict[str, Any]] | None = response.json()
+        model_record: dict[str, Any] | None = None
+
+        for record in model_records:
+            if "Identifier" in record and record["Identifier"] == model_id:
+                model_record = record
+                break
+
+        if model_record is None:
+            raise Exception(
+                f"Failed to find model [{model_id}] in Ersilia Catalog response"
+            )
+
+        model_identification_details = ModelIdentificationDetails()
+
+        if "Description" in model_record:
+            model_identification_details.description = model_record["Description"]
+
+        if "Title" in model_record:
+            model_identification_details.title = model_record["Title"]
+
+        if "Slug" in model_record:
+            model_identification_details.slug = model_record["Slug"]
+
+        if "Interpretation" in model_record:
+            model_identification_details.interpretation = model_record["Interpretation"]
+
+        if "Publication" in model_record:
+            model_identification_details.publication = model_record["Publication"]
+
+        if "GitHub" in model_record:
+            model_identification_details.source_code = model_record["GitHub"]
+
+        if "Target Organism" in model_record:
+            model_identification_details.target_organisms = model_record[
+                "Target Organism"
+            ]
+
+        if "Biomedical Area" in model_record:
+            model_identification_details.biomedical_areas = model_record[
+                "Biomedical Area"
+            ]
+
+        return model_identification_details
+
     def get_details_from_model_hub(
         self, model_id: str
     ) -> ModelIdentificationDetails | None:
+        if (
+            self._model_hub_details_base_url is None
+            or self._model_hub_records_url is None
+        ):
+            ContextLogger.warn(
+                self._logger_key, "Model Hub model details not configured"
+            )
+            return None
+
         ContextLogger.debug(
             self._logger_key,
             f"Getting ModelHub records using url = [{self._model_hub_records_url}], model_id = [{model_id}]...",

@@ -173,6 +173,72 @@ def get_model_hub_details(
         )
 
 
+@router.get("/{model_id}/ersilia-catalog-details")
+def get_ersilia_catalog_details(
+    model_id: str, api_request: Request
+) -> ModelIdentificationDetailsModel:
+    auth_details, tracking_details = api_handler(api_request)
+
+    try:
+        model_details = ModelController.instance().get_details_from_ersilia_catalog(
+            model_id
+        )
+
+        if model_details is None:
+            raise Exception("No Ersilia Catalog details found")
+
+        return ModelIdentificationDetailsModel.from_object(model_details)
+    except:
+        traceback.print_exc(file=stdout)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to get Ersilia Catalog details, err = [%s]"
+            % repr(exc_info()),
+        )
+
+
+@router.get("/{model_id}/identification-details")
+def get_identification_details(
+    model_id: str, api_request: Request
+) -> ModelIdentificationDetailsModel:
+    auth_details, tracking_details = api_handler(api_request)
+
+    # retry once
+    retry_count = 0
+
+    while retry_count <= 1:
+        try:
+            model_details = ModelController.instance().get_details_from_ersilia_catalog(
+                model_id
+            )
+
+            if model_details is None:
+                raise Exception("No Ersilia Catalog details found")
+
+            return ModelIdentificationDetailsModel.from_object(model_details)
+        except:
+            traceback.print_exc(file=stdout)
+
+        retry_count += 1
+
+    # try once using ModelHub
+    try:
+        model_details = ModelController.instance().get_details_from_model_hub(model_id)
+
+        if model_details is None:
+            raise Exception("No ModelHub details found")
+
+        return ModelIdentificationDetailsModel.from_object(model_details)
+    except:
+        traceback.print_exc(file=stdout)
+
+    raise HTTPException(
+        status_code=500,
+        detail="Failed to get model identification details",
+    )
+
+
 @router.delete("/{model_id}/cache")
 def delete_model_cache(model_id: str, api_request: Request):
     auth_details, tracking_details = api_handler(api_request)

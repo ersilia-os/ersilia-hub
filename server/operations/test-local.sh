@@ -54,6 +54,7 @@ export MAX_CONCURRENT_MODEL_INSTANCES="2"
 
 export MODEL_HUB_RECORDS_URL="https://www.ersilia.io/v1/datasource/airtable/5ce288d5-4600-42df-9d5f-8617b023a3e3/40117d92-6c86-49e2-94f1-ff4069ccbfd4/7811ffd5-cf42-4ace-85ea-5fc7490c47aa/3a852b80-9afe-4ae7-bad4-09a87afc7f8b/data"
 export MODEL_HUB_DETAILS_BASE_URL="https://www.ersilia.io/v1/datasource/airtable/5ce288d5-4600-42df-9d5f-8617b023a3e3/0e97c68a-b15c-42bb-b34c-344cacfab08d/3e2b9c48-4162-40d0-8962-fb8852d85fbe/69ca2816-fba2-4d81-80a5-1e4f6a25f8dd/data"
+export ERSILIA_CATALOG_MODELS_URL="https://catalog.ersilia.io/api/models"
 
 # TODO: add to SECRET
 export PASSWORD_SALT="temptesting"
