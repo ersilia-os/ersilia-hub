@@ -1,31 +1,30 @@
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Dict, List, Union
+
 from kubernetes.client import (
+    V1Affinity,
+    V1ContainerStatus,
+    V1Node,
+    V1NodeAffinity,
+    V1ObjectMeta,
     V1Pod,
     V1PodCondition,
-    V1ContainerStatus,
     V1PodStatus,
     V1PodTemplate,
     V1PodTemplateSpec,
-    V1ObjectMeta,
-    V1Affinity,
-    V1NodeAffinity,
-    V1Node,
     V1ResourceRequirements,
+)
+from objects.k8s_generator import (
+    generate_affinity,
+    generate_image,
+    generate_labels,
+    generate_tolerations,
 )
 from python_framework.time import string_from_date
 
-from objects.k8s_generator import (
-    generate_labels,
-    generate_image,
-    generate_affinity,
-    generate_tolerations,
-)
-from copy import deepcopy
-
 
 class ErsiliaLabels(Enum):
-
     MODEL_ID = "ersilia.modelid"
     MODEL_SIZE = "ersilia.modelsize"
     MODEL_TEMPLATE_VERSION = "ersilia.modeltemplate.version"
@@ -33,19 +32,77 @@ class ErsiliaLabels(Enum):
 
 
 class ErsiliaAnnotations(Enum):
-
     REQUEST_ID = "ersilia.requestid"
     SERVER_ID = "ersilia.serverid"
 
 
-class K8sPodContainerState:
+class K8sPodContainerTerminatedState:
+    exit_code: int
+    finished_at: str
+    message: str | None
+    reason: str
+    signal: int | None
+    started_at: str
 
+    def __init__(
+        self,
+        exit_code: int,
+        finished_at: str,
+        message: str,
+        reason: str,
+        signal: int,
+        started_at: str,
+    ) -> None:
+        self.exit_code = exit_code
+        self.finished_at = finished_at
+        self.message = message
+        self.reason = reason
+        self.signal = signal
+        self.started_at = started_at
+
+    @staticmethod
+    def from_k8s_state(
+        state: dict[str, Any],
+    ) -> "K8sPodContainerTerminatedState":
+        return K8sPodContainerTerminatedState(
+            state["exit_code"],
+            string_from_date(state["finished_at"]),
+            state["message"],
+            state["reason"],
+            state["signal"],
+            string_from_date(state["started_at"]),
+        )
+
+    def to_object(self) -> Dict[str, Any]:
+        return {
+            "exitCode": self.exit_code,
+            "finishedAt": self.finished_at,
+            "message": self.message,
+            "reason": self.reason,
+            "signal": self.signal,
+            "startedAt": self.started_at,
+        }
+
+    @staticmethod
+    def from_object(obj: Dict[str, Any]) -> "K8sPodContainerTerminatedState":
+        return K8sPodContainerTerminatedState(
+            obj["exitCode"],
+            obj["finishedAt"],
+            obj["message"],
+            obj["reason"],
+            obj["signal"],
+            obj["startedAt"],
+        )
+
+
+class K8sPodContainerState:
     phase: str
     started: bool
     ready: bool
     restart_count: int
     state_times: Dict[str, str]
     last_state_times: Dict[str, str]
+    last_terminated_state: K8sPodContainerTerminatedState | None
 
     def __init__(
         self,
@@ -55,6 +112,7 @@ class K8sPodContainerState:
         restart_count: int,
         state_times: Dict[str, str],
         last_state_times: Dict[str, str],
+        last_terminated_state: K8sPodContainerTerminatedState | None = None,
     ):
         self.phase = phase
         self.started = started
@@ -62,6 +120,7 @@ class K8sPodContainerState:
         self.restart_count = restart_count
         self.state_times = state_times
         self.last_state_times = last_state_times
+        self.last_terminated_state = last_terminated_state
 
     @staticmethod
     def from_k8s_status(status: V1PodStatus) -> "K8sPodContainerState":
@@ -107,7 +166,17 @@ class K8sPodContainerState:
                         container_state[state_key]["started_at"]
                     )
 
+        last_terminated_state: K8sPodContainerTerminatedState | None = None
+
         if container_last_state is not None:
+            if (
+                "terminated" in container_last_state
+                and container_last_state["terminated"] is not None
+            ):
+                last_terminated_state = K8sPodContainerTerminatedState.from_k8s_state(
+                    container_last_state["terminated"]
+                )
+
             for state_key in last_state_times.keys():
                 if (
                     state_key in container_last_state
@@ -125,6 +194,7 @@ class K8sPodContainerState:
             container_status.restart_count,
             state_times,
             last_state_times,
+            last_terminated_state,
         )
 
     def to_object(self) -> Dict[str, Any]:
@@ -135,6 +205,11 @@ class K8sPodContainerState:
             "restartCount": self.restart_count,
             "stateTimes": self.state_times,
             "lastStateTimes": self.last_state_times,
+            "lastTerminatedState": (
+                None
+                if self.last_terminated_state is None
+                else self.last_terminated_state.to_object()
+            ),
         }
 
     @staticmethod
@@ -146,11 +221,18 @@ class K8sPodContainerState:
             obj["restartCount"],
             obj["stateTimes"],
             obj["lastStateTimes"],
+            (
+                None
+                if "lastTerminatedState" not in obj
+                or obj["lastTerminatedState"] is None
+                else K8sPodContainerTerminatedState.from_object(
+                    obj["lastTerminatedState"]
+                )
+            ),
         )
 
 
 class K8sPodCondition:
-
     last_probe_time: str
     last_transition_time: str
     message: str
@@ -219,7 +301,6 @@ class K8sPodCondition:
 
 
 class K8sPodState:
-
     conditions: List[K8sPodCondition]
     message: str
     reason: str
@@ -345,7 +426,7 @@ class K8sPodResources:
     def to_k8s(self, disable_memory_limit: bool = False) -> V1ResourceRequirements:
         requests = {
             "cpu": f"{self.cpu_request}m",
-            "memory": f"{self.memory_limit}Mi", # NOTE: temporary hack to ensure pods scheduled correctly
+            "memory": f"{self.memory_limit}Mi",  # NOTE: temporary hack to ensure pods scheduled correctly
         }
         limits = {"cpu": f"{self.cpu_limit}m"}
 
@@ -376,7 +457,6 @@ class K8sPodResources:
 
 
 class K8sPod:
-
     name: str
     namespace: str
     state: K8sPodContainerState
@@ -483,7 +563,6 @@ class K8sPod:
 
 
 class K8sPodTemplate:
-
     name: str
     labels: Dict[str, str]
     annotations: Dict[str, str]
@@ -597,7 +676,9 @@ class K8sPodTemplate:
         model_template = self.copy()
 
         model_template.template.metadata.generate_name = f"{model_id}-"
-        model_template.template.spec.containers[0].image = generate_image(model_id, image_tag)
+        model_template.template.spec.containers[0].image = generate_image(
+            model_id, image_tag
+        )
 
         model_template.template.spec.containers[0].resources = k8s_resources.to_k8s(
             disable_memory_limit=disable_memory_limit
@@ -629,19 +710,14 @@ class K8sPodTemplate:
             model_template.template.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution
             is None
         ):
-            model_template.template.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution = (
-                affinity
-            )
+            model_template.template.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution = affinity
         else:
-            model_template.template.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution += (
-                affinity
-            )
+            model_template.template.spec.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution += affinity
 
         return model_template
 
 
 class K8sNode:
-
     name: str
     labels: Dict[str, str]
     # TODO: add status

@@ -1,24 +1,46 @@
 from typing import Dict, List
 
-from pydantic import BaseModel
-
 from objects.k8s import (
     K8sPod,
     K8sPodCondition,
     K8sPodContainerState,
+    K8sPodContainerTerminatedState,
     K8sPodResources,
     K8sPodState,
 )
+from pydantic import BaseModel
+
+
+class K8sPodContainerTerminatedStateModel(BaseModel):
+    exit_code: int
+    finished_at: str
+    message: str | None
+    reason: str
+    signal: int | None
+    started_at: str
+
+    @staticmethod
+    def from_object(
+        obj: K8sPodContainerTerminatedState,
+    ) -> "K8sPodContainerTerminatedStateModel":
+        return K8sPodContainerTerminatedStateModel(
+            exit_code=obj.exit_code,
+            finished_at=obj.finished_at,
+            message=obj.message,
+            reason=obj.reason,
+            signal=obj.signal,
+            started_at=obj.started_at,
+        )
 
 
 class K8sPodContainerStateModel(BaseModel):
-
     phase: str
     started: bool
     ready: bool
     restart_count: int
     state_times: Dict[str, str | None]
     last_state_times: Dict[str, str | None]
+    last_terminated_state: K8sPodContainerTerminatedStateModel | None
 
     @staticmethod
     def from_object(obj: K8sPodContainerState) -> "K8sPodContainerStateModel":
@@ -29,11 +51,17 @@ class K8sPodContainerStateModel(BaseModel):
             restart_count=obj.restart_count,
             state_times=obj.state_times,
             last_state_times=obj.last_state_times,
+            last_terminated_state=(
+                None
+                if obj.last_terminated_state is None
+                else K8sPodContainerTerminatedStateModel.from_object(
+                    obj.last_terminated_state
+                )
+            ),
         )
 
 
 class K8sPodConditionModel(BaseModel):
-
     last_probe_time: str | None
     last_transition_time: str | None
     message: str | None
@@ -54,7 +82,6 @@ class K8sPodConditionModel(BaseModel):
 
 
 class K8sPodStateModel(BaseModel):
-
     conditions: List[K8sPodConditionModel]
     message: str | None
     reason: str | None
@@ -102,7 +129,6 @@ class K8sPodResourcesModel(BaseModel):
 
 
 class K8sPodModel(BaseModel):
-
     name: str
     namespace: str
     state: K8sPodContainerStateModel
@@ -115,6 +141,9 @@ class K8sPodModel(BaseModel):
 
     @staticmethod
     def from_object(k8s_pod: K8sPod) -> "K8sPodModel":
+        if k8s_pod is None:
+            return None
+
         return K8sPodModel(
             name=k8s_pod.name,
             namespace=k8s_pod.namespace,

@@ -448,7 +448,40 @@ class ModelInstanceHandler(Thread):
                 )
                 return False
 
-    def _was_pod_oomkilled(self):
+    def _was_pod_oomkilled(
+        self, previous_k8s_pod: K8sPod | None, k8s_pod: K8sPod | None
+    ):
+        if (
+            k8s_pod is not None
+            and k8s_pod.state.restart_count > 0
+            and k8s_pod.state.last_terminated_state is not None
+        ):
+            if (
+                k8s_pod.state.last_terminated_state.reason.lower().find("oomkilled")
+                >= 0
+            ):
+                ContextLogger.debug(
+                    self._logger_key, "Container was terminated with reason 'OOMKill'"
+                )
+
+                return True
+        elif (
+            previous_k8s_pod is not None
+            and previous_k8s_pod.state.restart_count > 0
+            and previous_k8s_pod.state.last_terminated_state is not None
+        ):
+            if (
+                previous_k8s_pod.state.last_terminated_state.reason.lower().find(
+                    "oomkilled"
+                )
+                >= 0
+            ):
+                ContextLogger.debug(
+                    self._logger_key, "Container was terminated with reason 'OOMKill'"
+                )
+
+                return True
+
         metrics = InstanceMetricsController.instance().get_instance(
             "eos-models", self.pod_name
         )
@@ -509,7 +542,7 @@ class ModelInstanceHandler(Thread):
         self, previous_k8s_pod: K8sPod | None, k8s_pod: K8sPod | None
     ) -> bool:
         # NOTE: eventually add other possible termination reasons here, for now we only check OOMkilled
-        if self._was_pod_oomkilled():
+        if self._was_pod_oomkilled(previous_k8s_pod, k8s_pod):
             ContextLogger.warn(self._logger_key, "Pod possibly OOMKIlled by k8s")
             self.termination_reason = ModelInstanceTerminationReason.OOMKILLED
             ModelInstanceLogController.instance().log_instance(
@@ -586,6 +619,13 @@ class ModelInstanceHandler(Thread):
                         work_request_id=self.work_request_id,
                     )
                     self.pod_ready_timestamp = utc_now()
+
+            # check for restarts
+            if _k8s_pod.state.restart_count > 0:
+                self._infer_termination_reason(_initial_k8s_pod, _k8s_pod)
+                self.state = ModelInstanceState.SHOULD_TERMINATE
+
+                return False
 
             # Download logs when container is ready
             if self.pod_ready_timestamp is not None:
