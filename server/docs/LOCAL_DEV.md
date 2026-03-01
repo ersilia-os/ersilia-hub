@@ -11,22 +11,22 @@
 ### Python ###
 
 ```
-    python3 -m venv .venv
+python3 -m venv .venv
 
-    export PATH=".venv/bin:$PATH"
-    
-    # Download external dependency
-    curl -L https://github.com/RudolfStander/python-framework/releases/download/0.0.2/python_framework-0.0.2-py3-none-any.whl \
-        -o dependencies/python_framework-0.0.2-py3-none-any.whl
-    
-    pip3 install -r ./requirements.txt
+export PATH=".venv/bin:$PATH"
+
+# Download external dependency
+curl -L https://github.com/RudolfStander/python-framework/releases/download/0.0.2/python_framework-0.0.2-py3-none-any.whl \
+    -o dependencies/python_framework-0.0.2-py3-none-any.whl
+
+pip3 install -r ./requirements.txt
 ```
 
 ### PostgreSql ###
 
 ```
-    # Start postgresql docker instance
-    docker run --name ersilia-pgsql -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
+# Start postgresql docker instance
+docker run --name ersilia-pgsql -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgres
 ```
 
 ## Environment Variables ##
