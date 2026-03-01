@@ -31,7 +31,7 @@ docker run --name ersilia-pgsql -p 5432:5432 -e POSTGRES_PASSWORD=password -d po
 
 ## Environment Variables ##
 
-Most env vars are set in the [test-local.sh](../operation/test-local.sh) script and committed to Git for local development.\
+Most env vars are set in the [test-local.sh](../operations/test-local.sh) script and committed to Git for local development.\
 There are some secrets that get loaded externally using a NON-COMMITTED script: `operations/secrets.sh`
 
 
@@ -43,7 +43,7 @@ export SLACK_CHANNEL_ID="..."
 
 ## Execution ##
 
-Local execution can be performed by executing the [test-local.sh](../operation/test-local.sh) script.\
+Local execution can be performed by executing the [test-local.sh](../operations/test-local.sh) script.\
 This script will:
 - check and start postgresql docker instance
 - activate the Python virtual environment
