@@ -43,7 +43,7 @@ export SLACK_CHANNEL_ID="..."
 
 ## Execution ##
 
-Local execution can be performed by executing the [test-local.sh](../operations/test-local.sh) script.\
+Local execution can be performed by executing the [./operations/test-local.sh](../operations/test-local.sh) script - from the server base directory.\
 This script will:
 - check and start postgresql docker instance
 - activate the Python virtual environment
