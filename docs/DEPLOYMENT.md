@@ -2,7 +2,7 @@
 
 ## Docker Images ##
 
-Both the server and frontend docker images are built and published using GitHub action:
+Both the server and frontend docker images are built and published using GitHub Actions:
 - [build-frontend.yaml](../.github/workflows/build-frontend.yaml)
 - [build-server.yaml](../.github/workflows/build-server.yaml)
 
@@ -34,7 +34,7 @@ cd operations
 
 ---
 
-# The Process #
+# How to Deploy #
 
 1. Make changes to the frontend and/or server code
 2. Update the version(s) in the GitHub Action workflows
