@@ -14,7 +14,10 @@
                 <mat-select [(value)]="filtersModel">
                     @for (model of models(); track model) {
                     <mat-option [value]="model.id">
-                      <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{ model.details.description }}</span>
+                        <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{
+                          model.details.identification_details && model.details.identification_details.title ?
+                            model.details.identification_details.title : model.details.description
+                          }}</span>
                     </mat-option>
                     }
                 </mat-select>

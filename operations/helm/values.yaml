@@ -33,6 +33,6 @@ server:
       InstanceMetricsController: ERROR
 
 frontend:
-  version: 0.0.19
+  version: 0.0.20
   replicas: 1
 
