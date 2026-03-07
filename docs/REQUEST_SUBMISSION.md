@@ -12,7 +12,7 @@ Therefore, submitting a Work Request (or evaluation) is simply a matter of:
     - Persist the Work Request in the PostgreSql Database
     - Return the Persisted Work Request details
 
-[Request Submission Process](./Request Submission Process (High Level).drawio.svg)
+![Request Submission Process](./Request Submission Process (High Level).drawio.svg)
 
 
 ## Frontend Related Code ##
