@@ -62,7 +62,7 @@
 
       <div class="entries">
           <mat-form-field class="smiles">
-              <mat-label>SMILES</mat-label>
+              <mat-label>SMILES <strong>(first line must be a header)</strong></mat-label>
               <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings with a Header line"
                   [(ngModel)]="entriesString"></textarea>
           </mat-form-field>
