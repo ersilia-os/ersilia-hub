@@ -36,12 +36,15 @@ cd operations
 
 # How to Deploy #
 
-1. Make changes to the frontend and/or server code
-2. Update the version(s) in the GitHub Action workflows
-3. Deploy images using github actions (automated on push to main branch)
-4. Update the image versions or environment variables in the Helm values.yaml file
-5. Deploy the helm chart
-6. Monitor pods in kubernetes and ensure deployment was successful.
-7. Do some testing
+1. Create a new git branch from `main`
+2. Make changes to the frontend and/or server code or Helm charts
+3. If changes were made to frontend or server code, update the version(s) in the GitHub Action workflows
+4. Update the image versions and environment variables (if any changes) in the Helm values.yaml file
+5. Make a PR to the `main` branch
+6. Merge the PR
+7. Docker images will automatically deploy using GitHub Actions
+8. Once docker images are deployed, deploy the helm chart using the script mentioned above
+9. Monitor pods in kubernetes and ensure deployment was successful (new pods will start and old pods will stop)
+10. Do some testing
 
 
