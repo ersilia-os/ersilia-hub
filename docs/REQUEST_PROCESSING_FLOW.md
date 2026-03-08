@@ -30,27 +30,35 @@ See `_handle_queued_requests` in [WorkRequestWorker](../server/src/controllers/w
 
 See `_handle_scheduling_requests` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
 
-TODO: summary
+ - check state of work request
+ - if possibly failed, move back to QUEUED
+ - if in-progress, move to PROCESSING
 
 ## PROCESSING ##
 
 See `_handle_processing_work_requests` and `_handle_processing_work_request` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
 
-TODO: summary
+ - check state of work request
+ - if job processing completed, process result based on status (COMPLETED / FAILED)
 
 ## COMPLETED ##
 
 See `_process_completed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
 **NOTE: This forms part of the above `_handle_processing_work_requests`, it is not separately handled.**
 
-TODO: summary
+ - get processed results from Job
+ - merge with any cached results
+ - upload full results to s3
+ - if cache opt-in, cache new results
+ - set WorkRequest status to COMPLETED
 
 ## FAILED ##
 
 See `_process_failed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
 **NOTE: This forms part of the above `_handle_processing_work_requests`.**
 
-TODO: summary
+ - set error details on the WorkRequest
+ - set WorkRequest status to FAILED
 
 Failed WorkRequests are also separately loaded and handled in `_handle_failed_work_requests` - [WorkRequestWorker](../server/src/controllers/work_request_worker.py).\
 This function simply ensures all resources are properly cleaned up for any failed WorkRequests
