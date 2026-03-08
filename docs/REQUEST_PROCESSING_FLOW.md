@@ -43,7 +43,7 @@ See `_handle_processing_work_requests` and `_handle_processing_work_request` in 
 
 ## COMPLETED ##
 
-See `_process_completed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+See `_process_completed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).\
 **NOTE: This forms part of the above `_handle_processing_work_requests`, it is not separately handled.**
 
  - get processed results from Job
@@ -54,7 +54,7 @@ See `_process_completed_job` in [WorkRequestWorker](../server/src/controllers/wo
 
 ## FAILED ##
 
-See `_process_failed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+See `_process_failed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).\
 **NOTE: This forms part of the above `_handle_processing_work_requests`.**
 
  - set error details on the WorkRequest
