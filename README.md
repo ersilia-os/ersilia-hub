@@ -24,3 +24,34 @@ The link needs to be opened in a private tab, because the hub.ersilia.io applica
 
 
 # Implementation Documentation #
+
+## Processes ##
+
+- [Request Submission](./docs/REQUEST_SUBMISSION.md)
+= [Request Processing Flow](./docs/REQUEST_PROCESSING_FLOW.md)
+- [Model Instance Process / Job Processing](./docs/MODEL_INSTANCE_PROCESS.md)
+
+## Undocumented Processes ##
+
+### Model Recommendation Engine ###
+(brief description + links to classes + live page)
+
+
+
+### Model Input Caching ###
+(brief description + links to classes + live page)
+
+
+
+### User Auth ###
+(brief description + links to classes + live page)
+
+
+
+### User admin ###
+(brief description + links to classes + live page)
+
+
+
+### Node monitor (instance metrics collection) ###
+(brief description + links to classes + live page)
