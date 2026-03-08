@@ -1,0 +1,76 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.6.0">
+  <diagram name="Page-1" id="_YVKFYsTsk9bSSbVb-gD">
+    <mxGraphModel dx="1027" dy="704" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hQFJinEqyon_zx6QdwSI-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76608a;fontColor=#ffffff;strokeColor=#432D57;" value="" vertex="1">
+          <mxGeometry height="550" width="960" x="60" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=16;" value="WorkRequestWorker" vertex="1">
+          <mxGeometry height="30" width="186" x="457" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-15" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="hQFJinEqyon_zx6QdwSI-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="QUEUED" vertex="1">
+          <mxGeometry height="50" width="160" x="125" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&amp;nbsp;- set WorkRequest status to SCHEDULING&lt;div&gt;&amp;nbsp;- load results from Cache for Model&lt;/div&gt;&lt;div&gt;&amp;nbsp;- if all results returned from cache:&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; - upload result to S3&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; - set work request status to COMPLETED&lt;/div&gt;&lt;div&gt;&amp;nbsp;- else, request a new ModelInstance&lt;/div&gt;&lt;div&gt;&amp;nbsp;- if success, set status to PROCESSING&lt;/div&gt;&lt;div&gt;&amp;nbsp;- else, set status back to QUEUED&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="250" x="342" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&amp;nbsp;- check state of work request&lt;div&gt;&amp;nbsp;- if possibly failed, move back to QUEUED&lt;/div&gt;&lt;div&gt;&amp;nbsp;- if in-progress, move to PROCESSING&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="250" x="342" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-16" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="hQFJinEqyon_zx6QdwSI-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="SCHEDULING" vertex="1">
+          <mxGeometry height="50" width="160" x="125" y="315" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="PROCESSING" vertex="1">
+          <mxGeometry height="50" width="160" x="125" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-30" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" target="hQFJinEqyon_zx6QdwSI-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-31" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;" target="hQFJinEqyon_zx6QdwSI-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&amp;nbsp;- check state of work request&lt;div&gt;&amp;nbsp;- if job processing completed, process result&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp;based on status (COMPLETED / FAILED)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="250" x="342" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="COMPLETED" vertex="1">
+          <mxGeometry height="50" width="160" x="720" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="FAILED" vertex="1">
+          <mxGeometry height="50" width="160" x="720" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-20" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&amp;nbsp;- get processed results from Job&lt;div&gt;&amp;nbsp;- merge with any cached results&lt;/div&gt;&lt;div&gt;&amp;nbsp;- upload full results to s3&lt;/div&gt;&lt;div&gt;&amp;nbsp;- if cache opt-in, cache new results&lt;/div&gt;&lt;div&gt;&amp;nbsp;- set WorkRequest status to COMPLETED&lt;/div&gt;" vertex="1">
+          <mxGeometry height="85" width="250" x="720" y="235" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-21" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&amp;nbsp;- set error details on the WorkRequest&lt;div&gt;&amp;nbsp;- set WorkRequest status to FAILED&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="250" x="720" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-22" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.433;entryDx=0;entryDy=0;entryPerimeter=0;endArrow=none;endFill=0;dashed=1;" target="hQFJinEqyon_zx6QdwSI-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-23" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.01;entryY=0.313;entryDx=0;entryDy=0;entryPerimeter=0;endArrow=none;endFill=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="284" y="340" as="sourcePoint" />
+            <mxPoint x="343.5" y="340.0400000000001" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-24" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.006;entryY=0.354;entryDx=0;entryDy=0;entryPerimeter=0;endArrow=none;endFill=0;dashed=1;" target="hQFJinEqyon_zx6QdwSI-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-27" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.321;entryY=0.012;entryDx=0;entryDy=0;entryPerimeter=0;endArrow=none;endFill=0;dashed=1;" target="hQFJinEqyon_zx6QdwSI-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hQFJinEqyon_zx6QdwSI-28" edge="1" parent="1" source="hQFJinEqyon_zx6QdwSI-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.321;entryY=0.015;entryDx=0;entryDy=0;entryPerimeter=0;endArrow=none;endFill=0;dashed=1;" target="hQFJinEqyon_zx6QdwSI-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
