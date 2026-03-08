@@ -38,16 +38,23 @@ The Model Recommendation Engine is responsible for evaluating the Memory and CPU
 and automatically recommending better Memory and CPU constraints. The user can apply these recommended values on the [Model Recommendations](https://hub.ersilia.io/recommendations) page.
 
 Server code:
+- [Database Integration](./server/src/db/daos/instance_metrics.py)
 - [Recommendation Engine](./server/src/controllers/recommendation_engine.py)
 - [Metrics Collection](./server/src/controllers/node_monitor.py)
+- [API](./server/src/api/recommendations.py)
 
 Frontend code:
 - [Model Recommendations component](./frontend/src/app/model-recommendations/model-recommendations.component.ts)
 - [Resource visualizer component](./frontend/src/app/model-instance-resource/model-instance-resource.component.ts)
 
 ### Model Input Caching ###
-(brief description + links to classes + live page)
+When a user opts-in, the results of their model evaluations will be cached in the database for that model.\
+This cache is used for every subsequent model Work Request submissions (regardless of opt-in).\
+Some additional logic has been implemented for cache clearing on request, etc.
 
+Server code:
+- [Database Integration](./server/src/db/daos/model_input_cache.py)
+- [ModelInputCacheController](./server/src/controllers/model_input_cache.py)
 
 
 ### User Auth ###
@@ -62,3 +69,8 @@ Frontend code:
 
 ### Node monitor (instance metrics collection) ###
 (brief description + links to classes + live page)
+
+
+### Work Request Stats ###
+(brief description + links to classes + live page)
+
