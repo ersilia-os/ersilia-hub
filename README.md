@@ -34,9 +34,16 @@ The link needs to be opened in a private tab, because the hub.ersilia.io applica
 ## Undocumented Processes ##
 
 ### Model Recommendation Engine ###
-(brief description + links to classes + live page)
+The Model Recommendation Engine is responsible for evaluating the Memory and CPU resources used by a Model execution\
+and automatically recommending better Memory and CPU constraints. The user can apply these recommended values on the [Model Recommendations](https://hub.ersilia.io/recommendations) page.
 
+Server code:
+- [Recommendation Engine](./server/src/controllers/recommendation_engine.py)
+- [Metrics Collection](./server/src/controllers/node_monitor.py)
 
+Frontend code:
+- [Model Recommendations component](./frontend/src/app/model-recommendations/model-recommendations.component.ts)
+- [Resource visualizer component](./frontend/src/app/model-instance-resource/model-instance-resource.component.ts)
 
 ### Model Input Caching ###
 (brief description + links to classes + live page)
