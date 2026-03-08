@@ -28,7 +28,7 @@ The link needs to be opened in a private tab, because the hub.ersilia.io applica
 ## Processes ##
 
 - [Request Submission](./docs/REQUEST_SUBMISSION.md)
-= [Request Processing Flow](./docs/REQUEST_PROCESSING_FLOW.md)
+- [Request Processing Flow](./docs/REQUEST_PROCESSING_FLOW.md)
 - [Model Instance Process / Job Processing](./docs/MODEL_INSTANCE_PROCESS.md)
 
 ## Undocumented Processes ##
