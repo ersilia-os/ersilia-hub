@@ -57,9 +57,23 @@ Server code:
 - [ModelInputCacheController](./server/src/controllers/model_input_cache.py)
 
 
-### User Auth ###
-(brief description + links to classes + live page)
+### User Authentication and Authorization ###
+There are two different Authentication methods in Ersilia Hub:\
+- EriliaUser
+- ErsiliaAnonymous
 
+The ErsiliaAnonymous auth only requires a user-generated GUID as "key" to the creating a Session.\
+Whereas the ErsiliaUser requires a full username and password to create a Session and also enables Authorization functionality.\
+Both implementations uses a Session in the back for keeping the user active.
+
+Server Code:
+- [API](./server/src/api/auth.py)
+- [API Integration](./server/src/library/api_utils.py) (see `api_handler` and `api_validate_auth`)
+- [Session Database Integration](./server/src/db/daos/user_session.py)
+- [User Database Integration](./server/src/db/daos/user.py)
+- [User Auth Databse Integration](./server/src/db/daos/user_auth.py)
+- [User Persmission Database Integration](./server/src/db/daos/user_permission.py)
+- [AuthController](./server/src/controllers/auth.py)
 
 
 ### User admin ###
