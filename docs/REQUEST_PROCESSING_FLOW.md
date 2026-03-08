@@ -15,15 +15,42 @@ The basic flow is described by the following diagram:
 
 ## QUEUED ##
 
+See `_handle_queued_requests` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+
+- set WorkRequest status to SCHEDULING
+- load results from Cache for Model (see `_handle_work_request_cache` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py))
+- if all results returned from cache:
+    - upload result to S3
+    - set work request status to COMPLETED
+- else, request a new [ModelInstance](../server/src/controllers/model_instance_handler.py) (for more details on ModelInstance see [Model Instance Process](./MODEL_INSTANCE_PROCESS.md))
+- if success, set status to PROCESSING
+- else, set status back to QUEUED
 
 ## SCHEDULING ##
 
+See `_handle_scheduling_requests` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+
+TODO: summary
 
 ## PROCESSING ##
 
+See `_handle_processing_work_requests` and `_handle_processing_work_request` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+
+TODO: summary
 
 ## COMPLETED ##
 
+See `_process_completed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+**NOTE: This forms part of the above `_handle_processing_work_requests`, it is not separately handled.**
+
+TODO: summary
 
 ## FAILED ##
 
+See `_process_failed_job` in [WorkRequestWorker](../server/src/controllers/work_request_worker.py).
+**NOTE: This forms part of the above `_handle_processing_work_requests`.**
+
+TODO: summary
+
+Failed WorkRequests are also separately loaded and handled in `_handle_failed_work_requests` - [WorkRequestWorker](../server/src/controllers/work_request_worker.py).\
+This function simply ensures all resources are properly cleaned up for any failed WorkRequests
