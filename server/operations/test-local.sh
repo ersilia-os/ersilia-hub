@@ -11,13 +11,16 @@ fi
 
 export APPLICATION_NAME="ersilia-model-manager"
 
-export DATABASE_HOST="localhost" # TODO: check this
+export DATABASE_HOST="localhost"
 export DATABASE_PORT="5432"
 export DATABASE_NAME="postgres"
 export DATABASE_USERNAME="postgres"
 export DATABASE_PASSWORD="password"
-export DATABASE_SCHEMA="model_manager"
+export DATABASE_SCHEMA="public"
 export DATABASE_MIGRATIONS_PATH="src/db/migrations"
+
+export API_HOST="localhost"
+export API_PORT="8080"
 
 export LOG_LEVEL_ModelController="DEBUG"
 export LOG_LEVEL_ModelIntegrationController="INFO"
@@ -47,7 +50,7 @@ export MODEL_INTEGRATION_MOCK_SUCCESS_ID="eos3nn9"
 export MODEL_INTEGRATION_MOCK_FAIL_ID="eos4e40"
 export MODEL_INTEGRATION_PROXY_IDS="eos5axz,eos7d58,eos42ez,eos3804,eos2db3,eos18ie,eos5dti,eos7m30,eos37l0,eos2m0f,eos4rta"
 
-export AWS_PROFILE="h3d"
+export AWS_PROFILE="ersilia"
 
 export SERVER_ID="server-0"
 export MAX_CONCURRENT_MODEL_INSTANCES="2"
@@ -56,7 +59,6 @@ export MODEL_HUB_RECORDS_URL="https://www.ersilia.io/v1/datasource/airtable/5ce2
 export MODEL_HUB_DETAILS_BASE_URL="https://www.ersilia.io/v1/datasource/airtable/5ce288d5-4600-42df-9d5f-8617b023a3e3/0e97c68a-b15c-42bb-b34c-344cacfab08d/3e2b9c48-4162-40d0-8962-fb8852d85fbe/69ca2816-fba2-4d81-80a5-1e4f6a25f8dd/data"
 export ERSILIA_CATALOG_MODELS_URL="https://catalog.ersilia.io/api/models"
 
-# TODO: add to SECRET
 export PASSWORD_SALT="temptesting"
 
 if [ $(ls -1 "operations" | grep -c "secrets.sh") -eq "1" ]; then
