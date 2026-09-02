@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, Signal, TrackByFunction } from '@angular/core';
+import { Component, computed, inject, OnInit, Signal, TrackByFunction } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +23,12 @@ export class ModelRecommendationsComponent implements OnInit {
 
   recommendations: Signal<ModelInstanceRecommendations[]>;
   loading: Signal<boolean>;
+
+  countLabel: Signal<string> = computed(() => {
+    const total = this.recommendations().length;
+
+    return total === 1 ? '1 recommendation' : `${total} recommendations`;
+  });
 
   constructor() {
     this.loading = this.recommendationsService.computeRecommendationsLoadingSignal<boolean>(

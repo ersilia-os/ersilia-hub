@@ -46,28 +46,24 @@
             <div class="field">
                 <div class="label">Result</div>
                 <div class="contents">
-                    <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                    <div class="download-btn" [ngClass]="{'disabled': !canDownloadResult()}"
                         (click)="downloadResult('csv')">
-                        <div class="icon">
-                            @if(downloadingResult()) {
-                            <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                            } @else {
-                            <mat-icon>download</mat-icon>
-                            }
-                        </div>
+                        @if(downloadingResult()) {
+                        <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                        } @else {
+                        <mat-icon>download</mat-icon>
+                        }
                         CSV
                     </div>
 
                     @if (canDownloadJsonResult) {
-                    <div class="ersilia-button download" [ngClass]="{'disabled': !canDownloadResult()}"
+                    <div class="download-btn" [ngClass]="{'disabled': !canDownloadResult()}"
                         (click)="downloadResult('json')">
-                        <div class="icon">
-                            @if(downloadingResult()) {
-                            <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                            } @else {
-                            <mat-icon>download</mat-icon>
-                            }
-                        </div>
+                        @if(downloadingResult()) {
+                        <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                        } @else {
+                        <mat-icon>download</mat-icon>
+                        }
                         JSON
                     </div>
                     }
@@ -114,10 +110,9 @@
       <div class="field input">
           <div class="label">Input</div>
           <div class="contents entries">
-              <mat-form-field class="smiles">
+              <mat-form-field appearance="outline" class="smiles">
                   <mat-label>SMILES</mat-label>
-                  <textarea matInput diabled rows=10 placeholder="Enter molecules as SMILES strings"
-                      [value]="request()!.request_payload"></textarea>
+                  <textarea matInput disabled rows=10 [value]="request()!.request_payload"></textarea>
               </mat-form-field>
           </div>
       </div>
@@ -125,7 +120,7 @@
   </div>
 
     <div class="dialog-actions">
-        <div class="ersilia-button cancel" (click)="close()">
+        <div class="action-btn cancel" (click)="close()">
             <mat-icon>close</mat-icon>
             Close
         </div>

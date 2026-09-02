@@ -7,11 +7,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ErsiliaLoaderComponent } from '../../ersilia-loader/ersilia-loader.component';
 import { UsersService } from '../../../services/users.service';
-import { User, UsersFilter } from '../../../objects/user';
+import { isAdmin, User, UsersFilter } from '../../../objects/user';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from "@angular/forms";
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserInfoPopupComponent } from '../info-popup/info-popup.component';
 import { DeleteUserComponent } from '../delete-user/delete-user.component';
 import { ActivatedRoute } from '@angular/router';
@@ -21,7 +23,7 @@ import { ActivatedRoute } from '@angular/router';
   standalone: true,
   imports: [
     MatButtonModule, MatTableModule, CommonModule, MatIconModule, MatProgressBarModule, ErsiliaLoaderComponent,
-    MatFormFieldModule, MatSelectModule, MatInputModule, FormsModule
+    MatFormFieldModule, MatSelectModule, MatInputModule, FormsModule, MatCheckboxModule, MatTooltipModule
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
@@ -37,14 +39,43 @@ export class UserAdminComponent implements OnInit {
   loading: WritableSignal<boolean> = signal(false);
   autoOpenUserDialogFor: WritableSignal<string | undefined> = signal(undefined);
 
-  displayedColumns: string[] = ['username', 'first_name', 'last_name', 'email', 'actions'];
+  displayedColumns: string[] = ['username', 'first_name', 'last_name', 'email', 'role', 'actions'];
   columnHeaders: { [column: string]: string } = {
     username: 'Username',
     first_name: 'First Name',
     last_name: 'Last Name',
     email: 'Email',
+    role: 'Role',
     actions: ''
   };
+
+  adminsOnly: WritableSignal<boolean> = signal(false);
+
+  /** Applied client-side: the users endpoint has no permission filter. */
+  visibleUsers: Signal<User[]> = computed(() =>
+    this.adminsOnly() ? this.users().filter(isAdmin) : this.users()
+  );
+
+  countLabel: Signal<string> = computed(() => {
+    const total = this.users().length;
+    const shown = this.visibleUsers().length;
+
+    return shown === total ? `${total} users` : `${shown} of ${total} shown`;
+  });
+
+  get filterAdminsOnly(): boolean {
+    return this.adminsOnly();
+  }
+
+  set filterAdminsOnly(value: boolean) {
+    this.adminsOnly.set(value);
+  }
+
+  isAdmin = isAdmin;
+
+  adminCount(): number {
+    return this.users().filter(isAdmin).length;
+  }
 
   constructor() {
   }
@@ -169,7 +200,11 @@ export class UserAdminComponent implements OnInit {
       exitAnimationDuration: '300ms',
       panelClass: 'dialog-panel',
       data: user,
-    });
+    })
+      // Permissions can be changed from inside this dialog, so pick up the
+      // new roles when it closes.
+      .afterClosed()
+      .subscribe(() => this.load());
   }
 
   openDeleteDialog(user: User) {

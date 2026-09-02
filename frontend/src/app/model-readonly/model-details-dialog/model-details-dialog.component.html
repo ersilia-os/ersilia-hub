@@ -4,7 +4,7 @@
 
         <div class="ersilia-button" (click)="openCreateRequestDialog(model)">
             <mat-icon>science</mat-icon>
-            New Evaluation
+            Run Model
         </div>
     </div>
 
@@ -29,12 +29,28 @@
 
             <div class="field publication">
                 <div class="label">Publication</div>
+                @if (publicationUrl) {
+                <a class="contents link" [href]="publicationUrl" target="_blank" rel="noopener noreferrer"
+                    [matTooltip]="publicationUrl">
+                    <mat-icon>link</mat-icon>
+                    <span class="link-text">{{ model.details.identification_details!.publication }}</span>
+                </a>
+                } @else {
                 <div class="contents">{{ model.details.identification_details!.publication }}</div>
+                }
             </div>
 
             <div class="field source_code">
                 <div class="label">Source Code</div>
+                @if (sourceCodeUrl) {
+                <a class="contents link" [href]="sourceCodeUrl" target="_blank" rel="noopener noreferrer"
+                    [matTooltip]="sourceCodeUrl">
+                    <mat-icon>link</mat-icon>
+                    <span class="link-text">{{ model.details.identification_details!.source_code }}</span>
+                </a>
+                } @else {
                 <div class="contents">{{ model.details.identification_details!.source_code }}</div>
+                }
             </div>
 
             <div class="field target_organisms">

@@ -6,23 +6,26 @@
     <div class="request-form">
       <div class="filters">
           <div class="filter free-text">
-              <mat-form-field>
-                  <mat-label>All Fields</mat-label>
-                  <input matInput [(ngModel)]="filterFreeText" [disabled]="modelSelectionDisabled">
+              <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>search</mat-icon>
+                  <mat-label>Search all fields</mat-label>
+                  <input matInput [(ngModel)]="filterFreeText" [disabled]="modelSelectionDisabled" placeholder="Type to search…">
               </mat-form-field>
           </div>
 
           <div class="filter id">
-              <mat-form-field>
-                  <mat-label>Id</mat-label>
-                  <input matInput [(ngModel)]="filterId" [disabled]="modelSelectionDisabled">
+              <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>tag</mat-icon>
+                  <mat-label>Model ID</mat-label>
+                  <input matInput [(ngModel)]="filterId" [disabled]="modelSelectionDisabled" placeholder="e.g. eos18ie">
               </mat-form-field>
           </div>
 
           <div class="filter description">
-              <mat-form-field>
+              <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>notes</mat-icon>
                   <mat-label>Description</mat-label>
-                  <input matInput [(ngModel)]="filterDescription" [disabled]="modelSelectionDisabled">
+                  <input matInput [(ngModel)]="filterDescription" [disabled]="modelSelectionDisabled" placeholder="Filter by keyword…">
               </mat-form-field>
           </div>
       </div>
@@ -32,7 +35,8 @@
               @if (modelsLoading()) {
               <mat-progress-bar mode="indeterminate"></mat-progress-bar>
               }
-              <mat-form-field>
+              <mat-form-field appearance="outline">
+                  <mat-icon matPrefix>biotech</mat-icon>
                   <mat-label>Select a Model</mat-label>
                   <mat-select [(value)]="selectedModel" [disabled]="modelSelectionDisabled">
                       @for (model of filteredModels(); track model) {
@@ -49,21 +53,17 @@
 
         <div class="file-upload">
             <input type="file" (change)="onFileSelected($event)" #fileUpload>
-
-            <div class="file-upload">
-                {{fileName || "Select input file"}}
-
-                <div class="ersilia-button icon-only" (click)="fileUpload.click()">
-                    <mat-icon>attach_file</mat-icon>
-                </div>
+            <div class="file-upload-trigger" (click)="fileUpload.click()">
+                <mat-icon>attach_file</mat-icon>
+                <span>{{ fileName || "Select input file" }}</span>
             </div>
         </div>
       </div>
 
       <div class="entries">
-          <mat-form-field class="smiles">
-              <mat-label>SMILES <strong>(first line must be a header)</strong></mat-label>
-              <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings with a Header line"
+          <mat-form-field appearance="outline" class="smiles">
+              <mat-label>SMILES — first line must be a header</mat-label>
+              <textarea matInput rows=16 placeholder="Enter molecules as SMILES strings with a header line"
                   [(ngModel)]="entriesString"></textarea>
           </mat-form-field>
       </div>
@@ -84,12 +84,12 @@
     </div>
 
     <div class="dialog-actions">
-        <div class="ersilia-button cancel" (click)="close()">
+        <div class="action-btn cancel" (click)="close()">
             <mat-icon>close</mat-icon>
             Cancel
         </div>
 
-        <div class="ersilia-button submit" (click)="submit()" [ngClass]="{'disabled': !canSubmit()}">
+        <div class="action-btn submit" (click)="submit()" [ngClass]="{'disabled': !canSubmit()}">
             @if (!submitting()) {
             <mat-icon>science</mat-icon>
             } @else {

@@ -80,7 +80,18 @@ export class LoginComponent implements OnInit {
   }
 
   // signup form
-  private signupPasswordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{16,}$/;
+
+  /**
+   * The password policy, as the rules a person has to satisfy rather than as one
+   * pattern. Each is shown and ticked off individually under the field, so the
+   * requirements are readable before and while typing.
+   */
+  readonly passwordRules: { label: string, test: (value: string) => boolean }[] = [
+    { label: 'At least 16 characters', test: value => value.length >= 16 },
+    { label: 'An uppercase letter', test: value => /[A-Z]/.test(value) },
+    { label: 'A lowercase letter', test: value => /[a-z]/.test(value) },
+    { label: 'A number', test: value => /\d/.test(value) },
+  ];
 
   signupUsernameControl = new FormControl('', [Validators.required, (control) => {
     if (!control.dirty) {
@@ -137,17 +148,11 @@ export class LoginComponent implements OnInit {
       return null;
     }
 
-    const value = control.getRawValue();
+    const value = control.getRawValue() ?? '';
 
-    if (value == null || value.length < 3) {
+    if (this.passwordRules.some(rule => !rule.test(value))) {
       return {
-        'validation': 'Invalid password'
-      }
-    }
-
-    if (value.match(this.signupPasswordRegex) == null) {
-      return {
-        'validation': `Password must match regex [${this.signupPasswordRegex}]`
+        'validation': 'Password does not meet the requirements below'
       }
     }
 
@@ -175,6 +180,13 @@ export class LoginComponent implements OnInit {
 
     return null;
   }]);
+
+  /** Each rule with whether the password currently entered satisfies it. */
+  passwordRuleStates(): { label: string, met: boolean }[] {
+    const value = this.signupPasswordControl.getRawValue() ?? '';
+
+    return this.passwordRules.map(rule => ({ label: rule.label, met: rule.test(value) }));
+  }
 
   // Forgot Password
   forgotPasswordUsernameControl = new FormControl('', [Validators.required, (control) => {

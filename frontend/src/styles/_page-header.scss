@@ -1,0 +1,389 @@
+@import './colour-palette.scss';
+
+// ─── Page header band ────────────────────────────────────────────────────────
+//
+// A full-bleed tinted band carrying a page title, a live count and (optionally)
+// a row of filters. Included per component because Angular scopes component
+// styles:
+//
+//   @import '../../styles/page-header';
+//   @include page-header-band;
+//   @include page-header-filters;
+//
+// The gutter is shared with whatever content follows the band, so the title and
+// the first item below it line up without either side hard-coding a figure.
+
+$page-gutter: 30px;
+
+// Every alpha in the band's gradient derives from this one value.
+$header-tint: 0.22;
+
+@mixin page-header-band {
+  .page-header {
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    padding: 26px $page-gutter 24px;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.1);
+
+    // Light purple top-left, through paler plum, to a faint green wash.
+    background: linear-gradient(160deg,
+        rgba($ersilia-light-purple, $header-tint) 0%,
+        rgba($ersilia-light-purple, $header-tint * 0.55) 48%,
+        rgba($ersilia-green, $header-tint * 0.28) 100%);
+
+    .title-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .title {
+      font-family: 'Fraunces', serif;
+      font-weight: 600;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: $ersilia-purple;
+    }
+
+    // Tinted rather than filled: the band is already a light purple wash, so a
+    // solid $ersilia-light-purple pill would leave white text at ~3:1 contrast.
+    // The border is what keeps it reading as a pill against that wash.
+    .count {
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      color: $ersilia-purple;
+      background: rgba($ersilia-light-purple, 0.32);
+      border: 1px solid rgba($ersilia-light-purple, 0.55);
+      border-radius: 999px;
+      padding: 3px 10px;
+      white-space: nowrap;
+    }
+  }
+}
+
+// ─── Bare Material controls in the filter row ────────────────────────────────
+//
+// For pages whose filters are selects, date ranges or checkboxes rather than
+// plain inputs. MAT_FORM_FIELD is an `optional: true` dependency for both
+// MatSelect and MatDateRangeInput, so they are used WITHOUT a mat-form-field
+// and dropped straight into `.filter-field` -- the wrapper supplies the
+// underline and the icon, and nothing has to fight MDC's notched outline.
+//
+//   @include page-header-filters;
+//   @include page-header-filter-controls;
+//
+// Anything below that lives inside a Material component's own template needs
+// `::ng-deep` to reach -- a parent component's scoped styles do not apply
+// there. Host elements (.mat-mdc-select, mat-date-range-input) do not.
+
+@mixin page-header-filter-controls {
+  .page-header {
+    .filter-row {
+      align-items: end;
+    }
+
+    // Slots with no label of their own still align on the field row.
+    .filter-label:empty {
+      min-height: 1em;
+    }
+
+    .filter-field {
+      // Host elements -- reachable without ::ng-deep.
+      .mat-mdc-select,
+      mat-date-range-input {
+        flex: 1;
+        min-width: 0;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13.5px;
+        color: #1a0f22;
+      }
+
+      // Inline clear affordance for text filters.
+      .clear-filter {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+
+        .mat-icon {
+          width: 14px;
+          height: 14px;
+          font-size: 14px;
+          color: rgba($ersilia-purple, 0.45);
+          transition: color 0.15s;
+        }
+
+        &:hover .mat-icon {
+          color: $ersilia-purple;
+        }
+      }
+    }
+
+    // Checkboxes carry their own affordance, so they get no underline.
+    .filter-toggles {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px 18px;
+      padding-bottom: 4px;
+    }
+
+    // Right-hand slot: refresh / download / a primary action.
+    .filter-actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 4px;
+
+      .icon-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        box-sizing: border-box;
+        border-radius: 6px;
+        border: 1px solid rgba($ersilia-purple, 0.25);
+        background: rgba(#fff, 0.5);
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+
+        .mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          color: rgba($ersilia-purple, 0.6);
+          transition: color 0.15s;
+        }
+
+        &:hover {
+          background: $ersilia-purple;
+          border-color: $ersilia-purple;
+
+          .mat-icon { color: #ffffff; }
+        }
+
+        &.disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+
+          &:hover {
+            background: rgba(#fff, 0.5);
+            border-color: rgba($ersilia-purple, 0.25);
+
+            .mat-icon { color: rgba($ersilia-purple, 0.6); }
+          }
+        }
+      }
+
+      // Primary action, e.g. "New Model".
+      .primary-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 6px;
+        background: $ersilia-purple;
+        color: #ffffff;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s;
+
+        .mat-icon {
+          font-size: 17px;
+          width: 17px;
+          height: 17px;
+          color: rgba(#fff, 0.85);
+        }
+
+        &:hover {
+          background: darken($ersilia-purple, 8%);
+          box-shadow: 0 4px 14px rgba($ersilia-purple, 0.3);
+        }
+      }
+    }
+  }
+
+  // Internals of Material components -- unreachable without ::ng-deep.
+  :host ::ng-deep .page-header {
+    .filter-field {
+      .mat-mdc-select-value,
+      .mat-mdc-select-value-text {
+        color: #1a0f22;
+      }
+
+      .mat-mdc-select-placeholder {
+        font-weight: 300;
+        font-style: italic;
+        color: rgba($ersilia-purple, 0.42);
+      }
+
+      .mat-mdc-select-arrow-wrapper {
+        transform: none;
+      }
+
+      .mat-mdc-select-arrow {
+        color: rgba($ersilia-purple, 0.4);
+      }
+
+      .mat-date-range-input-container {
+        align-items: center;
+      }
+
+      .mat-date-range-input-separator {
+        color: rgba($ersilia-purple, 0.4);
+        margin: 0 6px;
+      }
+
+      .mat-datepicker-toggle {
+        flex-shrink: 0;
+
+        .mat-mdc-icon-button {
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          .mat-icon {
+            width: 17px;
+            height: 17px;
+            font-size: 17px;
+            color: rgba($ersilia-purple, 0.4);
+          }
+        }
+      }
+
+      &:focus-within {
+        .mat-mdc-select-arrow,
+        .mat-datepicker-toggle .mat-mdc-icon-button .mat-icon {
+          color: $ersilia-purple;
+        }
+      }
+    }
+
+    // theme.scss sizes checkboxes for form pages (30px box, 50px ripple, 16px
+    // label). That is far too heavy for a header row, so scale them down here.
+    .filter-toggles {
+      .mat-mdc-checkbox {
+        --mdc-checkbox-state-layer-size: 28px;
+      }
+
+      .mdc-checkbox__background {
+        width: 17px !important;
+        height: 17px !important;
+      }
+
+      .mdc-checkbox__ripple {
+        width: 28px !important;
+        height: 28px !important;
+      }
+
+      .mdc-label {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px !important;
+        padding: 0 0 0 2px !important;
+        margin-top: 0 !important;
+        color: rgba($ersilia-purple, 0.9);
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+// ─── Filter row ──────────────────────────────────────────────────────────────
+//
+// Labelled, underlined fields rather than Material outline boxes. Plain inputs,
+// so nothing here fights MDC's notched-outline structure.
+
+@mixin page-header-filters {
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 24px;
+    margin-top: 26px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .filter-label {
+      font-family: 'Fira Code', monospace;
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: rgba($ersilia-purple, 0.45);
+      margin-bottom: 8px;
+    }
+
+    .filter-field {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid rgba($ersilia-purple, 0.2);
+      transition: border-color 0.15s ease, border-width 0.15s ease;
+
+      .mat-icon {
+        flex-shrink: 0;
+        width: 15px;
+        height: 15px;
+        font-size: 15px;
+        color: rgba($ersilia-purple, 0.4);
+      }
+
+      // The "#" prefix is type, not an icon — it belongs to the id's own font.
+      .hash {
+        flex-shrink: 0;
+        font-family: 'Fira Code', monospace;
+        font-size: 13px;
+        color: rgba($ersilia-purple, 0.4);
+      }
+
+      input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: 0;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13.5px;
+        font-weight: 400;
+        color: #1a0f22;
+
+        &::placeholder {
+          font-weight: 300;
+          font-style: italic;
+          color: rgba($ersilia-purple, 0.42);
+        }
+      }
+
+      // Every field is quiet until it is in use.
+      &:focus-within {
+        border-bottom: 2px solid $ersilia-light-purple;
+
+        .mat-icon,
+        .hash {
+          color: $ersilia-purple;
+        }
+      }
+    }
+  }
+}

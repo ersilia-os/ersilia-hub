@@ -68,3 +68,10 @@ export function EmptyPermissions(): AppPermissions {
 export interface UserPermissionsUpdate {
   permissions: Permission[];
 }
+
+/** Response shape of GET /api/auth/permissions. */
+export interface UserPermissions {
+  userid: string;
+  permissions: Permission[];
+  last_updated?: string;
+}

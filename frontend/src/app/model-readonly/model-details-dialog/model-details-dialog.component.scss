@@ -1,57 +1,118 @@
 @import '../../../styles/colour-palette.scss';
 
 :host {
-  padding: 20px;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .dialog-container {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
+  padding: 32px 36px 28px;
 
-  padding: 20px;
-
+  // ── Header ──────────────────────────────────────────────────────────────
   .dialog-header {
     width: 100%;
-    font-size: 26px;
-    padding: 10px;
-    margin-bottom: 25px;
-
-    color: $ersilia-purple;
-    border-bottom: 1px solid $ersilia-purple;
+    margin-bottom: 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.1);
 
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: $ersilia-purple;
+    opacity: 0.85;
+
+    .ersilia-button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      text-transform: none;
+      opacity: 1;
+      background: $ersilia-purple;
+      color: #fff;
+      border-radius: 5px;
+      height: 34px;
+      padding: 0 14px;
+      transition: background 0.15s, box-shadow 0.15s;
+
+      &:hover {
+        background: darken($ersilia-purple, 8%);
+        box-shadow: 0 4px 14px rgba($ersilia-purple, 0.28);
+      }
+
+      .mat-icon {
+        font-size: 17px;
+        width: 17px;
+        height: 17px;
+        color: rgba(#fff, 0.85);
+        margin-right: 6px;
+      }
+    }
   }
 
-  .title {
-    flex: 1;
-  }
-
+  // ── Actions footer ───────────────────────────────────────────────────────
   .dialog-actions {
     width: 100%;
-    margin-top: 15px;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba($ersilia-purple, 0.08);
 
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: flex-end;
     align-items: center;
 
     .ersilia-button {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      text-transform: none;
+
       &.cancel {
-        background-color: $pastel-red;
-        color: #000000cc;
+        background: transparent;
+        color: rgba($ersilia-purple, 0.6);
+        border: 1px solid rgba($ersilia-purple, 0.2);
+        border-radius: 5px;
+        height: 34px;
+        padding: 0 14px;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
 
         .mat-icon {
-          color: #000000cc;
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          color: rgba($ersilia-purple, 0.5);
+          margin-right: 6px;
+          transition: color 0.15s;
+        }
+
+        &:hover {
+          background: rgba($ersilia-purple, 0.06);
+          color: $ersilia-purple;
+          border-color: rgba($ersilia-purple, 0.35);
+
+          .mat-icon {
+            color: $ersilia-purple;
+          }
         }
       }
     }
   }
 }
+
+// ─── Split Panel ─────────────────────────────────────────────────────────────
 
 .model-form-split-panel {
   display: flex;
@@ -59,6 +120,7 @@
   justify-content: space-between;
   align-items: flex-start;
   width: 100%;
+  gap: 24px;
 }
 
 .model-form {
@@ -67,31 +129,91 @@
   justify-content: flex-start;
   align-items: flex-start;
   width: 50%;
-  padding: 0px 10px;
+  gap: 20px;
 
   .field {
     min-width: 200px;
-    width: calc(100% - 20px);
-
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-start;
-
-    margin-bottom: 10px;
 
     .label {
-      width: fit-content;
-      margin-bottom: 5px;
-      font-size: 16px;
-      color: $ersilia-purple;
-      width: fit-content;
-      margin-bottom: 4px;
-      font-weight: bold;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: rgba($ersilia-purple, 0.78);
+      margin-bottom: 6px;
     }
 
     .contents {
-      flex: 1
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      font-weight: 400;
+      color: #1a0f22;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    &.id .contents,
+    &.slug .contents {
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      color: $ersilia-purple;
+      background: rgba($ersilia-purple, 0.05);
+      border: 1px solid rgba($ersilia-purple, 0.1);
+      border-radius: 3px;
+      padding: 4px 10px;
+      display: inline-block;
+    }
+
+    // Publication / source code, when the value is a followable URL
+    .contents.link {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 5px;
+      max-width: 100%;
+      color: $ersilia-purple;
+      text-decoration: none;
+      cursor: pointer;
+
+      .mat-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+        color: rgba($ersilia-purple, 0.65);
+        transition: color 0.15s;
+      }
+
+      .link-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+        border-bottom: 1px solid rgba($ersilia-purple, 0.25);
+        transition: border-color 0.15s;
+      }
+
+      &:hover {
+        .mat-icon {
+          color: $ersilia-purple;
+        }
+
+        .link-text {
+          border-bottom-color: $ersilia-purple;
+        }
+      }
+    }
+
+    &.description .contents,
+    &.interpretation .contents {
+      color: rgba(#1a0f22, 0.72);
+      font-weight: 300;
+      font-size: 13px;
     }
   }
 }

@@ -19,6 +19,34 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Model } from '../../../objects/model';
 import { RequestsCreateComponent } from '../../request-create/request-create.component';
 
+/**
+ * Resolve a metadata value into a followable URL, or null when it is not one.
+ *
+ * Publication fields hold either a full URL or a bare DOI; source code fields
+ * occasionally omit the scheme.
+ */
+function toExternalUrl(value?: string): string | null {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (/^https?:\/\/\S+$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^(doi:)?10\.\d{4,9}\/\S+$/i.test(trimmed)) {
+    return `https://doi.org/${trimmed.replace(/^doi:/i, '')}`;
+  }
+
+  if (/^www\.\S+$/i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  return null;
+}
+
 @Component({
   standalone: true,
   imports: [
@@ -38,12 +66,19 @@ export class ModelDetailsDialogComponent implements OnInit {
   busy: WritableSignal<boolean> = signal(true);
 
   model: Model | undefined = undefined;
+  publicationUrl: string | null = null;
+  sourceCodeUrl: string | null = null;
 
   constructor() {
   }
 
   ngOnInit() {
     this.model = this.dialogData;
+
+    const details = this.model?.details?.identification_details;
+    this.publicationUrl = toExternalUrl(details?.publication);
+    this.sourceCodeUrl = toExternalUrl(details?.source_code);
+
     this.busy.set(false);
   }
 

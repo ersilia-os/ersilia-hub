@@ -1,4 +1,6 @@
 
+import type { Permission } from "./auth";
+
 export interface User {
   id?: string;
   username: string;
@@ -7,6 +9,8 @@ export interface User {
   email?: string;
   sign_up_date?: Date;
   last_updated?: Date;
+  /** Read-only, returned by the API. Written via updateUserPermissions(). */
+  permissions?: Permission[];
 }
 
 export function mapUserFromApi(user: User): User {
@@ -14,7 +18,12 @@ export function mapUserFromApi(user: User): User {
     ...user,
     sign_up_date: user.sign_up_date ? new Date(user.sign_up_date) : undefined,
     last_updated: user.last_updated ? new Date(user.last_updated) : undefined,
+    permissions: user.permissions ?? [],
   };
+}
+
+export function isAdmin(user: User): boolean {
+  return user.permissions?.includes('ADMIN') === true;
 }
 
 export interface UsersFilter {

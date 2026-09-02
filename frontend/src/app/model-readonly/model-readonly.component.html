@@ -1,50 +1,78 @@
-<div class="component-header">
-    Models
-</div>
+<div class="page-header">
+    <div class="title-row">
+        <div class="title">Models</div>
+        <div class="count">{{ countLabel() }}</div>
+    </div>
 
-<div class="component-toolbar">
-    <div class="filters">
-        <div class="filter free-text">
-            <mat-form-field>
-                <mat-label>All Fields</mat-label>
-                <input matInput [(ngModel)]="filterFreeText">
-            </mat-form-field>
+    <div class="filter-row">
+        <div class="filter">
+            <div class="filter-label">Search</div>
+            <div class="filter-field search">
+                <mat-icon>search</mat-icon>
+                <input [(ngModel)]="filterFreeText" placeholder="Search all fields"
+                    aria-label="Search all fields">
+            </div>
         </div>
 
-        <div class="filter id">
-            <mat-form-field>
-                <mat-label>Id</mat-label>
-                <input matInput [(ngModel)]="filterId">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">Model ID</div>
+            <div class="filter-field">
+                <span class="hash">#</span>
+                <input [(ngModel)]="filterId" placeholder="eos…" aria-label="Filter by model id">
+            </div>
         </div>
 
-        <div class="filter description">
-            <mat-form-field>
-                <mat-label>Description</mat-label>
-                <input matInput [(ngModel)]="filterDescription">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">Description</div>
+            <div class="filter-field">
+                <mat-icon>notes</mat-icon>
+                <input [(ngModel)]="filterDescription" placeholder="Any words"
+                    aria-label="Filter by description">
+            </div>
         </div>
     </div>
 </div>
 
 <div class="models-container">
   @for (model of filteredModels(); track tableTrackBy) {
-  <div class="model mat-elevation-z4">
-    <div class="main-column" (click)="openDetailsDialog(model)">
-      <div class="title">{{ model.details.identification_details ? model.details.identification_details.title : model.id }}</div>
-      <div class="description">{{ model.details.description }}</div>
+  <div class="model-card mat-elevation-z2">
+
+    <div class="card-head" (click)="openDetailsDialog(model)">
+      <div class="identifiers">
+        <div class="model-id">{{ model.id }}</div>
+        @if (modelSlug(model)) {
+        <div class="model-slug" [matTooltip]="modelSlug(model)">{{ modelSlug(model) }}</div>
+        }
+      </div>
+      <mat-icon class="open-details" matTooltip="View model details">open_in_full</mat-icon>
     </div>
 
-    <div class="extra-column">
-      <div class="model-id" (click)="openDetailsDialog(model)">{{ model.id }}</div>
-      <div class="actions">
-          <div class="ersilia-button icon-only open-request" (click)="openRequestForm(model)"
-            #submitTooltip="matTooltip" matTooltip="New Evaluation"
-          >
-              <mat-icon>science</mat-icon>
-          </div>
+    <div class="card-body" (click)="openDetailsDialog(model)">
+      <!-- Title and toggle slots keep a fixed height so every collapsed card
+           lines up, whether or not the title wraps or the toggle is shown. -->
+      <div class="title">{{ modelTitle(model) }}</div>
+
+      <div class="description" [class.expanded]="isExpanded(model)">
+        {{ modelDescription(model) }}
+      </div>
+
+      <div class="expand-toggle-slot">
+        @if (canExpand(model)) {
+        <div class="expand-toggle" (click)="toggleExpanded(model, $event)">
+          {{ isExpanded(model) ? 'Show less' : 'Show more' }}
+          <mat-icon>{{ isExpanded(model) ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </div>
+        }
       </div>
     </div>
+
+    <div class="card-actions">
+      <div class="ersilia-button open-request" (click)="openRequestForm(model)">
+        <mat-icon>science</mat-icon>
+        Run Model
+      </div>
+    </div>
+
   </div>
   }
 </div>

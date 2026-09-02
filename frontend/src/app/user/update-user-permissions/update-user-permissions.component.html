@@ -5,7 +5,7 @@
         </div>
     </div>
 
-  @if (user != undefined && isUserAdmin) {
+  @if (user != undefined && isUserAdmin && !busy()) {
     <div class="permissions">
       @for (permission of permissions; track trackBy($index, permission)) {
         <div class="permission">

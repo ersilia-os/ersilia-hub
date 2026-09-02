@@ -1,85 +1,219 @@
 @import '../../styles/colour-palette.scss';
+@import '../../styles/page-header';
+
+@include page-header-band;
 
 :host {
-    width: 80%;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
 }
+
+// ─── Toolbar ─────────────────────────────────────────────────────────────────
+// Shares the band's gutter so the button lines up with the title above it.
 
 .toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px $page-gutter;
+
+  .spacer { flex: 1 1 auto; }
+
+  .new-eval-btn {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    margin-bottom: 20px;
-
-    .spacer {
-        flex: 1 1 auto;
-    }
-}
-
-.status {
-    border-radius: 5px;
-    padding: 4px;
-    text-align: center;
-    color: #000000b5;
-
-    &.completed {
-        background-color: $pastel-green;
-    }
-
-    &.queued {
-        background-color: $ersilia-grey-purple;
-        color: #ffffffad;
-    }
-
-    &.scheduling {
-        background-color: $pastel-yellow;
-    }
-
-    &.processing {
-        background-color: $pastel-yellow;
-    }
-
-    &.failed {
-        background-color: $pastel-red;
-    }
-}
-
-.mat-column-id {
-    width: 48px;
-}
-
-.mat-column-model_id {
-    width: 100px;
-}
-
-.mat-column-request_date {
-    width: 180px;
-}
-
-.mat-column-request_status {
-    width: 140px;
-}
-
-.mat-column-actions {
-    width: 100px;
-}
-
-.mat-mdc-table {
-    background-color: #727272;
-}
-
-.action-button {
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 6px;
+    background: $ersilia-purple;
+    color: #ffffff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    width: 32px;
-    height: 32px;
-    border-radius: 5px;
-    padding: 4px;
-    background-color: $ersilia-purple;
+    transition: background 0.15s, box-shadow 0.15s;
 
     .mat-icon {
-        width: 32px;
-        height: 32px;
-        font-size: 32px;
-        color: #ffffffcc;
+      font-size: 17px;
+      width: 17px;
+      height: 17px;
+      color: rgba(#fff, 0.85);
     }
+
+    &:hover {
+      background: darken($ersilia-purple, 8%);
+      box-shadow: 0 4px 14px rgba($ersilia-purple, 0.3);
+    }
+  }
+}
+
+// ─── Table ───────────────────────────────────────────────────────────────────
+
+.table-wrapper {
+  width: auto;
+  margin: 0 $page-gutter $page-gutter;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba($ersilia-purple, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba($ersilia-purple, 0.05);
+}
+
+// Override Material table styles. The `:host` prefix is required -- a
+// top-level `::ng-deep` block is emitted unscoped and would leak these rules
+// (notably the fixed row height) onto every other table in the app.
+:host ::ng-deep {
+  .mat-mdc-table {
+    background: #ffffff !important;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .mat-mdc-header-row {
+    background: rgba($ersilia-purple, 0.04) !important;
+    height: 44px !important;
+  }
+
+  .mat-mdc-header-cell {
+    font-family: 'Fira Code', monospace !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: rgba($ersilia-purple, 0.5) !important;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.1) !important;
+  }
+
+  .mat-mdc-row {
+    height: 52px !important;
+    cursor: pointer;
+    transition: background 0.12s ease;
+
+    &:hover {
+      background: rgba($ersilia-purple, 0.03) !important;
+    }
+
+    &:not(:last-child) .mat-mdc-cell {
+      border-bottom: 1px solid rgba($ersilia-purple, 0.06) !important;
+    }
+
+    &:last-child .mat-mdc-cell {
+      border-bottom: none !important;
+    }
+  }
+
+  .mat-mdc-cell {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13.5px !important;
+    color: #1a0f22 !important;
+    border-bottom-color: rgba($ersilia-purple, 0.06) !important;
+  }
+}
+
+// ─── Column widths ────────────────────────────────────────────────────────────
+
+.mat-column-id          { width: 60px; }
+.mat-column-model_id    { width: 120px; }
+.mat-column-request_date { width: 170px; }
+.mat-column-request_status { width: 130px; }
+.mat-column-actions     { width: 60px; text-align: right; }
+
+// ─── Mono ID cells ────────────────────────────────────────────────────────────
+
+.mono-id {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: $ersilia-purple;
+  background: rgba($ersilia-purple, 0.06);
+  border: 1px solid rgba($ersilia-purple, 0.12);
+  padding: 3px 8px;
+  border-radius: 3px;
+
+  &.clickable {
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover {
+      background: rgba($ersilia-purple, 0.14);
+      border-color: rgba($ersilia-purple, 0.35);
+    }
+  }
+}
+
+// ─── Status badges ────────────────────────────────────────────────────────────
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: capitalize;
+
+  &.completed {
+    background: rgba($alert-green, 0.12);
+    color: darken($alert-green, 35%);
+    border: 1px solid rgba($alert-green, 0.3);
+  }
+
+  &.queued {
+    background: rgba($ersilia-purple, 0.08);
+    color: $ersilia-purple;
+    border: 1px solid rgba($ersilia-purple, 0.2);
+  }
+
+  &.scheduling, &.processing {
+    background: rgba($alert-orange, 0.12);
+    color: darken($alert-orange, 22%);
+    border: 1px solid rgba($alert-orange, 0.3);
+  }
+
+  &.failed {
+    background: rgba($alert-red, 0.1);
+    color: darken($alert-red, 15%);
+    border: 1px solid rgba($alert-red, 0.25);
+  }
+}
+
+// ─── Row action button ────────────────────────────────────────────────────────
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  border: 1px solid rgba($ersilia-purple, 0.18);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+
+  .mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+    color: rgba($ersilia-purple, 0.5);
+    transition: color 0.15s;
+  }
+
+  &:hover {
+    background: $ersilia-purple;
+    border-color: $ersilia-purple;
+
+    .mat-icon { color: #ffffff; }
+  }
 }

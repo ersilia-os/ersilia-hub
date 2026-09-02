@@ -25,6 +25,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 
 @Component({
   standalone: true,
+  host: { 'data-component': 'model-update' },
   imports: [
     MatButtonModule, CommonModule, MatIconModule, MatProgressBarModule,
     MatDialogActions, MatDialogClose, MatDialogTitle, MatDialogContent,

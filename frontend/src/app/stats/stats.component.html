@@ -1,94 +1,110 @@
-<div class="component-header">
-    Model Statistics
-</div>
+<div class="page-header">
+    <div class="title-row">
+        <div class="title">Model Statistics</div>
+        <div class="count">{{ countLabel() }}</div>
+    </div>
 
-<div class="component-toolbar">
-    <div class="filters">
+    <!-- Bare mat-select / mat-date-range-input: MAT_FORM_FIELD is an optional
+         dependency for both, so they sit directly in the underlined
+         .filter-field wrappers the way the models page uses plain inputs. -->
+    <div class="filter-row">
         <div class="filter">
-            <mat-form-field>
-                <mat-label>Display Selection</mat-label>
-                <mat-select [(value)]="displaySelection">
-                    <mat-option value="Totals"> Totals </mat-option>
-                    <mat-option value="Success"> Success </mat-option>
-                    <mat-option value="Failed"> Failed </mat-option>
+            <div class="filter-label">Display</div>
+            <div class="filter-field">
+                <mat-icon>bar_chart</mat-icon>
+                <mat-select [(value)]="displaySelection" panelClass="header-select-panel">
+                    <mat-option value="Totals">Totals</mat-option>
+                    <mat-option value="Success">Success</mat-option>
+                    <mat-option value="Failed">Failed</mat-option>
                 </mat-select>
-            </mat-form-field>
+            </div>
         </div>
 
         <div class="filter">
-            <mat-form-field>
-                <mat-label>Filter Models</mat-label>
-                <mat-select [(value)]="filters.model_ids" multiple>
+            <div class="filter-label">Models</div>
+            <div class="filter-field">
+                <mat-icon>biotech</mat-icon>
+                <mat-select [(value)]="filters.model_ids" multiple panelClass="header-select-panel"
+                    placeholder="All models">
                     @for (modelId of filterData().model_ids; track modelId) {
                     <mat-option [value]="modelId">{{ modelId }}</mat-option>
                     }
                 </mat-select>
-            </mat-form-field>
+            </div>
         </div>
 
         <div class="filter">
-            <mat-form-field>
-                <mat-label>Request Date Range</mat-label>
+            <div class="filter-label">Date Range</div>
+            <div class="filter-field date-range">
+                <mat-icon>calendar_today</mat-icon>
                 <mat-date-range-input [rangePicker]="picker">
-                    <input matStartDate placeholder="From date" (dateInput)="fromDateChange('input', $event)"
+                    <input matStartDate placeholder="From" (dateInput)="fromDateChange('input', $event)"
                         (dateChange)="fromDateChange('change', $event)" [value]="requestDateFrom">
-                    <input matEndDate placeholder="To date" (dateInput)="toDateChange('input', $event)"
+                    <input matEndDate placeholder="To" (dateInput)="toDateChange('input', $event)"
                         (dateChange)="toDateChange('change', $event)" [value]="requestDateTo">
                 </mat-date-range-input>
-                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker-toggle [for]="picker"></mat-datepicker-toggle>
                 <mat-date-range-picker #picker></mat-date-range-picker>
-            </mat-form-field>
+            </div>
         </div>
 
         <div class="filter">
-            <mat-form-field>
-                <mat-label>Group By</mat-label>
-                <mat-select [(value)]="groupBy" multiple>
+            <div class="filter-label">Group By</div>
+            <div class="filter-field">
+                <mat-icon>category</mat-icon>
+                <mat-select [(value)]="groupBy" multiple panelClass="header-select-panel">
                     @for (group of filterData().group_by; track group) {
                     <mat-option [value]="group" [disabled]="group === 'ModelId'">{{ group }}</mat-option>
                     }
                 </mat-select>
-            </mat-form-field>
-        </div>
-
-        <div class="spacer"></div>
-
-        <div class="filter refresh">
-            <div class="ersilia-button icon-only refresh" (click)="loadStats()" [ngClass]="{'disabled': loading()}">
-                @if(loading()) {
-                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                } @else {
-                <mat-icon>refresh</mat-icon>
-                }
             </div>
         </div>
-    </div>
 
-
-    <div class="actions">
-        <div class="action">
-            <div class="ersilia-button icon-only download" (click)="downloadCsv()" [ngClass]="{'disabled': loading()}">
-                @if(loading()) {
-                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                } @else {
-                <mat-icon>download</mat-icon>
-                }
+        <div class="filter actions">
+            <div class="filter-label"></div>
+            <div class="filter-actions">
+                <div class="icon-btn" (click)="loadStats()" [ngClass]="{'disabled': loading()}"
+                    matTooltip="Refresh">
+                    @if(loading()) {
+                    <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                    } @else {
+                    <mat-icon>refresh</mat-icon>
+                    }
+                </div>
+                <div class="icon-btn" (click)="downloadCsv()" [ngClass]="{'disabled': loading()}"
+                    matTooltip="Download CSV">
+                    @if(loading()) {
+                    <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                    } @else {
+                    <mat-icon>download</mat-icon>
+                    }
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 
-
 <section class="stats-table">
-    <table mat-table [dataSource]="stats()" class="mat-elevation-z8" [trackBy]="tableTrackBy">
+    <table mat-table [dataSource]="stats()" [trackBy]="tableTrackBy">
         @for (column of displayedColumns; track column) {
         <ng-container [matColumnDef]="column" [sticky]="isStickyColumn(column)">
             <th mat-header-cell *matHeaderCellDef>
-                {{columnHeaders[column]}}
+                {{ columnHeaders[column] }}
+                @if (avgColumnFor(column)) {
+                <span class="avg-header">(avg)</span>
+                }
             </th>
             <td mat-cell *matCellDef="let element">
-                {{element[column]}}
+                @if (column === 'model_id') {
+                <span class="mono-id clickable" (click)="openModelDetails(element[column])"
+                    matTooltip="View model details">{{ element[column] }}</span>
+                } @else if (avgColumnFor(column)) {
+                {{ element[column] }}
+                <span class="avg-value">({{ element[avgColumnFor(column)!] | number:'1.0-1' }})</span>
+                } @else {
+                {{ element[column] }}
+                }
             </td>
         </ng-container>
         }

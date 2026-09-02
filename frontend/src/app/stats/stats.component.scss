@@ -1,70 +1,162 @@
 @import '../../styles/colour-palette.scss';
+@import '../../styles/page-header';
+
+@include page-header-band;
+@include page-header-filters;
+@include page-header-filter-controls;
 
 :host {
     width: 100%;
+    height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: flex-start;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
 }
 
-.component-header {
-    font-size: 26px;
-    margin-bottom: 20px;
-    width: calc(100% - 30px);
-    color: $ersilia-purple;
-}
+// ─── Header filters ───────────────────────────────────────────────────────────
+// The filter row lives inside the purple band, matching the models page. The
+// bare-Material-control styling is shared -- see page-header-filter-controls.
 
-.component-toolbar {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
+.page-header {
+    .filter-row {
+        // Four filters plus a slot for the refresh/download actions.
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
 
-    width: calc(100% - 50px);
-
-
-    .filters {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-
-        width: 100%;
-        flex: 1;
-
-        .filter {
-            margin-right: 10px;
-
-            &.refresh {
-                height: 78px;
-                margin-top: 25px;
-                margin-right: 0px;
-            }
+        @media (max-width: 1250px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .spacer {
-            width: 100%;
-            flex: 1;
+        @media (max-width: 700px) {
+            grid-template-columns: 1fr;
         }
     }
-
-    .actions {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        align-items: center;
-
-        width: 100%;
-        flex: 1;
-
-        margin-bottom: 20px;
-
-        .action {}
-    }
 }
+
+// ─── Stats Table ──────────────────────────────────────────────────────────────
 
 .stats-table {
-    width: 100%;
+    width: auto;
+    // Top margin stands in for the toolbar the other pages have between the
+    // band and their table -- the filters live inside the band here.
+    margin: 24px $page-gutter $page-gutter;
+    min-height: 0;
     overflow: auto;
+    border: 1px solid rgba($ersilia-purple, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba($ersilia-purple, 0.05);
+    scrollbar-width: thin;
+    scrollbar-color: rgba($ersilia-purple, 0.2) transparent;
+
+    &::-webkit-scrollbar { height: 4px; width: 4px; }
+    &::-webkit-scrollbar-thumb {
+        background: rgba($ersilia-purple, 0.2);
+        border-radius: 2px;
+    }
+}
+
+// `:host` prefix is required -- a top-level `::ng-deep` block is emitted
+// unscoped, and the `white-space: nowrap` below then applies to every table in
+// the app (it was collapsing the model-management descriptions to one line).
+:host ::ng-deep {
+    .mat-mdc-table {
+        background: #ffffff !important;
+        width: 100%;
+    }
+
+    .mat-mdc-header-row {
+        background: rgba($ersilia-purple, 0.04) !important;
+        height: 44px !important;
+    }
+
+    .mat-mdc-header-cell {
+        font-family: 'Fira Code', monospace !important;
+        font-size: 11.5px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+        color: rgba($ersilia-purple, 0.8) !important;
+        border-bottom: 1px solid rgba($ersilia-purple, 0.1) !important;
+        white-space: nowrap;
+        padding: 0 14px !important;
+
+        &.mat-column-model_id,
+        &.mat-column-input_size {
+            background: rgba($ersilia-purple, 0.06) !important;
+            border-right: 1px solid rgba($ersilia-purple, 0.12) !important;
+        }
+    }
+
+    .mat-mdc-row {
+        height: 48px !important;
+        transition: background 0.12s ease;
+
+        &:hover { background: rgba($ersilia-purple, 0.03) !important; }
+
+        &:not(:last-child) .mat-mdc-cell {
+            border-bottom: 1px solid rgba($ersilia-purple, 0.05) !important;
+        }
+
+        &:last-child .mat-mdc-cell { border-bottom: none !important; }
+    }
+
+    .mat-mdc-cell {
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+        color: rgba(#1a0f22, 0.82) !important;
+        padding: 0 14px !important;
+        white-space: nowrap;
+        border-bottom-color: rgba($ersilia-purple, 0.05) !important;
+
+        &.mat-column-model_id,
+        &.mat-column-input_size {
+            background: rgba($ersilia-purple, 0.03) !important;
+            border-right: 1px solid rgba($ersilia-purple, 0.08) !important;
+        }
+    }
+}
+
+.mono-id {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: $ersilia-purple;
+    background: rgba($ersilia-purple, 0.06);
+    border: 1px solid rgba($ersilia-purple, 0.12);
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+
+    &.clickable {
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+
+        &:hover {
+            background: rgba($ersilia-purple, 0.14);
+            border-color: rgba($ersilia-purple, 0.35);
+        }
+    }
+}
+
+// ─── Inline averages ──────────────────────────────────────────────────────────
+// Each total carries its own average alongside it, in green so the two numbers
+// stay tellable apart at a glance.
+
+$stats-avg-green: darken($alert-green, 28%);
+
+.avg-value {
+    margin-left: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    color: $stats-avg-green;
+    white-space: nowrap;
+}
+
+.avg-header {
+    margin-left: 4px;
+    color: $stats-avg-green;
+    text-transform: none;
 }

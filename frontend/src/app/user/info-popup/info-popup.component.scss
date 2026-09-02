@@ -1,80 +1,75 @@
 @import '../../../styles/colour-palette.scss';
 
 :host {
-  padding: 20px;
+  font-family: 'DM Sans', sans-serif;
 }
+
+// ─── Container ────────────────────────────────────────────────────────────────
 
 .dialog-container {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: center;
+  padding: 24px;
+  gap: 20px;
+}
 
-  padding: 20px;
+// ─── Header ───────────────────────────────────────────────────────────────────
 
-  .dialog-header {
-    width: 100%;
-    font-size: 26px;
-    padding: 10px;
-    margin-bottom: 25px;
-
-    color: $ersilia-purple;
-    border-bottom: 1px solid $ersilia-purple;
-
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-  }
+.dialog-header {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba($ersilia-purple, 0.12);
 
   .title {
     flex: 1;
-  }
-
-  .logout {
-    font-size: 16px;
-  }
-
-  .dialog-actions {
-    width: 100%;
-    margin-top: 15px;
-
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-
-    .ersilia-button {
-      &.cancel {
-        background-color: $pastel-red;
-        color: #000000cc;
-
-        .mat-icon {
-          color: #000000cc;
-        }
-      }
-
-      &.submit {
-        ersilia-loader {
-          margin-right: 5px;
-        }
-      }
-    }
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    color: $ersilia-purple;
   }
 }
+
+// ─── Logout button ────────────────────────────────────────────────────────────
+
+.ersilia-button.logout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: 6px;
+  background: $ersilia-purple;
+  border: 1px solid $ersilia-purple;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  .mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &:hover { background: darken($ersilia-purple, 8%); }
+}
+
+// ─── Details grid ─────────────────────────────────────────────────────────────
 
 .details {
   display: flex;
   flex-direction: row;
   justify-content: space-evenly;
   align-items: flex-start;
+  width: 100%;
 
   .column {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-
+    gap: 4px;
     width: 320px;
   }
 
@@ -82,105 +77,170 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    height: 50px;
-
-    &.input {
-      width: 100%;
-      flex: 1;
-    }
+    height: 44px;
+    gap: 12px;
 
     .label {
-      font-size: 20px;
-      color: $ersilia-purple;
-      width: fit-content;
-      margin-right: 16px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba($ersilia-purple, 0.55);
+      width: 80px;
+      flex-shrink: 0;
     }
 
     .contents {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: flex-start;
-
-      .ersilia-button {
-        margin-right: 15px;
-      }
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: rgba(#1a0f22, 0.8);
     }
-
   }
 }
 
-.actions {
-  margin-top: 15px;
-  margin-bottom: 15px;
-
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-evenly;
-
-  width: 100%;
-}
+// ─── Actions block ────────────────────────────────────────────────────────────
 
 .actions {
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
   align-items: flex-start;
   width: 100%;
-  border: 2px solid $ersilia-purple;
+  border: 1px solid rgba($ersilia-purple, 0.2);
   border-radius: 8px;
-  background-color: rgba($ersilia-purple, 0.2);
+  background: rgba($ersilia-purple, 0.04);
+  padding: 16px;
+  gap: 10px;
 
   .actions-title {
-    font-size: 22px;
-    color: $ersilia-purple;
-    font-weight: bold;
-
-    padding: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba($ersilia-purple, 0.5);
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.08);
+    width: 100%;
   }
 
   .ersilia-button {
-    margin: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    height: 36px;
+    border-radius: 6px;
+    background: $ersilia-purple;
+    border: 1px solid $ersilia-purple;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    .mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+    &:hover { background: darken($ersilia-purple, 8%); }
   }
 }
+
+// ─── Danger zone ──────────────────────────────────────────────────────────────
 
 .danger-zone {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: flex-start;
   width: 100%;
-  border: 2px solid $alert-red;
+  border: 1px solid rgba($alert-red, 0.35);
   border-radius: 8px;
-  background-color: rgba($alert-red, 0.2);
+  background: rgba($alert-red, 0.05);
+  padding: 16px;
+  gap: 10px;
 
   .danger-zone-title {
-    font-size: 22px;
-    color: $alert-red;
-    font-weight: bold;
-
-    padding: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba($alert-red, 0.7);
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba($alert-red, 0.12);
+    width: 100%;
   }
 
   .delete-row {
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
-    align-items: flex-start;
+    gap: 8px;
     width: 100%;
-    height: 160px;
-    padding: 8px;
 
     .ersilia-button.delete {
-      background-color: $alert-red;
-      color: #202020cf;
-      border: 1px solid #03000057;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      height: 36px;
+      border-radius: 6px;
+      background: rgba($alert-red, 0.08);
+      border: 1px solid rgba($alert-red, 0.35);
+      color: darken($alert-red, 10%);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
 
-      .mat-icon {
-        color: #202020cf;
+      .mat-icon { font-size: 18px; width: 18px; height: 18px; color: darken($alert-red, 10%); }
+
+      &:hover {
+        background: $alert-red;
+        border-color: $alert-red;
+        color: #fff;
+        .mat-icon { color: #fff; }
       }
+
+      &.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        &:hover { background: rgba($alert-red, 0.08); border-color: rgba($alert-red, 0.35); color: darken($alert-red, 10%); .mat-icon { color: darken($alert-red, 10%); } }
+      }
+    }
+  }
+}
+
+// ─── Close button ─────────────────────────────────────────────────────────────
+
+.dialog-actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+
+  .ersilia-button.cancel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 20px;
+    height: 36px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid rgba($ersilia-purple, 0.25);
+    color: rgba($ersilia-purple, 0.7);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    .mat-icon { font-size: 18px; width: 18px; height: 18px; color: rgba($ersilia-purple, 0.7); }
+
+    &:hover {
+      background: rgba($ersilia-purple, 0.06);
+      border-color: rgba($ersilia-purple, 0.4);
     }
   }
 }

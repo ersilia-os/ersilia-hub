@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
+import { Component, computed, inject, OnDestroy, Signal, TrackByFunction } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { RequestsService } from '../../services/requests.service';
 import { MatTableModule } from '@angular/material/table';
@@ -13,11 +13,15 @@ import { ErsiliaLoaderComponent } from '../ersilia-loader/ersilia-loader.compone
 import { mapRequest, RequestDisplay } from '../../objects/request-view';
 import { RequestViewComponent } from '../request-view/request-view.component';
 import { AuthService } from '../../services/auth.service';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ModelsService } from '../../services/models.service';
+import { ModelDetailsDialogComponent } from '../model-readonly/model-details-dialog/model-details-dialog.component';
+import { NotificationsService, Notification } from '../notifications/notifications.service';
 
 @Component({
   selector: 'app-requests-list',
   standalone: true,
-  imports: [MatButtonModule, MatTableModule, CommonModule, MatIconModule, MatProgressBarModule, ErsiliaLoaderComponent],
+  imports: [MatButtonModule, MatTableModule, CommonModule, MatIconModule, MatProgressBarModule, ErsiliaLoaderComponent, MatTooltipModule],
   templateUrl: './requests-list.component.html',
   styleUrl: './requests-list.component.scss'
 })
@@ -31,10 +35,13 @@ export class RequestsListComponent implements OnDestroy {
 
   readonly dialog = inject(MatDialog);
   private authService = inject(AuthService);
+  private modelsService = inject(ModelsService);
+  private notificationsService = inject(NotificationsService);
   private userId: Signal<string | undefined>;
 
   requests: Signal<RequestDisplay[]>;
   loading: Signal<boolean>;
+  countLabel: Signal<string>;
 
   displayedColumns: string[] = ['id', 'model_id', 'request_date', 'request_status', 'actions'];
   columnHeaders: { [column: string]: string } = {
@@ -56,9 +63,37 @@ export class RequestsListComponent implements OnDestroy {
       requests => requests.map(mapRequest)
     );
 
+    this.countLabel = computed(() => {
+      const total = this.requests().length;
+
+      return total === 1 ? '1 evaluation' : `${total} evaluations`;
+    });
+
     this.refreshTimer$ = timer(0, 5000).subscribe(_ => {
       this.requestFilters.user_id = this.userId();
       this.requestService.loadRequests(this.requestFilters);
+    });
+
+    // Backs the model detail dialog opened from the model_id cells.
+    this.modelsService.loadModels(true);
+  }
+
+  openModelDetails(modelId: string) {
+    const model = this.modelsService.findModel(modelId);
+
+    if (model == null) {
+      this.notificationsService.pushNotification(
+        Notification('ERROR', `Could not find details for model [${modelId}]`)
+      );
+
+      return;
+    }
+
+    this.dialog.open(ModelDetailsDialogComponent, {
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '300ms',
+      panelClass: 'dialog-panel-large',
+      data: model,
     });
   }
 
