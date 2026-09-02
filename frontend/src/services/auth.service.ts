@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpHandlerFn, HttpRequest } from "@angular/common/http";
 import { computed, inject, Injectable, Signal, signal, WritableSignal } from "@angular/core";
 import { NotificationsService, Notification } from "../app/notifications/notifications.service";
-import { AuthType, LoginResponse, mapUserSessionFromApi, Permission, userLoginAuth, UserSession } from "../objects/auth";
+import { AuthType, LoginResponse, mapUserSessionFromApi, Permission, userLoginAuth, UserPermissions, UserSession } from "../objects/auth";
 import { User, mapUserFromApi } from "../objects/user";
 import { catchError, map, Observable, throwError, timer } from "rxjs";
 import { mapHttpError } from "../app/utils/api";
@@ -109,6 +109,36 @@ export class AuthService {
   init() {
     this.loadFromCache();
     this.validateLocalSession();
+
+    // Permissions restored from localStorage are only as fresh as the last
+    // login. Re-fetch them so a grant or revoke made since then takes effect
+    // on reload, instead of requiring the user to log out and back in.
+    if (this.hasSession()) {
+      this.reloadPermissions().subscribe({ error: _ => { } });
+    }
+  }
+
+  private reloadPermissions() {
+    return this.http.get<UserPermissions>(`${environment.apiHost}/api/auth/permissions`)
+      .pipe(
+        map(response => {
+          this.permissions.set(response.permissions ?? []);
+          this.updateCache();
+
+          return true;
+        }),
+        catchError((error: HttpErrorResponse) => {
+          // 404 means the user genuinely has no permissions record. Anything
+          // else (offline, or a 401 that the session refresh already handles)
+          // leaves the cached value alone rather than stripping the UI.
+          if (error.status === 404) {
+            this.permissions.set([]);
+            this.updateCache();
+          }
+
+          return throwError(() => new Error(mapHttpError(error)));
+        })
+      );
   }
 
   clearSession() {

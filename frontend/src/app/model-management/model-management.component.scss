@@ -1,192 +1,274 @@
 @import '../../styles/colour-palette.scss';
+@import '../../styles/page-header';
+
+@include page-header-band;
+@include page-header-filters;
+@include page-header-filter-controls;
 
 :host {
   width: 100%;
-  height: calc(100% - 80px);
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.component-header {
-  font-size: 26px;
-  margin-bottom: 20px;
-  width: calc(100% - 30px);
-  color: $ersilia-purple;
-}
+// ─── Header filters ───────────────────────────────────────────────────────────
 
-.component-toolbar {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
+.page-header {
+  .filter-row {
+    // Search, the active-only toggle, then refresh + New Model.
+    grid-template-columns: minmax(0, 1fr) auto auto;
 
-  width: calc(100% - 50px);
-  margin-bottom: 20px;
-
-
-  .filters {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-
-    width: 100%;
-    flex: 1;
-
-    .filter {
-      margin-right: 10px;
-
-      &.refresh {
-        margin-right: 0px;
-      }
-
-      ::ng-deep .search-string-filter {
-        .mat-mdc-form-field-subscript-wrapper {
-          display: none !important;
-        }
-      }
-    }
-
-    .spacer {
-      width: 100%;
-      flex: 1;
-    }
-  }
-
-  .actions {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    align-items: center;
-
-    width: 100%;
-    flex: 1;
-
-    margin-top: 10px;
-
-    .spacer {
-      width: 100%;
-      flex: 1;
-    }
-
-    .action {
-      margin-left: 10px;
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
     }
   }
 }
+
+// ─── Table ────────────────────────────────────────────────────────────────────
 
 .models-container {
-  width: 80%;
-  height: 100%;
-}
+  width: auto;
+  // Top margin separates the table from the header band -- the filters live
+  // inside the band, so there is no toolbar in between.
+  margin: 24px $page-gutter $page-gutter;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba($ersilia-purple, 0.18) transparent;
 
-.mat-column-enabled {
-  width: 48px;
-}
-
-.mat-column-id {
-  width: 40px;
-}
-
-.mat-column-image_tag {
-  width: 40px;
-}
-
-.mat-column-description {
-  width: 200px;
-}
-
-.mat-column-resources {
-  width: 250px;
-
-  .resources {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-
-    .resources-line {
-      display: flex;
-      flex-direction: row;
-      align-items: flex-start;
-      justify-content: flex-start;
-
-      .resource {
-        padding: 5px;
-        border-radius: 5px;
-        width: fit-content;
-        background-color: #ccc;
-        border: 1px solid #727272;
-        margin: 2px;
-
-        &.warn {
-          background-color: $pastel-orange;
-          border-color: $alert-orange;
-        }
-      }
-    }
-  }
-}
-
-.mat-column-max_instances {
-  width: 55px;
-}
-
-.mat-column-exec_mode {
-  width: 60px;
-
-  .mode {
-    padding: 5px;
-    border-radius: 5px;
-    width: fit-content;
-    background-color: #ccc;
-    border: 1px solid #727272;
-
-    &.sync {
-      background-color: $pastel-red;
-    }
-
-    &.async {
-      background-color: $pastel-green;
-    }
-  }
-}
-
-.mat-column-cache_enabled {
-  width: 48px;
-}
-
-
-.mat-column-actions {
-  width: 60px;
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: rgba($ersilia-purple, 0.2); border-radius: 2px; }
 }
 
 .mat-mdc-table {
-  background-color: #727272;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba($ersilia-purple, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
 }
+
+.mat-mdc-header-row {
+  background: rgba($ersilia-purple, 0.03);
+}
+
+.mat-mdc-header-cell {
+  font-family: 'Fira Code', monospace !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+  color: rgba($ersilia-purple, 0.45) !important;
+  border-bottom: 1px solid rgba($ersilia-purple, 0.08) !important;
+}
+
+.mat-mdc-row {
+  transition: background 0.15s;
+  &:hover { background: rgba($ersilia-purple, 0.03); }
+}
+
+.mat-mdc-cell {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 13.5px !important;
+  color: rgba(#1a0f22, 0.8) !important;
+  border-bottom: 1px solid rgba($ersilia-purple, 0.05) !important;
+}
+
+// ─── Column widths ────────────────────────────────────────────────────────────
+
+.mat-column-enabled       { width: 48px; }
+.mat-column-id            { width: 80px; }
+.mat-column-image_tag     { width: 60px; }
+.mat-column-description   { width: 320px; }
+.mat-column-resources     { width: 250px; }
+.mat-column-max_instances { width: 55px; }
+.mat-column-exec_mode     { width: 80px; }
+.mat-column-cache_enabled { width: 60px; }
+.mat-column-actions       { width: 80px; }
+
+// ─── Description cell ─────────────────────────────────────────────────────────
+// Clamped to 3 lines with a toggle, matching the model cards on the models
+// page. MDC cells set `overflow: hidden`, so the cell must be free to grow --
+// never constrain the row height here.
+
+$mm-description-lines: 3;
+$mm-description-line-height: 1.45;
+
+.description-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px 0;
+  white-space: normal;
+
+  .description {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12.5px;
+    line-height: $mm-description-line-height;
+    color: rgba(#1a0f22, 0.85);
+    word-break: break-word;
+
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: $mm-description-lines;
+    line-clamp: $mm-description-lines;
+    overflow: hidden;
+
+    &.expanded {
+      display: block;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      overflow: visible;
+    }
+  }
+
+  .expand-toggle {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba($ersilia-purple, 0.7);
+    cursor: pointer;
+    transition: color 0.15s;
+
+    .mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+
+    &:hover {
+      color: $ersilia-purple;
+    }
+  }
+}
+
+// ─── Resource chips ───────────────────────────────────────────────────────────
+
+.resources {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+
+  .resources-line {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+
+    .resource {
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: rgba($ersilia-purple, 0.07);
+      border: 1px solid rgba($ersilia-purple, 0.15);
+      color: rgba($ersilia-purple, 0.8);
+
+      &.warn {
+        background: $pastel-orange;
+        border-color: $alert-orange;
+        color: darken($alert-orange, 20%);
+      }
+    }
+  }
+}
+
+// ─── Exec mode badge ──────────────────────────────────────────────────────────
+
+.mode {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  width: fit-content;
+  border: 1px solid transparent;
+
+  &.sync {
+    background: rgba($ersilia-light-purple, 0.15);
+    border-color: rgba($ersilia-light-purple, 0.35);
+    color: darken($ersilia-light-purple, 10%);
+  }
+
+  &.async {
+    background: rgba($ersilia-green, 0.35);
+    border-color: rgba($ersilia-green, 0.7);
+    color: darken($ersilia-green, 40%);
+  }
+}
+
+// ─── Table checkboxes ─────────────────────────────────────────────────────────
+
+.mat-mdc-cell ::ng-deep .mat-mdc-checkbox {
+  .mdc-checkbox__background {
+    border-color: rgba($ersilia-purple, 0.4) !important;
+  }
+
+  // Matches the app-wide convention set in theme.scss: light purple fill,
+  // white tick.
+  &.mat-mdc-checkbox-checked {
+    .mdc-checkbox__background {
+      background-color: $ersilia-light-purple !important;
+      border-color: $ersilia-light-purple !important;
+    }
+
+    .mdc-checkbox__checkmark {
+      color: #ffffff !important;
+    }
+  }
+
+  .mdc-checkbox__ripple,
+  .mat-ripple-element {
+    background-color: $ersilia-purple !important;
+  }
+}
+
+// ─── Action buttons ───────────────────────────────────────────────────────────
 
 .actions-cell {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-evenly;
-  min-width: 90px;
+  gap: 6px;
 }
 
 .action-button {
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 5px;
-  padding: 4px;
-  background-color: $ersilia-purple;
+  border-radius: 6px;
+  border: 1px solid rgba($ersilia-purple, 0.2);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 
   .mat-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 32px;
-    color: #ffffffcc;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: rgba($ersilia-purple, 0.55);
+    transition: color 0.15s;
+  }
+
+  &:hover {
+    background: $ersilia-purple;
+    border-color: $ersilia-purple;
+    .mat-icon { color: #fff; }
   }
 }

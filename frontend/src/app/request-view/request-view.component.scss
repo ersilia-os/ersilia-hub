@@ -1,125 +1,104 @@
 @import '../../styles/colour-palette.scss';
 
 :host {
-  padding: 20px;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .dialog-container {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
+  padding: 32px 36px 28px;
 
-  padding: 20px;
-
+  // ── Header ────────────────────────────────────────────────────────────────
   .dialog-header {
     width: 100%;
-    height: 40px;
-    font-size: 26px;
-    padding: 10px;
-    margin-bottom: 25px;
-
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.12);
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
 
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.01em;
     color: $ersilia-purple;
-    border-bottom: 1px solid $ersilia-purple;
-  }
 
-  .details {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    width: 80%;
+    .ersilia-button.refresh {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: 1px solid rgba($ersilia-purple, 0.2);
+      border-radius: 6px;
+      padding: 4px;
+      transition: background 0.15s, border-color 0.15s;
 
-    .detail {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: flex-start;
-      height: 50px;
+      .mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: rgba($ersilia-purple, 0.5);
+      }
 
-      .contents {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
+      &:hover {
+        background: rgba($ersilia-purple, 0.06);
+        border-color: rgba($ersilia-purple, 0.35);
+      }
 
-        .status {
-          border-radius: 5px;
-          padding: 4px;
-          text-align: center;
-          color: #000000b5;
-
-          &.completed {
-            background-color: $pastel-green;
-          }
-
-          &.queued {
-            background-color: $ersilia-grey-purple;
-            color: #ffffffad;
-          }
-
-          &.scheduling {
-            background-color: $pastel-yellow;
-          }
-
-          &.processing {
-            background-color: $pastel-yellow;
-          }
-
-          &.failed {
-            background-color: $pastel-red;
-          }
-        }
-
-        &.entries {
-          min-width: 350px;
-          min-height: 180px;
-          width: calc(100% - 10px);
-          height: 180px;
-
-          .smiles {
-            width: 100%;
-            height: 100%;
-          }
-        }
-
-        .ersilia-button {
-          margin-right: 15px;
-        }
+      &.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }
     }
   }
 
+  // ── Footer actions ────────────────────────────────────────────────────────
   .dialog-actions {
     width: 100%;
-    margin-top: 15px;
-
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba($ersilia-purple, 0.08);
     display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
+    justify-content: flex-end;
 
-    .ersilia-button {
-      &.cancel {
-        background-color: $pastel-red;
-        color: #000000cc;
+    .action-btn.cancel {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: rgba($ersilia-purple, 0.6);
+      border: 1px solid rgba($ersilia-purple, 0.2);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
 
-        .mat-icon {
-          color: #000000cc;
-        }
+      .mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: rgba($ersilia-purple, 0.5);
       }
 
-      &.disabled {
-        background-color: #403044d1;
+      &:hover {
+        background: rgba($ersilia-purple, 0.05);
+        border-color: rgba($ersilia-purple, 0.35);
+        color: $ersilia-purple;
+
+        .mat-icon { color: $ersilia-purple; }
       }
     }
   }
 }
+
+// ─── Split panel ──────────────────────────────────────────────────────────────
 
 .model-form-split-panel {
   display: flex;
@@ -127,97 +106,184 @@
   justify-content: space-between;
   align-items: flex-start;
   width: 100%;
+  gap: 24px;
+  margin-bottom: 20px;
 }
 
 .model-form {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   align-items: flex-start;
   width: 50%;
-  padding: 0px 10px;
+  gap: 18px;
 
-  &.full {
-    width: 100%;
-  }
+  &.full { width: 100%; }
 
+  // ── Field ──────────────────────────────────────────────────────────────
   .field {
-    min-width: 200px;
-    width: calc(100% - 20px);
-
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-start;
-
-    margin-bottom: 10px;
 
     .label {
-      width: fit-content;
+      font-family: 'Fira Code', monospace;
+      font-size: 9.5px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba($ersilia-purple, 0.45);
       margin-bottom: 5px;
-      font-size: 16px;
-      color: $ersilia-purple;
-      width: fit-content;
-      margin-bottom: 4px;
-      font-weight: bold;
     }
 
     .contents {
-      flex: 1
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      color: #1a0f22;
+      line-height: 1.6;
+      flex: 1;
     }
 
+    // Model ID pill
     .model-id {
-      background-color: $ersilia-purple;
-      color: white;
-      padding: 7px;
-      border-radius: 10px;
+      font-family: 'Fira Code', monospace;
       font-size: 11px;
+      font-weight: 500;
+      color: $ersilia-purple;
+      background: rgba($ersilia-purple, 0.06);
+      border: 1px solid rgba($ersilia-purple, 0.14);
+      padding: 4px 10px;
+      border-radius: 3px;
       cursor: pointer;
+      transition: background 0.15s, color 0.15s;
 
+      &:hover {
+        background: $ersilia-purple;
+        color: #ffffff;
+      }
     }
 
+    // Status badge
     .status {
-      border-radius: 5px;
-      padding: 4px;
-      text-align: center;
-      color: #000000b5;
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: capitalize;
 
       &.completed {
-        background-color: $pastel-green;
+        background: rgba($alert-green, 0.12);
+        color: darken($alert-green, 35%);
+        border: 1px solid rgba($alert-green, 0.3);
       }
-
       &.queued {
-        background-color: $ersilia-grey-purple;
-        color: #ffffffad;
+        background: rgba($ersilia-purple, 0.08);
+        color: $ersilia-purple;
+        border: 1px solid rgba($ersilia-purple, 0.2);
       }
-
-      &.scheduling {
-        background-color: $pastel-yellow;
+      &.scheduling, &.processing {
+        background: rgba($alert-orange, 0.12);
+        color: darken($alert-orange, 22%);
+        border: 1px solid rgba($alert-orange, 0.3);
       }
-
-      &.processing {
-        background-color: $pastel-yellow;
-      }
-
       &.failed {
-        background-color: $pastel-red;
+        background: rgba($alert-red, 0.1);
+        color: darken($alert-red, 15%);
+        border: 1px solid rgba($alert-red, 0.25);
       }
     }
 
+    // Download buttons row
+    &.input .contents { width: 100%; }
+
     .entries {
-      min-width: 500px;
-      min-height: 300px;
-      width: calc(100% - 20px);
+      width: 100%;
 
       .smiles {
         width: 100%;
-        height: 300px;
-        max-height: 300px;
 
-        .mat-mdc-form-field {
-          height: 300px;
+        ::ng-deep {
+          .mdc-notched-outline__leading,
+          .mdc-notched-outline__notch,
+          .mdc-notched-outline__trailing {
+            border-color: rgba($ersilia-purple, 0.2) !important;
+          }
+
+          .mdc-notched-outline__notch {
+            border-left: none !important;
+            border-right: none !important;
+          }
+
+          .mdc-floating-label {
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 13px !important;
+            color: rgba($ersilia-purple, 0.45) !important;
+          }
+
+          .mdc-floating-label--float-above { color: $ersilia-purple !important; }
+
+          textarea.mat-mdc-input-element {
+            font-family: 'Fira Code', monospace !important;
+            font-size: 12.5px !important;
+            color: rgba(#1a0f22, 0.75) !important;
+            line-height: 1.7;
+          }
+
+          .mat-mdc-form-field-subscript-wrapper { display: none; }
         }
       }
+    }
+  }
+}
+
+// ─── Download buttons ─────────────────────────────────────────────────────────
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  margin-right: 10px;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: $ersilia-purple;
+  border: 1px solid rgba($ersilia-purple, 0.25);
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s;
+
+  .mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: rgba($ersilia-purple, 0.6);
+    transition: color 0.15s;
+  }
+
+  &:hover {
+    background: $ersilia-purple;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba($ersilia-purple, 0.25);
+
+    .mat-icon { color: #ffffff; }
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+      color: $ersilia-purple;
+      box-shadow: none;
+
+      .mat-icon { color: rgba($ersilia-purple, 0.6); }
     }
   }
 }

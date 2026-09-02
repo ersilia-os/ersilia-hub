@@ -159,6 +159,14 @@ export class ModelsService {
     return computed(() => this.models());
   }
 
+  /**
+   * Look a model up in the loaded cache. Returns undefined when the cache has
+   * not been populated yet, so callers should `loadModels(true)` first.
+   */
+  findModel(modelId: string): Model | undefined {
+    return this.models().find(model => model.id === modelId);
+  }
+
   computeModelsSignal<T>(computation: (models: Model[]) => T): Signal<T> {
     return computed(() => computation(this.models()));
   }

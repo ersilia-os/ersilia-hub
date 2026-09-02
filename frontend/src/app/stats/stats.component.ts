@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, inject, OnInit, signal, TrackByFunction, WritableSignal } from "@angular/core";
+import { Component, computed, inject, OnInit, Signal, signal, TrackByFunction, WritableSignal } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { RequestStatsService } from "../../services/request-stats.service";
 import { WorkRequestStats, WorkRequestStatsFilterData, WorkRequestStatsFilters } from "../../objects/request-stats";
@@ -12,6 +12,10 @@ import { ErsiliaLoaderComponent } from "../ersilia-loader/ersilia-loader.compone
 import { MatTableModule } from "@angular/material/table";
 import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from "@angular/material/core";
+import { MatDialog } from "@angular/material/dialog";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { ModelsService } from "../../services/models.service";
+import { ModelDetailsDialogComponent } from "../model-readonly/model-details-dialog/model-details-dialog.component";
 
 const DAY_IN_MILLIS = 86400000;
 
@@ -21,7 +25,7 @@ const DAY_IN_MILLIS = 86400000;
     imports: [
         CommonModule, MatIconModule, MatFormFieldModule, MatTableModule,
         MatSelectModule, FormsModule, MatInputModule, ErsiliaLoaderComponent,
-        MatDatepickerModule
+        MatDatepickerModule, MatTooltipModule
     ],
     providers: [provideNativeDateAdapter()],
     templateUrl: './stats.component.html',
@@ -31,6 +35,8 @@ export class StatsComponent implements OnInit {
 
     private statsService = inject(RequestStatsService);
     private notificationsService = inject(NotificationsService);
+    private modelsService = inject(ModelsService);
+    readonly dialog = inject(MatDialog);
 
     loading: WritableSignal<boolean> = signal(true);
     filterData: WritableSignal<WorkRequestStatsFilterData> = signal(
@@ -91,6 +97,12 @@ export class StatsComponent implements OnInit {
 
     stats: WritableSignal<WorkRequestStats[]> = signal([]);
 
+    countLabel: Signal<string> = computed(() => {
+        const rows = this.stats().length;
+
+        return rows === 1 ? '1 row' : `${rows} rows`;
+    });
+
     commonColumns: string[] = [
         'model_id',
     ];
@@ -145,7 +157,13 @@ export class StatsComponent implements OnInit {
         'avg_failed_job_execution_time',
     ];
 
+    /** Columns rendered in the table -- min/max dropped, averages folded in. */
     displayedColumns: string[] = [
+    ];
+
+    /** Every column for the current selection, including the ones the table
+     *  hides. The CSV download uses this so the export stays complete. */
+    csvColumns: string[] = [
     ];
 
     columnHeaders: { [column: string]: string } = {
@@ -196,6 +214,9 @@ export class StatsComponent implements OnInit {
         this.loading.set(true);
         this.onFiltersUpdated();
 
+        // Backs the model detail dialog opened from the model_id cells.
+        this.modelsService.loadModels(true);
+
         this.statsService.loadRequestStatsFilterData()
             .subscribe({
                 next: filterData => {
@@ -221,6 +242,25 @@ export class StatsComponent implements OnInit {
         }
     };
 
+    openModelDetails(modelId: string) {
+        const model = this.modelsService.findModel(modelId);
+
+        if (model == null) {
+            this.notificationsService.pushNotification(
+                Notification('ERROR', `Could not find details for model [${modelId}]`)
+            );
+
+            return;
+        }
+
+        this.dialog.open(ModelDetailsDialogComponent, {
+            enterAnimationDuration: '300ms',
+            exitAnimationDuration: '300ms',
+            panelClass: 'dialog-panel-large',
+            data: model,
+        });
+    }
+
     isStickyColumn(column: string): boolean {
         if (column === 'model_id') {
             return true;
@@ -229,6 +269,31 @@ export class StatsComponent implements OnInit {
         }
 
         return false;
+    }
+
+    /**
+     * `total_all_request_time` -> `avg_all_request_time`, or null when the
+     * column has no matching average (e.g. `total_count`).
+     */
+    avgColumnFor(column: string): string | null {
+        if (!column.startsWith('total_')) {
+            return null;
+        }
+
+        const avgColumn = column.replace(/^total_/, 'avg_');
+
+        return avgColumn in this.columnHeaders ? avgColumn : null;
+    }
+
+    /**
+     * min/max are too noisy to scan across a wide table, and each average is
+     * shown inside its own total cell rather than in a column of its own.
+     * Both remain in the CSV export.
+     */
+    private isHiddenFromTable(column: string): boolean {
+        return column.startsWith('max_')
+            || column.startsWith('min_')
+            || column.startsWith('avg_');
     }
 
     onFiltersUpdated() {
@@ -246,7 +311,8 @@ export class StatsComponent implements OnInit {
             newColumns = newColumns.concat(this.failedColumns);
         }
 
-        this.displayedColumns = newColumns;
+        this.csvColumns = newColumns;
+        this.displayedColumns = newColumns.filter(column => !this.isHiddenFromTable(column));
 
         this.filters.request_date_from = new Date(this.requestDateFrom.setHours(0, 0, 0)).toISOString();
         this.filters.request_date_to = new Date(this.requestDateTo.setHours(23, 59, 59)).toISOString();
@@ -295,7 +361,7 @@ export class StatsComponent implements OnInit {
     downloadCsv() {
         const a = document.createElement('a');
         let objectUrl: string | undefined = undefined;
-        let csv: string[] = [this.displayedColumns.map(c => `"${c}"`).join(",")];
+        let csv: string[] = [this.csvColumns.map(c => `"${c}"`).join(",")];
 
         for (const entry of this.stats()) {
             const entryObj = {} as { [key: string]: any };
@@ -305,7 +371,7 @@ export class StatsComponent implements OnInit {
             }
 
             csv.push(
-                this.displayedColumns.map(c => {
+                this.csvColumns.map(c => {
                     if (c === 'model_id') {
                         return `"${entryObj[c]}"`;
                     } else {

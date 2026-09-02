@@ -73,21 +73,39 @@ export class UpdateUserPermissionsComponent implements OnInit {
       return;
     }
 
+    // Whether the *signed-in* user may edit permissions at all.
     this.isUserAdmin = this.authService.computePermissionsSignal(permissions => permissions.includes("ADMIN"))();
 
-    if (this.isUserAdmin) {
-      this.permissions = this.authService.computePermissionsSignal(permissions => {
-        return PermissionsList.map(pl => {
-          return {
-            permission: pl,
-            state: permissions.includes(pl)
-          } as PermissionState;
-        })
-      })();
-      this.originalPermissionsList = this.permissions.filter(p => p.state).map(p => p.permission);
+    if (this.user.id == null) {
+      this.setPermissionsState(this.user.permissions ?? []);
+      this.busy.set(false);
+      return;
     }
 
-    this.busy.set(false);
+    // Read the edited user's own permissions from the API rather than trusting
+    // the object we were handed — this dialog opens both from the admin table
+    // and from the header account menu, and they are not populated the same way.
+    this.usersService.loadUser(this.user.id)
+      .subscribe({
+        next: user => {
+          this.setPermissionsState(user.permissions ?? []);
+          this.busy.set(false);
+        },
+        error: _ => {
+          this.setPermissionsState(this.user?.permissions ?? []);
+          this.busy.set(false);
+        }
+      });
+  }
+
+  /** Seed the checkboxes, and the baseline used to detect a change. */
+  private setPermissionsState(userPermissions: Permission[]) {
+    this.permissions = PermissionsList.map(pl => ({
+      permission: pl,
+      state: userPermissions.includes(pl)
+    } as PermissionState));
+
+    this.originalPermissionsList = permissionsToList(this.permissions);
   }
 
   toggleState(permission: PermissionState, newState: boolean) {
@@ -124,10 +142,18 @@ export class UpdateUserPermissionsComponent implements OnInit {
     this.usersService.updateUserPermissions(this.user?.id!, permissionsToList(this.permissions))
       .subscribe({
         next: result => {
-          this.originalPermissionsList = permissionsToList(this.permissions);
+          const updated = permissionsToList(this.permissions);
+
+          this.originalPermissionsList = updated;
+
+          if (this.user != null) {
+            this.user.permissions = updated;
+          }
+
           this.submitting.set(false);
           this.notificationsService.pushNotification(Notification("SUCCESS", "Successfully updated user permissions"));
-          this.close();
+          this.busy.set(false);
+          this.dialogRef.close(true);
         },
         error: (err: Error) => {
           this.notificationsService.pushNotification(Notification("ERROR", "Failed to update user permissions"));

@@ -1,4 +1,5 @@
-import { Component, inject, OnDestroy, OnInit, Signal, TrackByFunction } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, Signal, TrackByFunction } from '@angular/core';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription, timer } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
@@ -22,6 +23,7 @@ import { NotificationsService, Notification } from '../notifications/notificatio
   selector: 'app-model-instances',
   standalone: true,
   imports: [
+    MatTooltipModule,
     MatButtonModule,
     FormsModule,
     MatFormFieldModule,
@@ -48,6 +50,12 @@ export class ModelInstancesComponent implements OnDestroy, OnInit {
 
   instances: Signal<ExtendedModelInstance[]>;
   loading: Signal<boolean>;
+
+  countLabel: Signal<string> = computed(() => {
+    const total = this.instances().length;
+
+    return total === 1 ? '1 instance' : `${total} instances`;
+  });
   models: Signal<Model[]>
   modelsLoading: Signal<boolean>;
 

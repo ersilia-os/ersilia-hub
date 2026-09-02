@@ -77,9 +77,13 @@ class UserModel(BaseModel):
     email: str | None = None
     sign_up_date: str | None = None
     last_updated: str | None = None
+    # Read-only: populated on the way out so clients can tell who is an admin.
+    # Ignored by to_object() - permissions are only ever written through
+    # PUT /api/users/{userid}/permissions.
+    permissions: list[str] = []
 
     @staticmethod
-    def from_object(user: User) -> "UserModel":
+    def from_object(user: User, permissions: list[str] = None) -> "UserModel":
         return UserModel(
             id=user.id,
             username=user.username,
@@ -88,6 +92,7 @@ class UserModel(BaseModel):
             email=user.email,
             sign_up_date=user.sign_up_date,
             last_updated=user.last_updated,
+            permissions=permissions if permissions is not None else [],
         )
 
     def to_object(self) -> User:

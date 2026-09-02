@@ -222,16 +222,25 @@
             </div>
 
             <div class="field password">
-                <mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
                     <mat-label>Password</mat-label>
                     <input matInput required type="password" [formControl]="signupPasswordControl"
                         [errorStateMatcher]="formControlErrorStateMatcher">
+                    <!-- Unmet rules are named by the checklist below, so there is no
+                         second message repeating them here. -->
                     @if (signupPasswordControl.hasError('required')) {
                     <mat-error>Password is <strong>required</strong></mat-error>
-                    } @else if (signupPasswordControl.hasError('validation')) {
-                    <mat-error>{{ signupPasswordControl.getError('validation') }}</mat-error>
                     }
                 </mat-form-field>
+
+                <div class="password-rules">
+                    @for (rule of passwordRuleStates(); track rule.label) {
+                    <div class="rule" [class.met]="rule.met">
+                        <mat-icon>{{ rule.met ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                        {{ rule.label }}
+                    </div>
+                    }
+                </div>
             </div>
 
             <div class="field confirm-password">

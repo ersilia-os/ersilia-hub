@@ -1,159 +1,305 @@
 @import '../../styles/colour-palette.scss';
 
+// Shared outlined-field mixin — matches model-list page exactly
+@mixin outlined-field {
+  width: 100%;
+
+  ::ng-deep {
+    .mat-mdc-form-field { width: 100%; }
+
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing {
+      border-color: rgba($ersilia-purple, 0.22) !important;
+    }
+
+    .mdc-notched-outline__notch {
+      border-left: none !important;
+      border-right: none !important;
+    }
+
+    .mdc-text-field:hover .mdc-notched-outline__leading,
+    .mdc-text-field:hover .mdc-notched-outline__notch,
+    .mdc-text-field:hover .mdc-notched-outline__trailing {
+      border-color: rgba($ersilia-purple, 0.45) !important;
+    }
+
+    .mdc-text-field--focused .mdc-notched-outline__leading,
+    .mdc-text-field--focused .mdc-notched-outline__notch,
+    .mdc-text-field--focused .mdc-notched-outline__trailing {
+      border-color: $ersilia-purple !important;
+      border-width: 2px !important;
+    }
+
+    .mat-mdc-form-field-icon-prefix .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: rgba($ersilia-purple, 0.4);
+      padding: 0 8px 0 4px;
+    }
+
+    .mdc-text-field--focused .mat-mdc-form-field-icon-prefix .mat-icon {
+      color: $ersilia-purple;
+    }
+
+    .mdc-floating-label {
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 13.5px !important;
+      color: rgba($ersilia-purple, 0.45) !important;
+    }
+
+    .mdc-floating-label--float-above { color: $ersilia-purple !important; }
+
+    .mat-mdc-input-element,
+    .mat-mdc-select-value-text {
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 14px !important;
+      color: #1a0f22 !important;
+    }
+
+    .mat-mdc-input-element::placeholder {
+      color: rgba($ersilia-purple, 0.48) !important;
+      font-style: italic;
+    }
+
+    .mat-mdc-form-field-subscript-wrapper { display: none; }
+  }
+}
+
+// ─── Host / Container ─────────────────────────────────────────────────────────
+
 :host {
-  padding: 20px;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .dialog-container {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
+  padding: 32px 36px 28px;
+  background: #ffffff;
 
-  padding: 20px;
-
+  // ── Header ────────────────────────────────────────────────────────────────
   .dialog-header {
     width: 100%;
-    font-size: 26px;
-    padding: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba($ersilia-purple, 0.12);
 
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.01em;
     color: $ersilia-purple;
-    border-bottom: 1px solid $ersilia-purple;
   }
 
+  // ── Footer actions ────────────────────────────────────────────────────────
   .dialog-actions {
     width: 100%;
-    margin-top: 15px;
-
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba($ersilia-purple, 0.08);
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: flex-end;
+    gap: 12px;
     align-items: center;
 
-    .ersilia-button {
-      &.cancel {
-        background-color: $pastel-red;
-        color: #000000cc;
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s, opacity 0.15s, border-color 0.15s;
 
-        .mat-icon {
-          color: #000000cc;
+      .mat-icon {
+        font-size: 17px;
+        width: 17px;
+        height: 17px;
+      }
+
+      ersilia-loader { margin-right: 4px; }
+
+      &.cancel {
+        background: transparent;
+        color: rgba($ersilia-purple, 0.6);
+        border: 1px solid rgba($ersilia-purple, 0.2);
+
+        .mat-icon { color: rgba($ersilia-purple, 0.5); }
+
+        &:hover {
+          background: rgba($ersilia-purple, 0.05);
+          border-color: rgba($ersilia-purple, 0.35);
+          color: $ersilia-purple;
+
+          .mat-icon { color: $ersilia-purple; }
         }
       }
 
       &.submit {
-        ersilia-loader {
-          margin-right: 5px;
+        background: $ersilia-purple;
+        color: #ffffff;
+        border: 1px solid $ersilia-purple;
+
+        .mat-icon { color: #ffffffcc; }
+
+        &:hover {
+          background: darken($ersilia-purple, 8%);
+          box-shadow: 0 4px 14px rgba($ersilia-purple, 0.3);
+        }
+
+        &.disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          box-shadow: none;
         }
       }
     }
   }
 }
 
+// ─── Form body ────────────────────────────────────────────────────────────────
+
 .request-form {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
+  gap: 16px;
 
+  // ── Filter search row ──────────────────────────────────────────────────
   .filters {
     display: flex;
     flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-
-    width: calc(100% - 20px);
+    gap: 12px;
+    width: 100%;
 
     .filter {
-      margin-right: 10px;
+      flex: 1;
+      @include outlined-field;
     }
 
-    .spacer {
-      width: 100%;
-      flex: 1;
-    }
+    .spacer { display: none; }
   }
 
+  // ── Model select + file upload row ─────────────────────────────────────
   .entry-row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-
-    width: calc(100% - 20px);
-    margin-top: 10px;
-    margin-bottom: 10px;
+    width: 100%;
+    gap: 16px;
 
     .model {
-      width: 600px;
+      flex: 1;
+      @include outlined-field;
 
-      .mat-mdc-form-field {
-        width: 600px;
+      mat-progress-bar {
+        margin-bottom: 6px;
+        border-radius: 2px;
       }
     }
 
     .file-upload {
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-      align-items: center;
+      flex-shrink: 0;
 
-      min-width: 250px;
-      margin-bottom: 8px;
+      input { display: none; }
 
-      input {
-        display: none;
-      }
+      .file-upload-trigger {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border: 1px solid rgba($ersilia-purple, 0.22);
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        color: rgba($ersilia-purple, 0.65);
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        white-space: nowrap;
 
-      .file-upload {
-        .ersilia-button {
-          margin-left: 6px;
+        .mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          color: rgba($ersilia-purple, 0.45);
+          transition: color 0.15s;
+        }
+
+        &:hover {
+          background: rgba($ersilia-purple, 0.05);
+          border-color: rgba($ersilia-purple, 0.4);
+          color: $ersilia-purple;
+
+          .mat-icon { color: $ersilia-purple; }
         }
       }
     }
   }
 
+  // ── SMILES textarea ────────────────────────────────────────────────────
   .entries {
-    min-width: 500px;
-    min-height: 450px;
-    width: calc(100% - 20px);
+    width: 100%;
 
     .smiles {
       width: 100%;
-      height: 450px;
-      max-height: 450px;
+      @include outlined-field;
 
-      .mat-mdc-form-field {
-        height: 450px;
+      ::ng-deep textarea.mat-mdc-input-element {
+        font-family: 'Fira Code', monospace !important;
+        font-size: 13px !important;
+        line-height: 1.7;
+        resize: vertical;
+        min-height: 280px;
       }
+    }
+  }
+
+  // ── Cache contribute ───────────────────────────────────────────────────
+  .contribute {
+    width: 100%;
+    background: rgba($ersilia-light-purple, 0.07);
+    border: 1px solid rgba($ersilia-light-purple, 0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+
+    .check { padding-top: 2px; }
+
+    .notice {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 300;
+      color: rgba(#1a0f22, 0.7);
+      line-height: 1.6;
     }
   }
 }
 
+// ─── Model dropdown option styling ────────────────────────────────────────────
+
 .model-selection-id {
-  font-weight: bold;
-  font-size: 14px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: $ersilia-purple;
 }
 
 .model-selection-description {
-  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
   font-style: italic;
-}
-
-.contribute {
-  background-color: $pastel-blue;
-  border-radius: 7px;
-  padding: 6px;
-
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
-
-  .check {
-    margin: 8px;
-  }
-
-  .notice {}
+  color: rgba(#1a0f22, 0.6);
 }

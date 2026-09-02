@@ -1,183 +1,177 @@
 @import '../../styles/colour-palette.scss';
 
 :host {
-    color: #ccc;
-    background-color: #2c2c2cf2;
-    padding: 10px;
-    border-radius: 7px;
-    font-size: 15px;
-    font-weight: bold;
+    background: $ersilia-purple;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(#fff, 0.9);
 
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 4px;
+    min-width: 180px;
 }
 
+// ─── Usage value row ──────────────────────────────────────────────────────────
+
 .usage {
-    &.profile-state-very_under {
-        color: $alert-orange;
-    }
-
-    &.profile-state-under {
-        color: $alert-yellow;
-    }
-
-    &.profile-state-recommended {
-        color: $alert-green;
-    }
-
-    &.profile-state-over {
-        color: $alert-yellow;
-    }
-
-    &.profile-state-very_over {
-        color: $alert-orange;
-    }
-
-    &.profile-state-critical {
-        color: $alert-red;
-    }
-
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
 
     .separator {
-        margin: 0px 5px;
+        margin: 0 5px;
+        color: rgba(#fff, 0.4);
     }
+
+    .allocation {
+        color: rgba(#fff, 0.5);
+    }
+
+    &.profile-state-very_under { color: $alert-orange; }
+    &.profile-state-under       { color: $alert-yellow; }
+    &.profile-state-recommended { color: darken($alert-green, 20%); }
+    &.profile-state-over        { color: $alert-orange; }
+    &.profile-state-very_over   { color: darken($alert-orange, 10%); }
+    &.profile-state-critical    { color: $alert-red; }
 }
 
-.percentage {
-    &.profile-state-very_under {
-        color: $alert-orange;
-    }
-
-    &.profile-state-under {
-        color: $alert-yellow;
-    }
-
-    &.profile-state-recommended {
-        color: $alert-green;
-    }
-
-    &.profile-state-over {
-        color: $alert-yellow;
-    }
-
-    &.profile-state-very_over {
-        color: $alert-orange;
-    }
-
-    &.profile-state-critical {
-        color: $alert-red;
-    }
-
-    &.profile-state-black {
-        color: black;
-    }
-}
+// ─── Progress bar ─────────────────────────────────────────────────────────────
+// NOTE: width must stay 150px — the JS calculates indicatorPosition and
+// indicatorWidth as pixel values relative to exactly 150px.
 
 .gradient-block {
-    height: 20px;
+    position: relative;
     width: 150px;
-    padding: 3px;
-    background-color: #6f6f6f;
-    border-radius: 6px;
-    display: block;
+    height: 30px; // 8px bar + space for indicators above/below + percentage
+    background: transparent;
+    border-radius: 4px;
+
+    // Track background only behind the bar, not the percentage row
+    // Track fill background
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 150px;
+        height: 8px;
+        background: rgba(#fff, 0.15);
+        border-radius: 4px;
+    }
+
+    // Outline on top of everything so it's always visible
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 150px;
+        height: 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(#fff, 0.35);
+        box-sizing: border-box;
+        pointer-events: none;
+        z-index: 10;
+    }
 
     .gradient-fill {
-        height: 20px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 8px;
         width: 150px;
         border-radius: 4px;
-        position: relative;
+        opacity: 0.9;
     }
 
     .indicator {
-        height: 22px;
-        border-radius: 3px;
-        background-color: #6f6f6f;
-        position: relative;
-        top: -21px;
-    }
-
-    .allocation-indicator {
+        position: absolute;
+        top: 0;
+        height: 8px;
         border-radius: 4px;
-        position: relative;
-        top: -54px;
-        width: 0px;
-        height: 0px;
-        border-style: solid;
-        border-width: 0 10px 15px 10px;
-        border-color: transparent transparent #ccc transparent;
-        transform: rotate(180deg) translateX(10px);
-    }
-
-    .recommended-indicator {
-        border-radius: 4px;
-        position: relative;
-        top: -39px;
-        width: 0px;
-        height: 0px;
-        border-style: solid;
-        border-width: 0 10px 15px 10px;
-        border-color: transparent transparent #31ec5a transparent;
-        transform: translateX(-10px);
-    }
-
-    .recommended-value {
-        position: relative;
-        top: -40px;
-        transform: translateX(-50%);
-        width: fit-content;
-        color: #31ec5a;
+        background: $ersilia-purple; // solid — must match host bg to mask fill
     }
 
     .percentage {
-        height: 20px;
-        position: relative;
-        top: -41px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
         width: 150px;
-
+        height: 14px;
         display: flex;
-        flex-direction: row;
         align-items: center;
         justify-content: center;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+
+        &.profile-state-very_under { color: darken($alert-orange, 5%); }
+        &.profile-state-under       { color: darken($alert-yellow, 20%); }
+        &.profile-state-recommended { color: darken($alert-green, 25%); }
+        &.profile-state-over        { color: darken($alert-orange, 5%); }
+        &.profile-state-very_over   { color: darken($alert-orange, 10%); }
+        &.profile-state-critical    { color: $alert-red; }
+        &.profile-state-black       { color: rgba(#fff, 0.75); }
+    }
+
+    // Points DOWN — marks current allocation on the bar
+    .allocation-indicator {
+        position: absolute;
+        top: -9px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 6px 8px 6px;
+        border-color: transparent transparent rgba(#fff, 0.6) transparent;
+        transform: rotate(180deg) translateX(6px);
+        z-index: 5;
+    }
+
+    // Points UP — marks recommended allocation on the bar
+    .recommended-indicator {
+        position: absolute;
+        top: 8px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 6px 8px 6px;
+        border-color: transparent transparent $alert-green transparent;
+        transform: translateX(-6px);
+        z-index: 5;
+    }
+
+    .recommended-value {
+        position: absolute;
+        top: 16px;
+        transform: translateX(-50%);
+        width: fit-content;
+        color: darken($alert-green, 20%);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
     }
 }
 
 .recommended-value-spacer {
-    height: 20px;
+    height: 6px;
     width: 1px;
 }
 
+// ─── Triangle indicators ──────────────────────────────────────────────────────
+
 .triangle-indicator {
-    &.profile-state-very_under {
-        border-bottom-color: $alert-orange !important;
-    }
-
-    &.profile-state-under {
-        border-bottom-color: $alert-yellow !important;
-    }
-
-    &.profile-state-recommended {
-        border-bottom-color: $alert-green !important;
-    }
-
-    &.profile-state-over {
-        border-bottom-color: $alert-yellow !important;
-    }
-
-    &.profile-state-very_over {
-        border-bottom-color: $alert-orange !important;
-    }
-
-    &.profile-state-critical {
-        border-bottom-color: $alert-red !important;
-    }
-
-    &.profile-state-black {
-        border-bottom-color: black !important;
-    }
+    &.profile-state-very_under { border-bottom-color: $alert-orange !important; }
+    &.profile-state-under       { border-bottom-color: $alert-yellow !important; }
+    &.profile-state-recommended { border-bottom-color: $alert-green !important; }
+    &.profile-state-over        { border-bottom-color: $alert-orange !important; }
+    &.profile-state-very_over   { border-bottom-color: darken($alert-orange, 10%) !important; }
+    &.profile-state-critical    { border-bottom-color: $alert-red !important; }
+    &.profile-state-black       { border-bottom-color: rgba($ersilia-purple, 0.4) !important; }
 }

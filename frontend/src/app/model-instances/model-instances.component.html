@@ -1,17 +1,16 @@
-<div class="component-header">
-    Model Instances
-</div>
+<div class="page-header">
+    <div class="title-row">
+        <div class="title">Model Instances</div>
+        <div class="count">{{ countLabel() }}</div>
+    </div>
 
-<div class="component-toolbar">
-
-    <div class="filters">
-        <div class="filter model">
-            @if (modelsLoading()) {
-            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-            }
-            <mat-form-field>
-                <mat-label>Select a Model</mat-label>
-                <mat-select [(value)]="filtersModel">
+    <div class="filter-row">
+        <div class="filter">
+            <div class="filter-label">Model</div>
+            <div class="filter-field">
+                <mat-icon>biotech</mat-icon>
+                <mat-select [(value)]="filtersModel" panelClass="header-select-panel"
+                    placeholder="All models">
                     @for (model of models(); track model) {
                     <mat-option [value]="model.id">
                         <span class="model-selection-id">{{ model.id }}</span> : <span class="model-selection-description">{{
@@ -21,31 +20,32 @@
                     </mat-option>
                     }
                 </mat-select>
-            </mat-form-field>
+            </div>
+            @if (modelsLoading()) {
+            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            }
         </div>
 
         <div class="filter">
-            <mat-checkbox [(ngModel)]="filtersLoadActive">Active Instances</mat-checkbox>
+            <div class="filter-label">Include</div>
+            <div class="filter-toggles">
+                <mat-checkbox [(ngModel)]="filtersLoadActive">Active</mat-checkbox>
+                <mat-checkbox [(ngModel)]="filtersLoadTerminated">Terminated</mat-checkbox>
+                <mat-checkbox [(ngModel)]="filtersLoadMetrics">Resource Metrics</mat-checkbox>
+            </div>
         </div>
 
         <div class="filter">
-            <mat-checkbox [(ngModel)]="filtersLoadTerminated">Terminated Instances</mat-checkbox>
-        </div>
-
-        <div class="filter">
-            <mat-checkbox [(ngModel)]="filtersLoadMetrics">Resource Metrics</mat-checkbox>
-        </div>
-
-        <div class="spacer"></div>
-
-        <div class="filter refresh">
-            <div class="ersilia-button icon-only refresh" (click)="load()"
-                [ngClass]="{'disabled': loading() || autoRefreshEnabled()}">
-                @if(loading()) {
-                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                } @else {
-                <mat-icon>refresh</mat-icon>
-                }
+            <div class="filter-label"></div>
+            <div class="filter-actions">
+                <div class="icon-btn" (click)="load()"
+                    [ngClass]="{'disabled': loading() || autoRefreshEnabled()}" matTooltip="Refresh">
+                    @if(loading()) {
+                    <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                    } @else {
+                    <mat-icon>refresh</mat-icon>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -169,12 +169,12 @@
                 Actions
             </div>
             <div class="info-block-details">
-              <div class="ersilia-button icon-only" (click)="viewDetailedInstance(instance)">
+              <div class="icon-btn" (click)="viewDetailedInstance(instance)">
                   <mat-icon>info</mat-icon>
               </div>
 
               @if (instance.model_instance.state != 'TERMINATED') {
-                <div class="ersilia-button icon-only" (click)="stopInstance(instance)">
+                <div class="icon-btn danger" (click)="stopInstance(instance)">
                     <mat-icon>cancel</mat-icon>
                 </div>
               }

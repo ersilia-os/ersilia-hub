@@ -14,6 +14,7 @@ from db.daos.user_auth import (
     UserAuthQuery,
 )
 from db.daos.user_permission import UserPermissionDAO, UserPermissionRecord
+from json import dumps
 from db.daos.user_session import (
     UserSessionCheckRecord,
     UserSessionDAO,
@@ -445,7 +446,11 @@ class AuthController(Thread):
             results: List[UserPermissionRecord] = UserPermissionDAO.execute_upsert(
                 ApplicationConfig.instance().database_config,
                 userid=userid,
-                permissions=list(map(str, permissions)),
+                # Must be a JSON string: the column is jsonb, and a bare Python
+                # list gets adapted to a Postgres array literal instead -- which
+                # writes `{}` for an empty list and fails outright for a
+                # non-empty one.
+                permissions=dumps(list(map(str, permissions))),
             )
 
             if results is None or len(results) == 0:

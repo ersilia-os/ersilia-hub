@@ -1,5 +1,8 @@
-<div class="component-header">
-    Model Recommendations
+<div class="page-header">
+    <div class="title-row">
+        <div class="title">Model Recommendations</div>
+        <div class="count">{{ countLabel() }}</div>
+    </div>
 </div>
 
 <div class="component-toolbar">
@@ -9,14 +12,12 @@
 
         <div class="spacer"></div>
 
-        <div class="filter refresh">
-            <div class="ersilia-button icon-only refresh" (click)="load()" [ngClass]="{'disabled': loading()}">
-                @if(loading()) {
-                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                } @else {
-                <mat-icon>refresh</mat-icon>
-                }
-            </div>
+        <div class="icon-btn" (click)="load()" [ngClass]="{'disabled': loading()}">
+            @if(loading()) {
+            <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+            } @else {
+            <mat-icon>refresh</mat-icon>
+            }
         </div>
     </div>
 
@@ -92,7 +93,7 @@
             <div class="info-block-details">
                 <div class="detail">
                     <div class="value">
-                        <div class="ersilia-button icon-only apply" (click)="apply(recommendation)"
+                        <div class="icon-btn apply" (click)="apply(recommendation)"
                             [ngClass]="{'disabled': loading()}">
                             <mat-icon>playlist_add_check</mat-icon>
                         </div>

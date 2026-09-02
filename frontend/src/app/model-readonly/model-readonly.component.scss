@@ -1,131 +1,308 @@
 @import '../../styles/colour-palette.scss';
+@import '../../styles/page-header';
+
+@include page-header-band;
+@include page-header-filters;
+
+// Collapsed cards reserve a fixed number of lines for the title and the
+// description, so every card in the grid is exactly the same height.
+$title-line-height: 1.35;
+$title-lines: 2;
+$description-line-height: 1.62;
+$description-lines: 3;
 
 :host {
   width: 100%;
-  height: calc(100% - 80px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.component-header {
-  font-size: 26px;
-  margin-bottom: 20px;
-  width: calc(100% - 30px);
-  color: $ersilia-purple;
-}
-
-.component-toolbar {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-
-  width: calc(100% - 50px);
-  margin-bottom: 20px;
-
-
-  .filters {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-
-    width: 100%;
-    flex: 1;
-
-    .filter {
-      margin-right: 10px;
-    }
-
-    .spacer {
-      width: 100%;
-      flex: 1;
-    }
-  }
-}
-
-.mat-column-id {
-  width: 120px;
-}
-
-.mat-column-description {
-  width: 400px;
-  text-wrap: wrap;
-}
-
-.mat-mdc-table {
-  background-color: #727272;
-}
-
-.table {
-  width: 80%;
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
 }
+
+
+// ─── Model Cards ─────────────────────────────────────────────────────────────
 
 .models-container {
-  display: flex;
-  width: calc(100% - 30px);
-  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-content: start;
+  // Each card is exactly as tall as its own content, so an expanded card grows
+  // on its own instead of stretching (and clipping) its whole row.
+  align-items: start;
+  // Same gutter as the header band, so cards line up under the title.
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  scrollbar-width: none;
+  gap: 16px;
+  padding: 22px $page-gutter 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba($ersilia-purple, 0.18) transparent;
 
-  .model {
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba($ersilia-purple, 0.2);
+    border-radius: 2px;
+  }
+
+  .model-card {
     display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    background: #ffffff;
+    border: 1px solid rgba($ersilia-purple, 0.07);
+    border-top: 3px solid $ersilia-light-purple;
+    border-radius: 8px;
+    // Never clip our own content — the actions strip rounds its own corners.
+    overflow: visible;
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.18s ease;
 
-    width: calc(100% - 40px);
-    padding: 10px;
-    margin-bottom: 20px;
-    background-color: #e9e9e9;
-    border-radius: 6px;
-
-    .main-column {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: flex-start;
-
-      margin-right: 7px;
-
-      color: $ersilia-purple;
-      cursor: pointer;
-      flex: 1;
-      min-height: 100px;
-
-      .title {
-        font-weight: bold;
-        font-size: 15px;
+    // Staggered entrance
+    @for $i from 1 through 40 {
+      &:nth-child(#{$i}) {
+        animation: card-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: #{($i - 1) * 0.028}s;
       }
     }
 
-    .extra-column {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba($ersilia-purple, 0.09), 0 1px 4px rgba($ersilia-purple, 0.05);
+      border-color: rgba($ersilia-purple, 0.13);
+      border-top-color: darken($ersilia-light-purple, 10%);
+    }
+
+    // ── Head: Model ID ────────────────────────────────────────────────────
+    .card-head {
       display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      flex-direction: row;
       align-items: center;
-      min-height: 100px;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 14px 18px 10px 18px;
+      cursor: pointer;
+
+      .identifiers {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .model-slug {
+        font-family: 'Fira Code', monospace;
+        font-size: 12px;
+        font-weight: 400;
+        letter-spacing: 0.01em;
+        color: rgba($ersilia-purple, 0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
 
       .model-id {
-        background-color: $ersilia-purple;
-        color: white;
-        padding: 7px;
-        border-radius: 10px;
-        font-size: 11px;
-        cursor: pointer;
+        flex-shrink: 0;
+        font-family: 'Fira Code', monospace;
+        font-size: 12.5px;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        color: $ersilia-purple;
+        background: rgba($ersilia-purple, 0.06);
+        border: 1px solid rgba($ersilia-purple, 0.12);
+        padding: 4px 9px;
+        border-radius: 3px;
+        white-space: nowrap;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
 
+      .open-details {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+        color: rgba($ersilia-purple, 0.3);
+        transition: color 0.15s;
+      }
+
+      &:hover {
+        .model-id {
+          background: $ersilia-purple;
+          color: #ffffff;
+          border-color: $ersilia-purple;
+        }
+
+        .model-slug {
+          color: $ersilia-purple;
+        }
+
+        .open-details {
+          color: $ersilia-purple;
+        }
+      }
+    }
+
+    // ── Body: Title + clamped description ─────────────────────────────────
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      flex: 1;
+      padding: 0 18px 14px 18px;
+      cursor: pointer;
+
+      .title {
+        width: 100%;
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: 15px;
+        color: #1a0f22;
+        margin-bottom: 8px;
+        line-height: $title-line-height;
+        transition: color 0.15s ease;
+
+        // Always exactly two lines tall, wrapped or not.
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: $title-lines;
+        line-clamp: $title-lines;
+        overflow: hidden;
+        height: $title-line-height * $title-lines * 1em;
+      }
+
+      .description {
+        width: 100%;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13.5px;
+        font-weight: 300;
+        color: rgba(#1a0f22, 0.78);
+        line-height: $description-line-height;
+        word-break: break-word;
+
+        // Collapsed: exactly 3 lines. The line-clamp gives the ellipsis, the
+        // max-height guarantees the height even where the clamp doesn't apply.
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: $description-lines;
+        line-clamp: $description-lines;
+        overflow: hidden;
+        // Fixed at 3 lines collapsed, even when the text is shorter.
+        height: $description-line-height * $description-lines * 1em;
+
+        &.expanded {
+          height: auto;
+          display: block;
+          -webkit-line-clamp: unset;
+          line-clamp: unset;
+          max-height: none;
+          overflow: visible;
+        }
+      }
+
+      // Reserved row for the toggle, so cards without one stay the same height.
+      .expand-toggle-slot {
+        display: flex;
+        align-items: center;
+        height: 18px;
+        margin-top: 6px;
+      }
+
+      .expand-toggle {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 2px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11.5px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        color: rgba($ersilia-purple, 0.7);
+        cursor: pointer;
+        transition: color 0.15s;
+
+        .mat-icon {
+          font-size: 15px;
+          width: 15px;
+          height: 15px;
+        }
+
+        &:hover {
+          color: $ersilia-purple;
+        }
+      }
+    }
+
+    &:hover .card-body .title {
+      color: $ersilia-purple;
+    }
+
+    // ── Actions: Run Model button ─────────────────────────────────────────
+    .card-actions {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 12px 18px;
+      border-top: 1px solid rgba($ersilia-purple, 0.07);
+      border-radius: 0 0 7px 7px;
+      background: rgba($ersilia-purple, 0.015);
+
+      .ersilia-button.open-request {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        background: transparent;
+        color: $ersilia-purple;
+        border: 1px solid rgba($ersilia-purple, 0.22);
+        border-radius: 5px;
+        height: 34px;
+        padding: 0 14px;
+        transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+
+        .mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          color: rgba($ersilia-purple, 0.6);
+          margin-right: 6px;
+          transition: color 0.15s;
+        }
+
+        &:hover {
+          background: $ersilia-purple;
+          color: #ffffff;
+          border-color: $ersilia-purple;
+          box-shadow: 0 4px 14px rgba($ersilia-purple, 0.25);
+
+          .mat-icon {
+            color: #ffffff;
+          }
+        }
       }
     }
   }
 }
 
-.models-container::-webkit-scrollbar {
-  display: none;
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

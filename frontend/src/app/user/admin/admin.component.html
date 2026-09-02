@@ -1,62 +1,82 @@
-<div class="component-header">
-    User Admin
-</div>
+<div class="page-header">
+    <div class="title-row">
+        <div class="title">User Admin</div>
+        <div class="count">{{ countLabel() }}</div>
+    </div>
 
-<div class="component-toolbar">
-    <div class="filters">
-        <div class="filter username_prefix">
-            <mat-form-field>
-                <mat-label>Username Prefix</mat-label>
-                <input matInput [(ngModel)]="filterUsernamePrefix">
-            </mat-form-field>
+    <div class="filter-row">
+        <div class="filter">
+            <div class="filter-label">Username Prefix</div>
+            <div class="filter-field">
+                <mat-icon>person</mat-icon>
+                <input [(ngModel)]="filterUsernamePrefix" placeholder="Starts with…"
+                    aria-label="Filter by username prefix">
+            </div>
         </div>
 
-        <div class="filter firstname_prefix">
-            <mat-form-field>
-                <mat-label>Firstname Prefix</mat-label>
-                <input matInput [(ngModel)]="filterFirstnamePrefix">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">First Name</div>
+            <div class="filter-field">
+                <mat-icon>badge</mat-icon>
+                <input [(ngModel)]="filterFirstnamePrefix" placeholder="Starts with…"
+                    aria-label="Filter by first name prefix">
+            </div>
         </div>
 
-        <div class="filter lastname_prefix">
-            <mat-form-field>
-                <mat-label>Lastname Prefix</mat-label>
-                <input matInput [(ngModel)]="filterLastnamePrefix">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">Last Name</div>
+            <div class="filter-field">
+                <mat-icon>badge</mat-icon>
+                <input [(ngModel)]="filterLastnamePrefix" placeholder="Starts with…"
+                    aria-label="Filter by last name prefix">
+            </div>
         </div>
 
-        <div class="filter email_prefix">
-            <mat-form-field>
-                <mat-label>Email Prefix</mat-label>
-                <input matInput [(ngModel)]="filterEmailPrefix">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">Email</div>
+            <div class="filter-field">
+                <mat-icon>mail</mat-icon>
+                <input [(ngModel)]="filterEmailPrefix" placeholder="Starts with…"
+                    aria-label="Filter by email prefix">
+            </div>
         </div>
 
-
-        <div class="filter username">
-            <mat-form-field>
-                <mat-label>Username</mat-label>
-                <input matInput [(ngModel)]="filterUsername">
-            </mat-form-field>
+        <div class="filter">
+            <div class="filter-label">Exact Username</div>
+            <div class="filter-field">
+                <mat-icon>fingerprint</mat-icon>
+                <input [(ngModel)]="filterUsername" placeholder="Full username"
+                    aria-label="Filter by exact username">
+            </div>
         </div>
 
-        <div class="spacer"></div>
+        <div class="filter">
+            <div class="filter-label"></div>
+            <div class="filter-toggles">
+                <mat-checkbox [(ngModel)]="filterAdminsOnly">
+                    Admins only ({{ adminCount() }})
+                </mat-checkbox>
+            </div>
+        </div>
 
-        <div class="filter refresh">
-            <div class="ersilia-button icon-only refresh" (click)="load()"
-                [ngClass]="{'disabled': loading()}">
-                @if(loading()) {
-                <ersilia-loader [colour]="'#fffc'"></ersilia-loader>
-                } @else {
-                <mat-icon>refresh</mat-icon>
-                }
+        <div class="filter">
+            <div class="filter-label"></div>
+            <div class="filter-actions">
+                <div class="icon-btn" (click)="load()" [ngClass]="{'disabled': loading()}"
+                    matTooltip="Refresh">
+                    @if(loading()) {
+                    <ersilia-loader [colour]="'#50285a'"></ersilia-loader>
+                    } @else {
+                    <mat-icon>refresh</mat-icon>
+                    }
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="table">
-    <table mat-table [dataSource]="users()" class="mat-elevation-z8" [trackBy]="tableTrackBy">
+    <table mat-table [dataSource]="visibleUsers()" [trackBy]="tableTrackBy">
         @for (column of displayedColumns; track column) {
         <ng-container [matColumnDef]="column">
             <th mat-header-cell *matHeaderCellDef>
@@ -65,14 +85,24 @@
             <td mat-cell *matCellDef="let element">
                 @if (column == 'actions') {
                 <div class="actions">
-                  <div class="action-button" (click)="openUserDialog(element)">
+                  <div class="action-button" (click)="openUserDialog(element)"
+                    matTooltip="View user and edit permissions">
                       <mat-icon>visibility</mat-icon>
                   </div>
 
-                  <div class="action-button" (click)="openDeleteDialog(element)">
+                  <div class="action-button" (click)="openDeleteDialog(element)" matTooltip="Delete user">
                       <mat-icon>delete</mat-icon>
                   </div>
                 </div>
+                } @else if (column == 'role') {
+                @if (isAdmin(element)) {
+                <div class="role-badge admin">
+                    <mat-icon>admin_panel_settings</mat-icon>
+                    Admin
+                </div>
+                } @else {
+                <div class="role-badge">User</div>
+                }
                 } @else {
                 {{element[column]}}
                 }

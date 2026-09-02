@@ -35,6 +35,19 @@ def register(fastapi_root: FastAPIRoot = None):
 ###############################################################################
 
 
+def _user_permissions(userid: str) -> list[str]:
+    """
+    Permissions held by a user, read from the AuthController's in-memory cache
+    so listing users costs no extra queries.
+    """
+    if userid is None:
+        return []
+
+    user_permission = AuthController.instance().get_user_permissions(userid)
+
+    return [] if user_permission is None else list(user_permission.permissions)
+
+
 @router.get("")
 def load_filtered(
     filters: Annotated[UsersFilterModel, Query()],
@@ -59,7 +72,11 @@ def load_filtered(
         )
         raise HTTPException(500, detail="Failed to load users")
 
-    return {"items": list(map(UserModel.from_object, users))}
+    return {
+        "items": [
+            UserModel.from_object(user, _user_permissions(user.id)) for user in users
+        ]
+    }
 
 
 @router.get("/{userid}")
@@ -81,7 +98,7 @@ def load(
     if user is None:
         raise HTTPException(400, detail="User not found")
 
-    return UserModel.from_object(user)
+    return UserModel.from_object(user, _user_permissions(user.id))
 
 
 @router.put("/{userid}/password")
@@ -130,7 +147,7 @@ def update_permissions(
             update.permissions,
         )
     except:
-        raise HTTPException(500, detail="Failed to update user password")
+        raise HTTPException(500, detail="Failed to update user permissions")
 
     return {"result": "SUCCESS"}
 

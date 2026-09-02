@@ -187,6 +187,45 @@
         }
       }
 
+      // Password policy, ticked off as it is satisfied
+      .password-rules {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        width: 100%;
+        margin: 8px 0 14px 2px;
+
+        .rule {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 6px;
+
+          font-family: 'DM Sans', sans-serif;
+          font-size: 12px;
+          font-weight: 400;
+          color: rgba($ersilia-purple, 0.55);
+          transition: color 0.15s ease;
+
+          .mat-icon {
+            width: 14px;
+            height: 14px;
+            font-size: 14px;
+            flex-shrink: 0;
+            color: rgba($ersilia-purple, 0.3);
+            transition: color 0.15s ease;
+          }
+
+          &.met {
+            color: darken($ersilia-green, 48%);
+
+            .mat-icon {
+              color: darken($ersilia-green, 38%);
+            }
+          }
+        }
+      }
+
       .actions {
         margin-top: 15px;
 

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, Signal, TrackByFunction, WritableSignal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +16,9 @@ import { ModelUpdateComponent } from './model-update/model-update.component';
 import { NotificationsService, Notification } from '../notifications/notifications.service';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+/** Roughly three rendered lines in the description column. */
+const DESCRIPTION_CLAMP_CHARS = 120;
+
 @Component({
   selector: 'app-model-management',
   standalone: true,
@@ -30,10 +33,14 @@ export class ModelManagementComponent implements OnInit {
   private pageFilters: WritableSignal<PageFilters> = signal({});
   private notificationsService = inject(NotificationsService);
 
+  /** Ids whose description cell is showing its full text. */
+  expandedDescriptionIds: WritableSignal<Set<string>> = signal(new Set<string>());
+
   readonly dialog = inject(MatDialog);
 
   models: Signal<Model[]>;
   loading: Signal<boolean>;
+  countLabel: Signal<string>;
 
   displayedColumns: string[] = ['enabled', 'id', 'description', 'image_tag', 'resources', 'max_instances', 'exec_mode', 'cache_enabled', 'actions'];
   columnHeaders: { [column: string]: string } = {
@@ -58,6 +65,42 @@ export class ModelManagementComponent implements OnInit {
           && (!pageFilters.searchString || model.id.includes(pageFilters.searchString));
       });
     });
+
+    const allModels = this.modelsService.getModelsSignal();
+
+    this.countLabel = computed(() => {
+      const total = allModels().length;
+      const shown = this.models().length;
+
+      return shown === total ? `${total} models` : `${shown} of ${total} shown`;
+    });
+  }
+
+  modelDescription(model: Model): string {
+    return model.details?.description?.trim() || '';
+  }
+
+  isDescriptionExpanded(model: Model): boolean {
+    return this.expandedDescriptionIds().has(model.id);
+  }
+
+  /** Descriptions shorter than ~3 rendered lines never need a toggle. */
+  canExpandDescription(model: Model): boolean {
+    return this.modelDescription(model).length > DESCRIPTION_CLAMP_CHARS;
+  }
+
+  toggleDescription(model: Model, event: MouseEvent) {
+    event.stopPropagation();
+
+    const expanded = new Set(this.expandedDescriptionIds());
+
+    if (expanded.has(model.id)) {
+      expanded.delete(model.id);
+    } else {
+      expanded.add(model.id);
+    }
+
+    this.expandedDescriptionIds.set(expanded);
   }
 
   get filtersActiveOnly(): boolean {
